@@ -130,7 +130,11 @@ def extract_unmapped_field_ops(
         # Runtime-relative fields in this game stay comfortably below this. A
         # larger number is overwhelmingly likely to be a pointer/payload, not a
         # fighter-relative field offset.
-        if target > 0x4000:
+        # TvC keeps several proven combat-state fields in the +0x44xx/+0x45xx
+        # range (Baroque/protection research included), so do not discard them
+        # from the raw field-op inventory. 0x5000 is still a conservative
+        # fighter-relative ceiling for this scout.
+        if target > 0x5000:
             continue
         signature = SignalSignature(
             target_offset=target,

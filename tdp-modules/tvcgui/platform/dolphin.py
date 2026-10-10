@@ -787,26 +787,27 @@ def prime_mem2_latch() -> bool:
 # ============================================================
 
 def hook():
-    """
-    Hook Dolphin. MEM2 latches lazily when a live match slot appears.
-
-    This intentionally does not block on MEM2. Starting the GUI from the main
-    menu/character select should leave it armed in "MEM2 pending" state; the
-    first match frame with valid fighter slot pointers will prime the latch.
-    """
-    while not dme.is_hooked():
+    """Attach to the real Dolphin.exe; keep MEM2 optional until a live scene."""
+    attempts = 0
+    while True:
         try:
+            if dme.is_hooked():
+                break
             dme.hook()
-        except Exception:
-            pass
+            if dme.is_hooked():
+                break
+        except Exception as exc:
+            if attempts % 25 == 0:
+                print(f"[Dolphin] DME hook retry: {exc!r}", flush=True)
+        attempts += 1
+        if attempts % 25 == 0:
+            print("[Dolphin] Waiting for a Dolphin.exe memory connection...", flush=True)
         time.sleep(0.2)
 
-    # One quick dynamic attempt is useful if a match is already running, but
-    # failure is normal from menus and must not stop future detection.  The old
-    # fixed sentinel path is disabled, so this cannot accidentally latch a zero
-    # menu page as MEM2.
+    print("[Dolphin] Dolphin Memory Engine attached.", flush=True)
+    # MEM2's host mapping is optional from menus. A valid fighter pointer or
+    # character-select signature will latch it later without blocking startup.
     _ensure_mem2_latched(max_attempts=1, sleep=0.0, force=True)
-
 
 def addr_in_ram(a):
     if a is None:
@@ -976,3 +977,34 @@ def mem2_latch_info():
         "expect_ea": EXPECT_EA,
         "dynamic_slot_ptrs": DYNAMIC_SLOT_PTRS,
     }
+
+
+# Compatibility with the existing patch_manager.py imports.
+# Dolphin Memory Engine can read/write guest RAM, but offers no verified
+# public mechanism here for invalidating Dolphin's compiled PPC JIT blocks.
+# Do NOT silently replace synchronized code patches with raw RAM writes.
+_CODE_PATCH_WARNING_PRINTED = False
+
+
+def _code_patch_unavailable() -> bool:
+    global _CODE_PATCH_WARNING_PRINTED
+    if not _CODE_PATCH_WARNING_PRINTED:
+        _CODE_PATCH_WARNING_PRINTED = True
+        print(
+            "[Dolphin] Native code patch refused: no verified PPC JIT "
+            "invalidation for the Dolphin.exe/DME backend.",
+            flush=True,
+        )
+    return False
+
+
+def patch_code(addr, data, *, timeout=2.0):
+    """Fail closed for unsupported JIT-synchronized PPC instruction patches."""
+    return _code_patch_unavailable()
+
+
+def patch_code_many(writes, *, timeout=3.0):
+    """Fail closed for nonempty PPC patch batches; empty batches are no-ops."""
+    if not writes:
+        return True
+    return _code_patch_unavailable()

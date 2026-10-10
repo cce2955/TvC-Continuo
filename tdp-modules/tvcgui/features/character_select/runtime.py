@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+import json
+import os
 import re
 import threading
 import time
 from typing import Any
+
+try:
+    from .custom_name_tpl import find_name_tpl, render_text_rgba, encode_texture
+except Exception:  # pragma: no cover
+    find_name_tpl = None
+    render_text_rgba = None
+    encode_texture = None
 
 try:
     from tvcgui.platform.dolphin import rbytes, wd32, wbytes
@@ -11,6 +20,11 @@ except Exception:  # pragma: no cover
     rbytes = None
     wd32 = None
     wbytes = None
+
+try:
+    from tvcgui.core.paths import user_data_path
+except Exception:  # pragma: no cover
+    user_data_path = None
 
 _LOCK = threading.RLock()
 
@@ -508,6 +522,88 @@ FACE_BLOCK_COPY_DONORS: dict[str, tuple[str, int, int]] = {
     "chu": ("Chun-Li loaded face block", 0x922051A0, 0x2F20),
 }
 
+# Native custom Yami name-plate route. The visible cursor/face can continue to
+# borrow Ryu, but the selected-character name plate is a separate Name_ryu.tpl
+# resource inside the loaded face archive. We rewrite only that texture's pixel
+# payload while a hidden Yami is hovered and restore the original bytes when the
+# cursor leaves Yami. No icon/material/tag aliases are touched here.
+YAMI_CUSTOM_NAME_TEXT: dict[int, str] = {
+    0x17: "YAMI 1",
+    0x18: "YAMI 2",
+    0x19: "YAMI 3",
+}
+# External process writes to an already-drawn TPL do not reliably invalidate
+# Dolphin's GPU texture cache. Keep the native experiment in source for research,
+# but use the Dolphin-parented overlay for the visible Yami labels.
+YAMI_CUSTOM_NAME_ENABLED = False
+YAMI_CUSTOM_NAME_SCAN_BASE = FACE_BLOCK_ACTIVE_RYU_PAYLOAD_ADDR - 0x4000
+YAMI_CUSTOM_NAME_SCAN_SIZE = 0xC000
+YAMI_CUSTOM_NAME_TICK_SEC = 0.05
+_YAMI_CUSTOM_NAME_LAST_TICK = 0.0
+
+YAMI_NAME_OVERLAY_ENABLED = True
+YAMI_NAME_OVERLAY_TICK_SEC = 0.05
+_YAMI_NAME_OVERLAY_LAST_TICK = 0.0
+_YAMI_NAME_OVERLAY_LAST_JSON = ""
+_YAMI_NAME_OVERLAY_SUPPRESS_UNTIL = 0.0
+
+# Native pointer-rebind probe. Same-address texture edits are invisible once the
+# GX/Dolphin texture is cached, so this route writes each Yami label to a fresh
+# MEM2 texture address and redirects any verified *bound* TPL image-data pointer
+# that still references the stock Name_<tag>.tpl pixels.
+#
+# The overlay remains the default visible fallback. Char Test can suppress it
+# briefly so the native result can be inspected without disabling the fallback.
+YAMI_NATIVE_NAME_POINTER_ENABLED = True
+YAMI_NATIVE_NAME_TICK_SEC = 0.05
+_YAMI_NATIVE_NAME_LAST_TICK = 0.0
+YAMI_NATIVE_NAME_SCRATCH_ADDRS: dict[int, int] = {
+    0x17: 0x93610000,
+    0x18: 0x93620000,
+    0x19: 0x93630000,
+}
+YAMI_NATIVE_NAME_SCRATCH_MAX = 0xF000
+YAMI_NATIVE_NAME_POINTER_SCAN_RANGES: tuple[tuple[str, int, int], ...] = (
+    ("chrsel runtime", 0x90818000, 0x00040000),
+    ("face resource heap", 0x921F0000, 0x00040000),
+    ("ui resource heap", 0x92D30000, 0x00030000),
+)
+YAMI_NATIVE_NAME_MAX_POINTER_PATCHES = 16
+_YAMI_NATIVE_NAME_SESSION: dict[str, Any] = {
+    "target_filename": "",
+    "active_tag": "",
+    "source_texture_addr": 0,
+    "source_tpl_addr": 0,
+    "width": 0,
+    "height": 0,
+    "fmt": -1,
+    "format": "",
+    "last_char_id": None,
+    "scratch_addr": 0,
+    "pointer_fields": {},  # field addr -> original stock texture pointer
+    "scan_complete": False,
+    "verified_candidates": [],
+    "raw_texture_refs": [],
+    "tpl_refs": [],
+    "header_refs": [],
+}
+YAMI_NAME_OVERLAY_STATE_FILE = (
+    user_data_path("character_select", "yami_name_overlay.json")
+    if user_data_path is not None else ""
+)
+_YAMI_CUSTOM_NAME_SESSION: dict[str, Any] = {
+    "texture_addr": 0,
+    "original": b"",
+    "last_char_id": None,
+    "last_hovers": (None, None),
+    "format": "",
+    "width": 0,
+    "height": 0,
+    "source": "",
+    "target_filename": "",
+    "active_tag": "",
+}
+
 PANE_PROBE_RECORD_ADDRS: tuple[int, ...] = (
     0x90818440,
     0x90844A00,
@@ -555,6 +651,125 @@ KEN_DUP_OWNER_MOF_PTR = 0x90844A18
 KEN_DUP_OWNER_TAG_PTR = 0x90844A1C
 KEN_DUP_FRANK_STATIC_MOF_ADDR = 0x930DE7AC  # mof_fra
 KEN_DUP_FRANK_STATIC_TAG_ADDR = 0x930DE7B0  # fra
+
+# Live large-card owner route.  Do NOT write the active 0x90818460/70
+# output strings directly: the old hard probe proved that can freeze cursor
+# movement.  These two owner pointers sit upstream of that output bank.  The
+# existing Frank face-lock probe already established them as the safe seam.
+# While a hidden Yami is hovered, point the owner at a verified loaded
+# ``mof_<donor>`` string.  When the cursor leaves Yami, restore exactly the
+# pointer values captured for this Character Select scene.
+YAMI_PANEL_OWNER_MOF_PTR_ADDR = KEN_DUP_OWNER_MOF_PTR
+YAMI_PANEL_OWNER_TAG_PTR_ADDR = KEN_DUP_OWNER_TAG_PTR
+YAMI_PANEL_OWNER_TICK_SEC = 0.03
+_YAMI_PANEL_OWNER_LAST_TICK = 0.0
+_YAMI_PANEL_OWNER_SESSION: dict[str, Any] = {
+    "originals": {},
+    "desired": {},
+    "donor_id": None,
+    "source_mof": 0,
+    "source_tag": 0,
+    "mode": "",
+}
+
+# Recomp-derived large-card route.
+#
+# Character Select's sequence interpreter dispatches opcode 0x37 to
+# 0x800E8268.  That handler resolves three operands, then uses operand #2 as
+# the character/resource ID for the table at 0x803690D0 before formatting
+# strings such as ``face_%s.tpl`` / ``face_sita_%s.tpl`` / ``Name_%s.tpl``.
+#
+# The operand resolver at 0x800E0380 has a particularly useful same-size
+# encoding: low byte 0x7F consumes eight bytes and resolves to a pointer to
+# the following word.  The 0x37 handler then dereferences that word as the
+# character ID.  Replacing an existing *eight-byte* operand #2 with
+# ``0000007F <donor-id>`` therefore forces the resource donor without moving
+# any command bytes or touching the roster.  Four-byte operands are never
+# rewritten by this route.
+YAMI_PANEL_SEQ37_OPCODE = 0x37
+YAMI_PANEL_SEQ37_INLINE_U32 = 0x0000007F
+YAMI_PANEL_SEQ37_TICK_SEC = 0.012
+YAMI_PANEL_SEQ37_SCAN_START_OFF = 0x0000
+YAMI_PANEL_SEQ37_SCAN_END_OFF = 0x2C310
+# Existing dump work places the dedicated hidden-Yami select/name handlers in
+# this neighborhood.  Start a little earlier because the opcode-0x37 command
+# itself begins before its inline ``select_`` prefix.
+YAMI_PANEL_SEQ37_HIDDEN_START_OFF = 0x9A80
+YAMI_PANEL_SEQ37_HIDDEN_END_OFF = 0xA280
+YAMI_PANEL_SEQ37_GLOBAL_PREFIXES: tuple[str, ...] = (
+    "face_", "face_sita_", "Name_",
+)
+YAMI_PANEL_SEQ37_HIDDEN_PREFIXES: tuple[str, ...] = (
+    "select_", "name_", "mof_",
+)
+_YAMI_PANEL_SEQ37_LAST_TICK = 0.0
+_YAMI_PANEL_SEQ37_SESSION: dict[str, Any] = {
+    "base": 0,
+    "commands": [],
+    "originals": {},
+    "desired": {},
+    "active_yami": None,
+    "donor_id": None,
+    "scan_summary": "",
+}
+
+# Recomp-derived TCG/cell large-card force.
+#
+# The outer UI command interpreter at 0x80114400 dispatches inner opcode 0x5C
+# to 0x80117B7C.  That handler resolves two independent character IDs and then
+# indexes the canonical character-tag table at 0x803690D0 before formatting
+# strings with the literal formats %s, %s%s, %s%d, and %ssil.
+#
+# The decisive loads are:
+#   0x80117BD8  lwz r26,0(r4)  -> character/tag A
+#   0x80117BF8  lwz r29,0(r3)  -> character/tag B
+#
+# For the first hard diagnostic we replace BOTH loads with same-size `li`
+# instructions carrying the configured donor ID while a hidden Yami is hovered.
+# This does not touch the roster, hover ID, wheel icon IDs, tag tables, or the
+# loaded chrsel.seq bytes.  Leaving Yami restores the exact native instructions.
+YAMI_PANEL_SEQ5C_TICK_SEC = 0.008
+YAMI_PANEL_SEQ5C_CHAR_A_ADDR = 0x80117BD8
+YAMI_PANEL_SEQ5C_CHAR_A_NATIVE = 0x83440000  # lwz r26,0(r4)
+YAMI_PANEL_SEQ5C_CHAR_B_ADDR = 0x80117BF8
+YAMI_PANEL_SEQ5C_CHAR_B_NATIVE = 0x83A30000  # lwz r29,0(r3)
+_YAMI_PANEL_SEQ5C_LAST_TICK = 0.0
+_YAMI_PANEL_SEQ5C_SESSION: dict[str, Any] = {
+    "originals": {},
+    "desired": {},
+    "active_yami": None,
+    "donor_id": None,
+}
+
+# Recomp + live-scene backed hidden-Yami large-card route.
+#
+# The loaded chrsel.seq hidden-character handler window is already known from
+# prior verified captures. Native hidden handlers contain eight `select_gac`
+# C strings and eight `name_vjo` C strings. `gac` is Ken the Eagle, which
+# exactly matches the stubborn Ken large card shown when hovering appended Yami.
+#
+# Unlike the retired DOL/code probes, this rewrites only same-length strings in
+# the loaded scene script. The active Yami donor selects a canonical 3-byte tag:
+#   select_gac -> select_<donor>
+#   name_vjo   -> name_<donor>
+# The strings are restored to native as soon as hover leaves Yami.
+YAMI_PANEL_HIDDEN_SEQ_TICK_SEC = 0.008
+YAMI_PANEL_HIDDEN_SEQ_START_OFF = 0x9B00
+YAMI_PANEL_HIDDEN_SEQ_END_OFF = 0xA220
+YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE = b"select_gac\x00"
+YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE = b"name_vjo\x00"
+YAMI_PANEL_HIDDEN_SEQ_EXPECTED_COUNT = 8
+_YAMI_PANEL_HIDDEN_SEQ_LAST_TICK = 0.0
+_YAMI_PANEL_HIDDEN_SEQ_SESSION: dict[str, Any] = {
+    "base": 0,
+    "select_offsets": (),
+    "name_offsets": (),
+    "select_desired": b"",
+    "name_desired": b"",
+    "active_yami": None,
+    "donor_id": None,
+}
+
 
 # Cursor/hover mirrors. Force-hover is intentionally separate from installing
 # clone table/count because it is a stronger live-state nudge.
@@ -619,6 +834,19 @@ GIANT_ELIGIBILITY_PATCHES: tuple[tuple[int, int, int, str], ...] = (
 )
 _MIXED_GIANT_ELIGIBILITY_SESSION: dict[int, int] = {}
 
+# Yami partner eligibility is NOT a heap classification.  The mode-2 selector
+# branch at 0x8006C798 rejects the stock 0x16..0x19 range before the appended
+# hidden Yami IDs can be used as normal teammates.  Keep this one selector
+# bypass independently of the actual fighter-heap classifier at 0x8003C3xx.
+# PTX/Lightan memory handling remains exact-ID and separate.
+YAMI_PARTNER_ELIGIBILITY_PATCH: tuple[int, int, int, str] = (
+    0x8006C798,
+    0x40800048,
+    0x60000000,
+    "mode 2 PTX/Yami selector-range reject bypass",
+)
+_YAMI_PARTNER_ELIGIBILITY_SESSION: dict[int, int] = {}
+
 # Gold Lightan uses an explicit native reject in mode 2, plus reject entries
 # in the mode-1 and mode-3 jump tables. These are the actual classifier
 # locations confirmed from the recomp and the 2026-08-11 Lightan-select dump.
@@ -643,7 +871,9 @@ _LIGHTAN_SEQ_SESSION: dict[int, int] = {}
 # PTX-40A (0x16), and sends either match to the giant arena path. NOP only
 # Lightan's equality branch. Lightan then falls through the PTX comparison and,
 # because it is not PTX, takes the normal 0x380000 fighter-arena path. PTX still
-# takes the existing giant path and therefore keeps the proven 0x4E0000 budget.
+# takes the existing giant path. Mixed PTX/Yami stress testing later showed that
+# the earlier 0x4E0000 PTX reserve can still starve the shared fighter heap, so
+# PTX now uses the tighter guarded 0x480000 budget below.
 #
 # The captured Lightan arena had 0x365180 bytes in use, so a 0x380020 arena
 # leaves about 0x1AEA0 bytes (~108 KiB) inside Lightan while returning 0x160000
@@ -701,19 +931,23 @@ _MIXED_GIANT_SEQ_SESSION: dict[int, int] = {}
 # lookup returns NULL.  Forced-start experiments reached that exact failure,
 # consistent with the global heap having essentially no startup headroom.
 #
-# Return 0x210000 bytes of the giant reservation to the global heap.  Based on
-# the captured PTX arena high-water state this leaves about 0x92D20 bytes
-# (~587 KiB) free inside PTX while raising global free space to about 0x214640
-# (~2.08 MiB).  Normal fighters retain their native 0x380000 reservation.
+# Mixed PTX + normal/Yami stress testing still hit the NULL-arena path at
+# 0x8014F9C4 with the earlier 0x4E0000 reserve. Tighten PTX to 0x480000.
+# The captured PTX high-water was 0x44D300, so this leaves 0x32D00 bytes
+# (~203 KiB) private headroom while returning another 0x60000 bytes (384 KiB)
+# to the shared startup heap. Normal fighters, including Yami 1/2/3, retain
+# their native 0x380000 reservation and are never routed through this patch.
 #
 # Native instruction at 0x8003C15C: lis r4, 0x70  -> 0x00700000
-# Patched instruction:                 lis r4, 0x4E  -> 0x004E0000
+# Current patch:                       lis r4, 0x48  -> 0x00480000
+# Legacy live patch accepted/migrated: lis r4, 0x4E  -> 0x004E0000
 PTX_GIANT_HEAP_BUDGET_PATCH: tuple[int, int, int, str] = (
     0x8003C15C,
     0x3C800070,
-    0x3C80004E,
-    "giant fighter reservation 0x700000 -> 0x4E0000",
+    0x3C800048,
+    "giant fighter reservation 0x700000 -> 0x480000",
 )
+PTX_GIANT_HEAP_BUDGET_LEGACY_PATCHED = 0x3C80004E
 _PTX_GIANT_HEAP_BUDGET_SESSION: dict[int, int] = {}
 
 # Large-card presentation cache.
@@ -796,6 +1030,70 @@ _YAMI_DOL_ICON_TAG_SESSION: dict[str, dict[int, int]] = {
     "originals": {},
     "desired": {},
 }
+
+# DOL Character Select resource-tag map research.
+#
+# The recomp shows both maps are fighter-ID -> 4-byte tag pointers into the
+# contiguous cmn/gac/.../fra string pool at 0x805633B0. Live testing of the
+# working inserted-roster mode proved these words are NOT the decisive input for
+# an already-instantiated large card: the requested donor can be resident here
+# with no visible change. Keep the route for restore/migration research only.
+# User-facing big-card forcing now uses the live focus/profile mirror below; the
+# small cursor/wheel icon remains on its independent 16-bit material-ID lane.
+DOL_UI_TAG_STRING_BASE = 0x805633B0
+DOL_UI_TAG_IDS: tuple[int, ...] = tuple(range(0x20))
+DOL_UI_TAG_POINTER_BY_ID: dict[int, int] = {
+    fighter_id: DOL_UI_TAG_STRING_BASE + fighter_id * 4
+    for fighter_id in DOL_UI_TAG_IDS
+}
+DOL_UI_TAG_EXPECTED: dict[int, bytes] = {
+    0x00: b"cmn\x00", 0x01: b"gac\x00", 0x02: b"cas\x00", 0x03: b"tek\x00",
+    0x04: b"pol\x00", 0x05: b"yat\x00", 0x06: b"dro\x00", 0x07: b"ipa\x00",
+    0x08: b"jun\x00", 0x09: b"ts2\x00", 0x0A: b"krs\x00", 0x0B: b"gld\x00",
+    0x0C: b"ryu\x00", 0x0D: b"chu\x00", 0x0E: b"bat\x00", 0x0F: b"mor\x00",
+    0x10: b"alx\x00", 0x11: b"vjo\x00", 0x12: b"roc\x00", 0x13: b"rol\x00",
+    0x14: b"sak\x00", 0x15: b"yuk\x00", 0x16: b"ptx\x00", 0x17: b"tk1\x00",
+    0x18: b"tk2\x00", 0x19: b"tk3\x00", 0x1A: b"tkb\x00", 0x1B: b"joe\x00",
+    0x1C: b"ya2\x00", 0x1D: b"zer\x00", 0x1E: b"fra\x00", 0x1F: b"tst\x00",
+}
+
+# Preserve the current compromise by default:
+#   - hidden Yami large presentation remains native/blank
+#   - the small icon is forced to Ryu
+#   - the readable custom label remains YAMI 1/2/3
+YAMI_PANEL_DONOR_BY_ID: dict[int, int | None] = {
+    0x17: None,
+    0x18: None,
+    0x19: None,
+}
+YAMI_ICON_DONOR_BY_ID: dict[int, int | None] = {
+    0x17: RYU_VISUAL_PROXY_ID,
+    0x18: RYU_VISUAL_PROXY_ID,
+    0x19: RYU_VISUAL_PROXY_ID,
+}
+YAMI_PRESENTATION_TARGET_ROW_BY_ID: dict[int, int] = {
+    0x19: 10,  # inserted Yami 3 row
+    0x18: 16,  # inserted Yami 2 row
+    0x17: 18,  # inserted Yami 1 row
+}
+YAMI_PRESENTATION_STOCK_ICON_ID_BY_ROW: dict[int, int] = {
+    10: 0x000B,
+    16: 0x0011,
+    18: 0x0013,
+}
+YAMI_PRESENTATION_PANEL_SESSION: dict[str, dict[int, int]] = {
+    "originals": {},
+    "desired": {},
+}
+YAMI_PRESENTATION_ICON_SESSION: dict[str, dict[int, int]] = {
+    "originals": {},
+    "desired": {},
+}
+YAMI_VISUAL_OVERRIDE_FILE = (
+    user_data_path("character_select", "visual_overrides.json")
+    if user_data_path is not None else ""
+)
+_YAMI_VISUAL_CONFIG_LOADED = False
 
 _SLOT_TO_ID = {slot: cid for slot, cid, _name in ROSTER_SLOT_TABLE}
 _SLOT_TO_DEFAULT_NAME = {slot: name for slot, _cid, name in ROSTER_SLOT_TABLE}
@@ -962,6 +1260,21 @@ _ROSTER_STATE: dict[str, Any] = {
     "yami_hover_display_profile_installed": False,
     "yami_hover_display_profile_mode": "",
     "yami_hover_display_profile_detail": "",
+    "yami_visual_panel_installed": False,
+    "yami_visual_panel_mode": "",
+    "yami_visual_panel_detail": "",
+    "yami_visual_icon_installed": False,
+    "yami_visual_icon_mode": "",
+    "yami_visual_icon_detail": "",
+    "yami_custom_name_enabled": bool(YAMI_CUSTOM_NAME_ENABLED),
+    "yami_custom_name_installed": False,
+    "yami_custom_name_text": "",
+    "yami_custom_name_detail": "",
+    "yami_native_name_pointer_enabled": bool(YAMI_NATIVE_NAME_POINTER_ENABLED),
+    "yami_native_name_pointer_installed": False,
+    "yami_native_name_pointer_text": "",
+    "yami_native_name_pointer_detail": "",
+    "yami_name_overlay_suppressed": False,
     "_extra_tick_next": 0.0,
     "_extra_active_since": 0.0,
     "_extra_last_active": False,
@@ -1902,6 +2215,374 @@ def _yami_hover_icon_field_addr(bank_base: int, row_index: int) -> int:
 
 
 
+
+def _valid_yami_visual_donor_ids() -> set[int]:
+    # Random uses sentinel fighter ID 0x63 and does not have a normal entry in
+    # the DOL presentation-tag tables, so keep this donor set to real stock
+    # fighter IDs that can drive both panel and icon lanes safely.
+    return {
+        int(cid)
+        for _slot, cid, _name in STOCK_ROSTER_SLOT_TABLE
+        if int(cid) in DOL_UI_TAG_POINTER_BY_ID
+    }
+
+
+def _yami_visual_donor_label(donor_id: int | None) -> str:
+    if donor_id is None:
+        return "Native"
+    return CHAR_ID_TO_NAME.get(int(donor_id), f"ID 0x{int(donor_id):02X}")
+
+
+def _yami_icon_material_id_for_donor(donor_id: int | None, target_row: int) -> int:
+    if donor_id is None:
+        return int(YAMI_PRESENTATION_STOCK_ICON_ID_BY_ROW[int(target_row)])
+    donor = int(donor_id)
+    for stock_slot, cid, _name in STOCK_ROSTER_SLOT_TABLE:
+        if int(cid) == donor:
+            # The stock thumbnail material IDs are one-based relative to the
+            # physical stock visual row. This is the same relation already
+            # confirmed by B26/Ryu -> 0x001B.
+            return int(stock_slot) + 1
+    raise ValueError(f"unsupported icon donor 0x{donor:02X}")
+
+
+def _ensure_yami_visual_config_loaded() -> None:
+    global _YAMI_VISUAL_CONFIG_LOADED
+    if _YAMI_VISUAL_CONFIG_LOADED:
+        return
+    with _LOCK:
+        if _YAMI_VISUAL_CONFIG_LOADED:
+            return
+        _YAMI_VISUAL_CONFIG_LOADED = True
+
+    path = str(YAMI_VISUAL_OVERRIDE_FILE or "")
+    if not path or not os.path.exists(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+        valid = _valid_yami_visual_donor_ids()
+        panels = dict(payload.get("panel_donors") or {})
+        icons = dict(payload.get("icon_donors") or {})
+        names = dict(payload.get("names") or {})
+        for yami_id in YAMI_NATIVE_BLANK_IDS:
+            key = f"0x{int(yami_id):02X}"
+            panel_raw = panels.get(key, YAMI_PANEL_DONOR_BY_ID.get(yami_id))
+            icon_raw = icons.get(key, YAMI_ICON_DONOR_BY_ID.get(yami_id))
+            name_raw = names.get(key, YAMI_CUSTOM_NAME_TEXT.get(yami_id, ""))
+
+            panel_id: int | None
+            if panel_raw is None or str(panel_raw).lower() in {"", "none", "native"}:
+                panel_id = None
+            else:
+                panel_id = int(panel_raw, 0) if isinstance(panel_raw, str) else int(panel_raw)
+                if panel_id not in valid:
+                    panel_id = None
+
+            icon_id: int | None
+            if icon_raw is None or str(icon_raw).lower() in {"", "none", "native"}:
+                icon_id = None
+            else:
+                icon_id = int(icon_raw, 0) if isinstance(icon_raw, str) else int(icon_raw)
+                if icon_id not in valid:
+                    icon_id = RYU_VISUAL_PROXY_ID
+
+            YAMI_PANEL_DONOR_BY_ID[int(yami_id)] = panel_id
+            YAMI_ICON_DONOR_BY_ID[int(yami_id)] = icon_id
+            clean_name = str(name_raw or "").strip()
+            if clean_name:
+                YAMI_CUSTOM_NAME_TEXT[int(yami_id)] = clean_name[:28]
+    except Exception as exc:
+        with _LOCK:
+            if "_ROSTER_STATE" in globals():
+                _ROSTER_STATE["last_error"] = f"Yami visual config load failed: {exc!r}"
+
+
+def _save_yami_visual_config() -> None:
+    _ensure_yami_visual_config_loaded()
+    path = str(YAMI_VISUAL_OVERRIDE_FILE or "")
+    if not path:
+        return
+    payload = {
+        "version": 1,
+        "panel_donors": {
+            f"0x{int(yami_id):02X}": (
+                None if YAMI_PANEL_DONOR_BY_ID.get(int(yami_id)) is None
+                else f"0x{int(YAMI_PANEL_DONOR_BY_ID[int(yami_id)]):02X}"
+            )
+            for yami_id in YAMI_NATIVE_BLANK_IDS
+        },
+        "icon_donors": {
+            f"0x{int(yami_id):02X}": (
+                None if YAMI_ICON_DONOR_BY_ID.get(int(yami_id)) is None
+                else f"0x{int(YAMI_ICON_DONOR_BY_ID[int(yami_id)]):02X}"
+            )
+            for yami_id in YAMI_NATIVE_BLANK_IDS
+        },
+        "names": {
+            f"0x{int(yami_id):02X}": str(YAMI_CUSTOM_NAME_TEXT.get(int(yami_id), ""))
+            for yami_id in YAMI_NATIVE_BLANK_IDS
+        },
+    }
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2, sort_keys=True)
+        os.replace(tmp, path)
+    except Exception as exc:
+        with _LOCK:
+            if "_ROSTER_STATE" in globals():
+                _ROSTER_STATE["last_error"] = f"Yami visual config save failed: {exc!r}"
+
+
+def _apply_yami_panel_override_route() -> tuple[int, int]:
+    """Force only Yami's Character Select presentation tag.
+
+    The two DOL tables are presentation lookups. Fighter IDs in the roster and
+    selected team are never changed.
+    """
+    _ensure_yami_visual_config_loaded()
+    valid = _valid_yami_visual_donor_ids()
+    known_ptrs = set(DOL_UI_TAG_POINTER_BY_ID.values())
+    known_ptrs.update(int(v) for v in _DOL_LEGACY_PRESENTATION_POINTERS.values())
+    old_desired = dict(YAMI_PRESENTATION_PANEL_SESSION.get("desired") or {})
+
+    # Validate donor strings before touching either table.
+    for donor in YAMI_PANEL_DONOR_BY_ID.values():
+        if donor is None:
+            continue
+        donor = int(donor)
+        expected = DOL_UI_TAG_EXPECTED.get(donor)
+        ptr = DOL_UI_TAG_POINTER_BY_ID.get(donor)
+        if donor not in valid or expected is None or ptr is None or _safe_read(ptr, len(expected)) != expected:
+            with _LOCK:
+                _ROSTER_STATE["yami_visual_panel_installed"] = False
+                _ROSTER_STATE["yami_visual_panel_detail"] = f"donor tag validation failed for 0x{donor:02X}"
+            return 0, 1
+
+    wrote = 0
+    failed = 0
+    new_desired: dict[int, int] = {}
+    for map_label, map_base, stock_map in (
+        ("direct", DOL_CHAR_TAG_MAP_BASE, _DOL_STOCK_DIRECT_TAG_POINTERS),
+        ("canonical", DOL_CANONICAL_UI_TAG_MAP_BASE, _DOL_STOCK_CANONICAL_TAG_POINTERS),
+    ):
+        for yami_id in YAMI_NATIVE_BLANK_IDS:
+            addr = int(map_base) + int(yami_id) * 4
+            stock = int(stock_map[int(yami_id)])
+            donor = YAMI_PANEL_DONOR_BY_ID.get(int(yami_id))
+            desired = stock if donor is None else int(DOL_UI_TAG_POINTER_BY_ID[int(donor)])
+            current = _safe_read_u32be(addr)
+            new_desired[addr] = desired
+            if current is None:
+                failed += 1
+                continue
+            if int(current) == desired:
+                continue
+
+            # This is an explicit force feature, but still refuse completely
+            # unknown pointers. Known character-tag pointers, native values,
+            # legacy TvCGUI values, and our previous desired value are safe to
+            # replace.
+            previous = old_desired.get(addr)
+            if int(current) not in known_ptrs and int(current) not in {stock, previous}:
+                failed += 1
+                continue
+            if _safe_write_u32be(addr, desired) and _safe_read_u32be(addr) == desired:
+                wrote += 1
+            else:
+                failed += 1
+
+    YAMI_PRESENTATION_PANEL_SESSION["originals"] = {
+        int(DOL_CHAR_TAG_MAP_BASE) + int(yami_id) * 4: int(_DOL_STOCK_DIRECT_TAG_POINTERS[int(yami_id)])
+        for yami_id in YAMI_NATIVE_BLANK_IDS
+    } | {
+        int(DOL_CANONICAL_UI_TAG_MAP_BASE) + int(yami_id) * 4: int(_DOL_STOCK_CANONICAL_TAG_POINTERS[int(yami_id)])
+        for yami_id in YAMI_NATIVE_BLANK_IDS
+    }
+    YAMI_PRESENTATION_PANEL_SESSION["desired"] = new_desired
+
+    summary = ", ".join(
+        f"Y{int(yami_id) - 0x16}={_yami_visual_donor_label(YAMI_PANEL_DONOR_BY_ID.get(int(yami_id)))}"
+        for yami_id in YAMI_NATIVE_BLANK_IDS
+    )
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_panel_installed"] = failed == 0
+        _ROSTER_STATE["yami_visual_panel_mode"] = summary
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            f"large face/card/background tags forced: {summary}"
+            if failed == 0 else f"panel force partial: {summary}; failed={failed}"
+        )
+    return wrote, failed
+
+
+def _restore_yami_panel_override_route_only() -> tuple[int, int]:
+    wrote = 0
+    failed = 0
+    for map_base, stock_map in (
+        (DOL_CHAR_TAG_MAP_BASE, _DOL_STOCK_DIRECT_TAG_POINTERS),
+        (DOL_CANONICAL_UI_TAG_MAP_BASE, _DOL_STOCK_CANONICAL_TAG_POINTERS),
+    ):
+        for yami_id in YAMI_NATIVE_BLANK_IDS:
+            addr = int(map_base) + int(yami_id) * 4
+            stock = int(stock_map[int(yami_id)])
+            current = _safe_read_u32be(addr)
+            if current is None:
+                failed += 1
+                continue
+            if int(current) == stock:
+                continue
+            # Only restore values that still point at a known Character Select
+            # tag. Unknown pointers are left alone.
+            if int(current) not in set(DOL_UI_TAG_POINTER_BY_ID.values()) and int(current) not in set(_DOL_LEGACY_PRESENTATION_POINTERS.values()):
+                failed += 1
+                continue
+            if _safe_write_u32be(addr, stock) and _safe_read_u32be(addr) == stock:
+                wrote += 1
+            else:
+                failed += 1
+
+    if failed == 0:
+        YAMI_PRESENTATION_PANEL_SESSION["originals"] = {}
+        YAMI_PRESENTATION_PANEL_SESSION["desired"] = {}
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_panel_installed"] = False
+        _ROSTER_STATE["yami_visual_panel_mode"] = ""
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            "Yami large presentation restored to native hidden tags"
+            if failed == 0 else "Yami panel restore incomplete"
+        )
+    return wrote, failed
+
+
+def _apply_yami_icon_override_route() -> tuple[int, int]:
+    """Force the three Yami cursor/wheel material IDs independently of panel art."""
+    _ensure_yami_visual_config_loaded()
+    if not _chrsel_seq_heap_present():
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_icon_installed"] = False
+            _ROSTER_STATE["yami_visual_icon_detail"] = "chrsel.seq heap not present"
+        return 0, 0
+
+    old_desired = dict(YAMI_PRESENTATION_ICON_SESSION.get("desired") or {})
+    wrote = 0
+    failed = 0
+    new_desired: dict[int, int] = {}
+    originals: dict[int, int] = {}
+    valid_material_ids = set(range(1, SELECT_SCREEN_STOCK_COUNT + 1))
+
+    for _bank_label, bank_base in YAMI_HOVER_ICON_ROW_BANKS:
+        for yami_id in YAMI_NATIVE_BLANK_IDS:
+            row = int(YAMI_PRESENTATION_TARGET_ROW_BY_ID[int(yami_id)])
+            addr = _yami_hover_icon_field_addr(bank_base, row)
+            stock = int(YAMI_PRESENTATION_STOCK_ICON_ID_BY_ROW[row])
+            donor = YAMI_ICON_DONOR_BY_ID.get(int(yami_id))
+            try:
+                desired = _yami_icon_material_id_for_donor(donor, row)
+            except Exception:
+                failed += 1
+                continue
+            current = _safe_read_u16be(addr)
+            originals[addr] = stock
+            new_desired[addr] = int(desired)
+            if current is None:
+                failed += 1
+                continue
+            if int(current) == int(desired):
+                continue
+            previous = old_desired.get(addr)
+            if int(current) not in valid_material_ids and int(current) not in {stock, previous}:
+                failed += 1
+                continue
+            if _safe_write_bytes(addr, int(desired).to_bytes(2, "big")) and _safe_read_u16be(addr) == int(desired):
+                wrote += 1
+            else:
+                failed += 1
+
+    YAMI_PRESENTATION_ICON_SESSION["originals"] = originals
+    YAMI_PRESENTATION_ICON_SESSION["desired"] = new_desired
+    summary = ", ".join(
+        f"Y{int(yami_id) - 0x16}={_yami_visual_donor_label(YAMI_ICON_DONOR_BY_ID.get(int(yami_id)))}"
+        for yami_id in YAMI_NATIVE_BLANK_IDS
+    )
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_icon_installed"] = failed == 0
+        _ROSTER_STATE["yami_visual_icon_mode"] = summary
+        _ROSTER_STATE["yami_visual_icon_detail"] = (
+            f"cursor/wheel icon material IDs forced: {summary}"
+            if failed == 0 else f"icon force partial: {summary}; failed={failed}"
+        )
+        # Keep the older status fields useful for the main debug/status view.
+        _ROSTER_STATE["yami_hover_icon_id_installed"] = failed == 0
+        _ROSTER_STATE["yami_hover_icon_id_mode"] = summary
+        _ROSTER_STATE["yami_hover_icon_id_detail"] = _ROSTER_STATE["yami_visual_icon_detail"]
+    return wrote, failed
+
+
+def _restore_yami_icon_override_route_only() -> tuple[int, int]:
+    if not _chrsel_seq_heap_present():
+        YAMI_PRESENTATION_ICON_SESSION["originals"] = {}
+        YAMI_PRESENTATION_ICON_SESSION["desired"] = {}
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_icon_installed"] = False
+            _ROSTER_STATE["yami_hover_icon_id_installed"] = False
+        return 0, 0
+
+    wrote = 0
+    failed = 0
+    for _bank_label, bank_base in YAMI_HOVER_ICON_ROW_BANKS:
+        for yami_id in YAMI_NATIVE_BLANK_IDS:
+            row = int(YAMI_PRESENTATION_TARGET_ROW_BY_ID[int(yami_id)])
+            addr = _yami_hover_icon_field_addr(bank_base, row)
+            stock = int(YAMI_PRESENTATION_STOCK_ICON_ID_BY_ROW[row])
+            current = _safe_read_u16be(addr)
+            if current is None:
+                failed += 1
+                continue
+            if int(current) == stock:
+                continue
+            if int(current) not in set(range(1, SELECT_SCREEN_STOCK_COUNT + 1)):
+                failed += 1
+                continue
+            if _safe_write_bytes(addr, stock.to_bytes(2, "big")) and _safe_read_u16be(addr) == stock:
+                wrote += 1
+            else:
+                failed += 1
+    if failed == 0:
+        YAMI_PRESENTATION_ICON_SESSION["originals"] = {}
+        YAMI_PRESENTATION_ICON_SESSION["desired"] = {}
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_icon_installed"] = False
+        _ROSTER_STATE["yami_visual_icon_mode"] = ""
+        _ROSTER_STATE["yami_visual_icon_detail"] = "Yami cursor/wheel icons restored" if failed == 0 else "Yami icon restore incomplete"
+        _ROSTER_STATE["yami_hover_icon_id_installed"] = False
+        _ROSTER_STATE["yami_hover_icon_id_mode"] = ""
+        _ROSTER_STATE["yami_hover_icon_id_detail"] = _ROSTER_STATE["yami_visual_icon_detail"]
+    return wrote, failed
+
+
+def _tick_yami_visual_override_route() -> tuple[int, int]:
+    _ensure_yami_visual_config_loaded()
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+    if not requested:
+        return 0, 0
+    if not bool(status.get("active")) or not enabled or not bool(status.get("patch_present")):
+        return 0, 0
+    wrote = 0
+    failed = 0
+    w, f = _apply_yami_panel_override_route()
+    wrote += w
+    failed += f
+    w, f = _apply_yami_icon_override_route()
+    wrote += w
+    failed += f
+    return wrote, failed
+
+
 def _clear_yami_dol_icon_tag_session() -> None:
     _YAMI_DOL_ICON_TAG_SESSION["originals"] = {}
     _YAMI_DOL_ICON_TAG_SESSION["desired"] = {}
@@ -2284,18 +2965,1170 @@ def _restore_yami_hover_icon_id_route_only() -> tuple[int, int]:
     return wrote, failed
 
 
-def _display_profile_for_hover_lane(lane_index: int, hover: int | None) -> tuple[int | None, str]:
-    """Return the presentation profile for one hover lane without changing selection.
+def _panel_owner_active_yami_hover() -> int | None:
+    """Return the first live hidden-Yami hover without touching selector state."""
+    for addr in HOVER_CHAR_ID_ADDRS[:2]:
+        value = _safe_read_u32be(addr)
+        if value is None:
+            continue
+        cid = int(value) & 0xFF
+        if cid in YAMI_NATIVE_BLANK_IDS:
+            return cid
+    return None
 
-    Yami stays on its native blank presentation path. ID 0 is deliberately
-    strict: it is the Solo helper only at appended roster slot 0x1E.
+
+def _panel_owner_loaded_mof_source(donor_id: int) -> tuple[int, int, str] | None:
+    """Find a verified static ``mof_<tag>`` C string in the live chrsel heap.
+
+    The central 0x90818460/70 bank is a game-written output buffer and must not
+    be used as the source.  Search farther into chrsel.seq for one of the many
+    static material/tag strings and return (mof_addr, tag_addr, tag).
+    """
+    donor = int(donor_id) & 0xFF
+    raw_tag = DOL_UI_TAG_EXPECTED.get(donor)
+    if not raw_tag:
+        return None
+    tag_b = bytes(raw_tag).split(b"\x00", 1)[0]
+    if not tag_b:
+        return None
+    pattern = b"mof_" + tag_b + b"\x00"
+    # Skip the first 0x400 bytes so the live output bank at +0xA0 can never be
+    # selected as our supposedly static source.
+    scan_base = int(CHRSEL_SEQ_HEAP_BASE) + 0x400
+    scan_size = max(0, int(CHRSEL_SEQ_HEAP_SIZE) - 0x400)
+    blob = _safe_read(scan_base, scan_size)
+    if not blob:
+        return None
+    start = 0
+    while True:
+        off = blob.find(pattern, start)
+        if off < 0:
+            return None
+        addr = scan_base + off
+        # Re-read from Dolphin before trusting the pointer target.
+        if _safe_read(addr, len(pattern)) == pattern:
+            return addr, addr + 4, tag_b.decode("ascii", "ignore")
+        start = off + 1
+
+
+def _clear_yami_panel_owner_session() -> None:
+    _YAMI_PANEL_OWNER_SESSION.update({
+        "originals": {},
+        "desired": {},
+        "donor_id": None,
+        "source_mof": 0,
+        "source_tag": 0,
+        "mode": "",
+    })
+
+
+def _restore_yami_panel_owner_route_only() -> tuple[int, int]:
+    """Restore only owner pointers still containing values written by us."""
+    originals = dict(_YAMI_PANEL_OWNER_SESSION.get("originals") or {})
+    desired = dict(_YAMI_PANEL_OWNER_SESSION.get("desired") or {})
+    if not originals:
+        _clear_yami_panel_owner_session()
+        return 0, 0
+
+    # Never push stale heap pointers into a rebuilt/unloaded scene.
+    if not _chrsel_seq_heap_present():
+        _clear_yami_panel_owner_session()
+        return 0, 0
+
+    wrote = 0
+    failed = 0
+    for addr, original in originals.items():
+        current = _safe_read_u32be(int(addr))
+        if current is None:
+            failed += 1
+            continue
+        ours = desired.get(int(addr))
+        if ours is None or int(current) != int(ours):
+            # The game or another route already reclaimed it. Do not clobber.
+            continue
+        if _safe_write_u32be(int(addr), int(original)) and _safe_read_u32be(int(addr)) == int(original):
+            wrote += 1
+        else:
+            failed += 1
+
+    _clear_yami_panel_owner_session()
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_panel_installed"] = False
+        _ROSTER_STATE["yami_visual_panel_mode"] = ""
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            "owner-pointer panel route idle" if failed == 0 else "owner-pointer panel restore incomplete"
+        )
+    return wrote, failed
+
+
+def _tick_yami_panel_owner_route() -> tuple[int, int]:
+    """Continuously route only the live large-card owner while Yami is hovered.
+
+    This is the strong-but-safe replacement for both failed approaches:
+      * DOL tag tables were too early/cached and visibly did nothing.
+      * 0x809BD090/98 are selector/lock mirrors, not a presentation object.
+
+    The old direct 0x90818460/70 writer is intentionally still disabled because
+    it froze cursor movement.  We instead redirect the upstream owner pointer
+    pair to a verified static ``mof_<donor>`` string already resident in chrsel.
+    """
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+
+    if not bool(status.get("active")) or not requested or not enabled or not bool(status.get("patch_present")):
+        return _restore_yami_panel_owner_route_only()
+
+    _ensure_yami_visual_config_loaded()
+    yami_id = _panel_owner_active_yami_hover()
+    if yami_id is None:
+        wrote, failed = _restore_yami_panel_owner_route_only()
+        summary = ", ".join(
+            f"Y{int(yid) - 0x16}={_yami_visual_donor_label(YAMI_PANEL_DONOR_BY_ID.get(int(yid)))}"
+            for yid in YAMI_NATIVE_BLANK_IDS
+        )
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_detail"] = f"owner-pointer panel armed; hover Yami 1/2/3; {summary}"
+        return wrote, failed
+
+    donor = YAMI_PANEL_DONOR_BY_ID.get(int(yami_id))
+    if donor is None:
+        wrote, failed = _restore_yami_panel_owner_route_only()
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_detail"] = (
+                f"Y{int(yami_id) - 0x16}=Native; owner pointers released"
+            )
+        return wrote, failed
+
+    donor = int(donor) & 0xFF
+    source = _panel_owner_loaded_mof_source(donor)
+    mode = "pair"
+    if source is not None:
+        source_mof, source_tag, tag = source
+        targets = {
+            int(YAMI_PANEL_OWNER_MOF_PTR_ADDR): int(source_mof),
+            int(YAMI_PANEL_OWNER_TAG_PTR_ADDR): int(source_tag),
+        }
+    else:
+        # Fallback: the DOL string pool is always resident and contains the same
+        # verified 3-byte presentation tags.  Tag-only is weaker but still safe.
+        tag_ptr = DOL_UI_TAG_POINTER_BY_ID.get(donor)
+        raw_tag = DOL_UI_TAG_EXPECTED.get(donor, b"")
+        tag = bytes(raw_tag).split(b"\x00", 1)[0].decode("ascii", "ignore")
+        if tag_ptr is None or not raw_tag or _safe_read(int(tag_ptr), len(raw_tag)) != raw_tag:
+            with _LOCK:
+                _ROSTER_STATE["yami_visual_panel_installed"] = False
+                _ROSTER_STATE["yami_visual_panel_mode"] = ""
+                _ROSTER_STATE["yami_visual_panel_detail"] = (
+                    f"Y{int(yami_id) - 0x16}->{_yami_visual_donor_label(donor)}: no verified loaded donor string"
+                )
+                _ROSTER_STATE["last_error"] = "Yami panel owner donor source not found"
+            return 0, 1
+        mode = "tag-only"
+        source_mof = 0
+        source_tag = int(tag_ptr)
+        targets = {int(YAMI_PANEL_OWNER_TAG_PTR_ADDR): int(source_tag)}
+
+    originals = _YAMI_PANEL_OWNER_SESSION.setdefault("originals", {})
+    previous_desired = dict(_YAMI_PANEL_OWNER_SESSION.get("desired") or {})
+    wrote = 0
+    failed = 0
+    new_desired: dict[int, int] = {}
+
+    for addr, target in targets.items():
+        current = _safe_read_u32be(int(addr))
+        if current is None:
+            failed += 1
+            continue
+        if int(addr) not in originals:
+            originals[int(addr)] = int(current)
+        new_desired[int(addr)] = int(target)
+        if int(current) == int(target):
+            continue
+        # Pointer targets have already been byte-verified above.  The owner
+        # itself is game-managed and may be rewritten between our ticks, so do
+        # not require it to equal a single stale expected value.
+        if _safe_write_u32be(int(addr), int(target)) and _safe_read_u32be(int(addr)) == int(target):
+            wrote += 1
+        else:
+            failed += 1
+
+    # If we dropped from pair to tag-only, restore our old MOF pointer if it is
+    # still owned by us so a previous donor cannot leak into the fallback mode.
+    for addr, old_target in previous_desired.items():
+        if int(addr) in new_desired:
+            continue
+        current = _safe_read_u32be(int(addr))
+        original = originals.get(int(addr))
+        if current is not None and original is not None and int(current) == int(old_target):
+            if _safe_write_u32be(int(addr), int(original)):
+                wrote += 1
+            else:
+                failed += 1
+
+    _YAMI_PANEL_OWNER_SESSION["desired"] = dict(new_desired)
+    _YAMI_PANEL_OWNER_SESSION["donor_id"] = donor
+    _YAMI_PANEL_OWNER_SESSION["source_mof"] = int(source_mof)
+    _YAMI_PANEL_OWNER_SESSION["source_tag"] = int(source_tag)
+    _YAMI_PANEL_OWNER_SESSION["mode"] = mode
+
+    owner_mof = _safe_read_u32be(YAMI_PANEL_OWNER_MOF_PTR_ADDR)
+    owner_tag = _safe_read_u32be(YAMI_PANEL_OWNER_TAG_PTR_ADDR)
+    live_mof = (_safe_read(EXTRA_VISUAL_SCRATCH_MOF_ADDR, 12) or b"").split(b"\x00", 1)[0].decode("ascii", "ignore")
+    live_tag = (_safe_read(EXTRA_VISUAL_SCRATCH_SUFFIX_ADDR, 8) or b"").split(b"\x00", 1)[0].decode("ascii", "ignore")
+    donor_label = _yami_visual_donor_label(donor)
+    with _LOCK:
+        installed = failed == 0 and bool(new_desired)
+        _ROSTER_STATE["yami_visual_panel_installed"] = installed
+        _ROSTER_STATE["yami_visual_panel_mode"] = f"live owner {mode}"
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            f"LIVE Y{int(yami_id) - 0x16}->{donor_label} [{mode}] "
+            f"owner_mof=0x{int(owner_mof or 0):08X} owner_tag=0x{int(owner_tag or 0):08X} "
+            f"source=0x{int(source_tag):08X}({tag}) scratch={live_mof or '?'} / {live_tag or '?'}"
+        )
+        if failed:
+            _ROSTER_STATE["last_error"] = "Yami large-card owner-pointer write failed"
+    return wrote, failed
+
+
+
+def _ppc_li_u16(rt: int, value: int) -> int:
+    """Encode `li rT, imm16` (`addi rT,r0,imm16`)."""
+    return 0x38000000 | ((int(rt) & 0x1F) << 21) | (int(value) & 0xFFFF)
+
+
+def _clear_yami_panel_seq5c_session() -> None:
+    _YAMI_PANEL_SEQ5C_SESSION.update({
+        "originals": {},
+        "desired": {},
+        "active_yami": None,
+        "donor_id": None,
+    })
+
+
+def _restore_yami_panel_seq5c_code_route_only() -> tuple[int, int]:
+    """Restore only recomp 0x5C handler instructions still owned by us."""
+    originals = dict(_YAMI_PANEL_SEQ5C_SESSION.get("originals") or {})
+    desired = dict(_YAMI_PANEL_SEQ5C_SESSION.get("desired") or {})
+    if not originals:
+        _YAMI_PANEL_SEQ5C_SESSION["active_yami"] = None
+        _YAMI_PANEL_SEQ5C_SESSION["donor_id"] = None
+        return 0, 0
+
+    wrote = 0
+    failed = 0
+    for addr, original in originals.items():
+        addr_i = int(addr)
+        current = _safe_read_u32be(addr_i)
+        if current is None:
+            failed += 1
+            continue
+        current_i = int(current) & 0xFFFFFFFF
+        original_i = int(original) & 0xFFFFFFFF
+        ours = desired.get(addr_i)
+        if current_i == original_i:
+            continue
+        # Never trample a third-party/live code patch.
+        if ours is None or current_i != (int(ours) & 0xFFFFFFFF):
+            failed += 1
+            continue
+        if _safe_write_u32be(addr_i, original_i) and _safe_read_u32be(addr_i) == original_i:
+            wrote += 1
+        else:
+            failed += 1
+
+    if failed == 0:
+        _clear_yami_panel_seq5c_session()
+    return wrote, failed
+
+
+def _tick_yami_panel_seq5c_code_route() -> tuple[int, int]:
+    """Force both character IDs inside the recomp's inner opcode-0x5C handler.
+
+    This is intentionally a blunt diagnostic.  The recomp proves r26 and r29
+    are independently converted through 0x803690D0 and used to construct TCG
+    names, including the explicit `%ssil` path.  If this changes the large card,
+    we can split A/B afterward and identify the exact side/pane cleanly.
+    """
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+
+    if not bool(status.get("active")) or not requested or not enabled or not bool(status.get("patch_present")):
+        wrote, failed = _restore_yami_panel_seq5c_code_route_only()
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = ""
+            _ROSTER_STATE["yami_visual_panel_detail"] = "seq5c handler route idle"
+        return wrote, failed
+
+    # Refuse the route unless the recomp-confirmed native instructions are
+    # present or the words are exact writes from this session.
+    expected = {
+        int(YAMI_PANEL_SEQ5C_CHAR_A_ADDR): int(YAMI_PANEL_SEQ5C_CHAR_A_NATIVE),
+        int(YAMI_PANEL_SEQ5C_CHAR_B_ADDR): int(YAMI_PANEL_SEQ5C_CHAR_B_NATIVE),
+    }
+    desired_session = dict(_YAMI_PANEL_SEQ5C_SESSION.get("desired") or {})
+    bad: list[str] = []
+    for addr, native in expected.items():
+        current = _safe_read_u32be(addr)
+        if current is None:
+            bad.append(f"0x{addr:08X}=unreadable")
+            continue
+        current_i = int(current) & 0xFFFFFFFF
+        if current_i != native and current_i != (int(desired_session.get(addr, -1)) & 0xFFFFFFFF):
+            bad.append(f"0x{addr:08X}=0x{current_i:08X}")
+    if bad:
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "seq5c guard"
+            _ROSTER_STATE["yami_visual_panel_detail"] = "SEQ5C REFUSED: handler mismatch " + ", ".join(bad)
+            _ROSTER_STATE["last_error"] = "Yami seq5c handler guard mismatch"
+        return 0, 1
+
+    yami_id = _panel_owner_active_yami_hover()
+    if yami_id is None:
+        wrote, failed = _restore_yami_panel_seq5c_code_route_only()
+        _ensure_yami_visual_config_loaded()
+        summary = ", ".join(
+            f"Y{int(yid) - 0x16}={_yami_visual_donor_label(YAMI_PANEL_DONOR_BY_ID.get(int(yid)))}"
+            for yid in YAMI_NATIVE_BLANK_IDS
+        )
+        a = _safe_read_u32be(YAMI_PANEL_SEQ5C_CHAR_A_ADDR)
+        b = _safe_read_u32be(YAMI_PANEL_SEQ5C_CHAR_B_ADDR)
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "seq5c armed"
+            _ROSTER_STATE["yami_visual_panel_detail"] = (
+                f"seq5c armed; hover Yami 1/2/3; {summary}; "
+                f"A=0x{int(a or 0):08X} B=0x{int(b or 0):08X}"
+            )
+        return wrote, failed
+
+    _ensure_yami_visual_config_loaded()
+    donor = YAMI_PANEL_DONOR_BY_ID.get(int(yami_id))
+    if donor is None:
+        wrote, failed = _restore_yami_panel_seq5c_code_route_only()
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "seq5c native"
+            _ROSTER_STATE["yami_visual_panel_detail"] = f"Y{int(yami_id)-0x16}=Native; 0x5C handler restored"
+        return wrote, failed
+
+    donor = int(donor) & 0xFF
+    if donor not in _valid_yami_visual_donor_ids():
+        return 0, 1
+
+    patches = {
+        int(YAMI_PANEL_SEQ5C_CHAR_A_ADDR): _ppc_li_u16(26, donor),
+        int(YAMI_PANEL_SEQ5C_CHAR_B_ADDR): _ppc_li_u16(29, donor),
+    }
+    originals: dict[int, int] = _YAMI_PANEL_SEQ5C_SESSION.setdefault("originals", {})
+    desired: dict[int, int] = _YAMI_PANEL_SEQ5C_SESSION.setdefault("desired", {})
+    wrote = 0
+    failed = 0
+    for addr, patched in patches.items():
+        current = _safe_read_u32be(addr)
+        if current is None:
+            failed += 1
+            continue
+        current_i = int(current) & 0xFFFFFFFF
+        native = expected[addr]
+        previous_ours = desired.get(addr)
+        if addr not in originals:
+            if current_i != native and current_i != patched:
+                failed += 1
+                continue
+            originals[addr] = native
+        elif previous_ours is not None and current_i not in (int(previous_ours) & 0xFFFFFFFF, patched, native):
+            failed += 1
+            continue
+        desired[addr] = patched
+        if current_i == patched:
+            continue
+        if _safe_write_u32be(addr, patched) and _safe_read_u32be(addr) == patched:
+            wrote += 1
+        else:
+            failed += 1
+
+    _YAMI_PANEL_SEQ5C_SESSION["active_yami"] = int(yami_id)
+    _YAMI_PANEL_SEQ5C_SESSION["donor_id"] = donor
+    a = _safe_read_u32be(YAMI_PANEL_SEQ5C_CHAR_A_ADDR)
+    b = _safe_read_u32be(YAMI_PANEL_SEQ5C_CHAR_B_ADDR)
+    donor_label = _yami_visual_donor_label(donor)
+    installed = failed == 0 and a == patches[YAMI_PANEL_SEQ5C_CHAR_A_ADDR] and b == patches[YAMI_PANEL_SEQ5C_CHAR_B_ADDR]
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_panel_installed"] = bool(installed)
+        _ROSTER_STATE["yami_visual_panel_mode"] = "recomp seq5c handler"
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            f"SEQ5C LIVE Y{int(yami_id)-0x16}->{donor_label} donor=0x{donor:02X}; "
+            f"r26@80117BD8=0x{int(a or 0):08X} r29@80117BF8=0x{int(b or 0):08X}; "
+            f"wrote={wrote} failed={failed}; formatter=%ssil via 0x803690D0"
+        )
+        if failed:
+            _ROSTER_STATE["last_error"] = "Yami seq5c handler write failed"
+    return wrote, failed
+
+
+
+def _hidden_seq_known_tag_strings(prefix: bytes) -> tuple[bytes, ...]:
+    """All same-length 3-byte-tag strings we may safely recognize."""
+    rows: list[bytes] = []
+    for cid in sorted(_valid_yami_visual_donor_ids()):
+        raw = DOL_UI_TAG_EXPECTED.get(int(cid))
+        if not raw:
+            continue
+        tag = bytes(raw).split(b"\x00", 1)[0]
+        if len(tag) != 3:
+            continue
+        rows.append(bytes(prefix) + tag + b"\x00")
+    # Legacy hidden blank/sil route from earlier builds is also same-sized.
+    rows.append(bytes(prefix) + b"sil\x00")
+    # Preserve order while de-duplicating.
+    return tuple(dict.fromkeys(rows))
+
+
+def _clear_yami_panel_hidden_seq_session() -> None:
+    _YAMI_PANEL_HIDDEN_SEQ_SESSION.update({
+        "base": 0,
+        "select_offsets": (),
+        "name_offsets": (),
+        "select_desired": b"",
+        "name_desired": b"",
+        "active_yami": None,
+        "donor_id": None,
+    })
+
+
+def _cleanup_retired_seq5c_code_patch() -> tuple[int, int]:
+    """Restore the prior 0x5C diagnostic LI patches if an older GUI left them live.
+
+    A process restart loses the old session dictionary while Dolphin memory can
+    remain modified. Recognize only the exact native words or the exact
+    same-register `li r26/r29,<known donor>` patterns previously emitted.
+    """
+    rows = (
+        (int(YAMI_PANEL_SEQ5C_CHAR_A_ADDR), int(YAMI_PANEL_SEQ5C_CHAR_A_NATIVE), 26),
+        (int(YAMI_PANEL_SEQ5C_CHAR_B_ADDR), int(YAMI_PANEL_SEQ5C_CHAR_B_NATIVE), 29),
+    )
+    valid_ids = set(int(v) & 0xFFFF for v in _valid_yami_visual_donor_ids())
+    wrote = 0
+    failed = 0
+    for addr, native, reg in rows:
+        cur = _safe_read_u32be(addr)
+        if cur is None:
+            failed += 1
+            continue
+        cur_i = int(cur) & 0xFFFFFFFF
+        if cur_i == native:
+            continue
+        recognized = any(cur_i == _ppc_li_u16(reg, donor) for donor in valid_ids)
+        if not recognized:
+            # Never overwrite an unknown/third-party code patch.
+            continue
+        if _safe_write_u32be(addr, native) and _safe_read_u32be(addr) == native:
+            wrote += 1
+        else:
+            failed += 1
+    return wrote, failed
+
+
+def _discover_yami_panel_hidden_seq(base: int) -> dict[str, Any]:
+    """Locate the dedicated hidden-Yami select/name strings in live chrsel.seq."""
+    start = int(base) + int(YAMI_PANEL_HIDDEN_SEQ_START_OFF)
+    size = int(YAMI_PANEL_HIDDEN_SEQ_END_OFF) - int(YAMI_PANEL_HIDDEN_SEQ_START_OFF)
+    blob = _safe_read(start, size)
+    if not blob or len(blob) != size:
+        return {"ok": False, "reason": "hidden handler window unreadable"}
+
+    native_sel = _find_cstring_offsets(blob, YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE)
+    native_name = _find_cstring_offsets(blob, YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE)
+    expected = int(YAMI_PANEL_HIDDEN_SEQ_EXPECTED_COUNT)
+
+    # Fresh/native scene: use the previously verified exact signatures.
+    if len(native_sel) == expected and len(native_name) == expected:
+        return {
+            "ok": True,
+            "mode": "native",
+            "select_offsets": tuple(native_sel),
+            "name_offsets": tuple(native_name),
+            "select_values": (YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE,),
+            "name_values": (YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE,),
+        }
+
+    # Recovery path for a scene left modified by an older process. Search only
+    # same-length canonical tag strings and accept a uniform 8+8 set.
+    select_known = _hidden_seq_known_tag_strings(b"select_")
+    name_known = _hidden_seq_known_tag_strings(b"name_")
+    sel_hits: list[tuple[int, bytes]] = []
+    name_hits: list[tuple[int, bytes]] = []
+    for value in select_known:
+        for off in _find_cstring_offsets(blob, value):
+            sel_hits.append((int(off), bytes(value)))
+    for value in name_known:
+        for off in _find_cstring_offsets(blob, value):
+            name_hits.append((int(off), bytes(value)))
+    # Same string positions must be unique. This narrow window was captured
+    # specifically around the hidden handlers, but refuse ambiguity.
+    sel_by_off = {off: value for off, value in sel_hits}
+    name_by_off = {off: value for off, value in name_hits}
+    if len(sel_by_off) != expected or len(name_by_off) != expected:
+        sel_summary = ",".join(sorted({v.rstrip(b"\x00").decode("ascii", "ignore") for v in sel_by_off.values()})) or "none"
+        name_summary = ",".join(sorted({v.rstrip(b"\x00").decode("ascii", "ignore") for v in name_by_off.values()})) or "none"
+        return {
+            "ok": False,
+            "reason": (
+                f"hidden handler signature mismatch select={len(sel_by_off)}/{expected} "
+                f"name={len(name_by_off)}/{expected} sel[{sel_summary}] name[{name_summary}]"
+            ),
+        }
+
+    return {
+        "ok": True,
+        "mode": "recovered",
+        "select_offsets": tuple(sorted(sel_by_off)),
+        "name_offsets": tuple(sorted(name_by_off)),
+        "select_values": tuple(sorted(set(sel_by_off.values()))),
+        "name_values": tuple(sorted(set(name_by_off.values()))),
+    }
+
+
+def _restore_yami_panel_hidden_seq_route_only() -> tuple[int, int]:
+    """Restore hidden handler strings to native without touching any other seq data."""
+    base = int(_YAMI_PANEL_HIDDEN_SEQ_SESSION.get("base") or 0)
+    sel_offs = tuple(_YAMI_PANEL_HIDDEN_SEQ_SESSION.get("select_offsets") or ())
+    name_offs = tuple(_YAMI_PANEL_HIDDEN_SEQ_SESSION.get("name_offsets") or ())
+    if not base or not sel_offs or not name_offs:
+        _clear_yami_panel_hidden_seq_session()
+        return 0, 0
+
+    current_base = _resolve_chrsel_seq_heap_base()
+    if current_base is None or int(current_base) != base:
+        # Scene was rebuilt/unloaded; stale addresses must never be restored.
+        _clear_yami_panel_hidden_seq_session()
+        return 0, 0
+
+    wrote = 0
+    failed = 0
+    select_allowed = set(_hidden_seq_known_tag_strings(b"select_"))
+    name_allowed = set(_hidden_seq_known_tag_strings(b"name_"))
+    select_allowed.add(YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE)
+    name_allowed.add(YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE)
+
+    for off in sel_offs:
+        addr = base + int(YAMI_PANEL_HIDDEN_SEQ_START_OFF) + int(off)
+        cur = _safe_read(addr, len(YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE))
+        if cur == YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE:
+            continue
+        if cur not in select_allowed:
+            failed += 1
+            continue
+        if _safe_write_bytes(addr, YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE):
+            wrote += 1
+        else:
+            failed += 1
+
+    for off in name_offs:
+        addr = base + int(YAMI_PANEL_HIDDEN_SEQ_START_OFF) + int(off)
+        cur = _safe_read(addr, len(YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE))
+        if cur == YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE:
+            continue
+        if cur not in name_allowed:
+            failed += 1
+            continue
+        if _safe_write_bytes(addr, YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE):
+            wrote += 1
+        else:
+            failed += 1
+
+    _clear_yami_panel_hidden_seq_session()
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_panel_installed"] = False
+        _ROSTER_STATE["yami_visual_panel_mode"] = "hidden chrsel.seq native"
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            "hidden Yami select/name handlers restored"
+            if failed == 0 else
+            f"hidden Yami handler restore incomplete wrote={wrote} failed={failed}"
+        )
+    return wrote, failed
+
+
+def _tick_yami_panel_hidden_seq_route() -> tuple[int, int]:
+    """Drive the big Yami card through the known hidden chrsel.seq strings.
+
+    Native hidden handlers hardcode `select_gac`, which is why appended Yami
+    visibly falls back to Ken. While a Yami is hovered, rewrite those dedicated
+    hidden-handler strings to the configured donor tag. No DOL code, roster ID,
+    wheel icon ID, or unrelated scene string is modified.
+    """
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+
+    cleanup_wrote, cleanup_failed = _cleanup_retired_seq5c_code_patch()
+
+    if not bool(status.get("active")) or not requested or not enabled or not bool(status.get("patch_present")):
+        w, f = _restore_yami_panel_hidden_seq_route_only()
+        return cleanup_wrote + w, cleanup_failed + f
+
+    base = _resolve_chrsel_seq_heap_base()
+    if base is None:
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "hidden chrsel.seq"
+            _ROSTER_STATE["yami_visual_panel_detail"] = "hidden panel route: chrsel.seq heap not reachable"
+        return cleanup_wrote, cleanup_failed + 1
+    base = int(base)
+
+    session_base = int(_YAMI_PANEL_HIDDEN_SEQ_SESSION.get("base") or 0)
+    sel_offs = tuple(_YAMI_PANEL_HIDDEN_SEQ_SESSION.get("select_offsets") or ())
+    name_offs = tuple(_YAMI_PANEL_HIDDEN_SEQ_SESSION.get("name_offsets") or ())
+    if session_base != base or not sel_offs or not name_offs:
+        route = _discover_yami_panel_hidden_seq(base)
+        if not route.get("ok"):
+            _clear_yami_panel_hidden_seq_session()
+            with _LOCK:
+                _ROSTER_STATE["yami_visual_panel_installed"] = False
+                _ROSTER_STATE["yami_visual_panel_mode"] = "hidden chrsel.seq guard"
+                _ROSTER_STATE["yami_visual_panel_detail"] = "HIDDENSEQ REFUSED: " + str(route.get("reason") or "signature mismatch")
+                _ROSTER_STATE["last_error"] = "Yami hidden panel handler signature mismatch"
+            return cleanup_wrote, cleanup_failed + 1
+        sel_offs = tuple(route["select_offsets"])
+        name_offs = tuple(route["name_offsets"])
+        _YAMI_PANEL_HIDDEN_SEQ_SESSION.update({
+            "base": base,
+            "select_offsets": sel_offs,
+            "name_offsets": name_offs,
+            "select_desired": b"",
+            "name_desired": b"",
+            "active_yami": None,
+            "donor_id": None,
+        })
+
+    yami_id = _panel_owner_active_yami_hover()
+    _ensure_yami_visual_config_loaded()
+    if yami_id is None:
+        # Keep the scene native when not actually on a hidden slot.
+        w, f = _restore_yami_panel_hidden_seq_route_only()
+        summary = ", ".join(
+            f"Y{int(yid)-0x16}={_yami_visual_donor_label(YAMI_PANEL_DONOR_BY_ID.get(int(yid)))}"
+            for yid in YAMI_NATIVE_BLANK_IDS
+        )
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "hidden chrsel.seq armed"
+            _ROSTER_STATE["yami_visual_panel_detail"] = f"hidden select_gac route armed; hover Yami 1/2/3; {summary}"
+        return cleanup_wrote + w, cleanup_failed + f
+
+    donor = YAMI_PANEL_DONOR_BY_ID.get(int(yami_id))
+    if donor is None:
+        w, f = _restore_yami_panel_hidden_seq_route_only()
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "hidden chrsel.seq native"
+            _ROSTER_STATE["yami_visual_panel_detail"] = f"Y{int(yami_id)-0x16}=Native; select_gac/name_vjo restored"
+        return cleanup_wrote + w, cleanup_failed + f
+
+    donor = int(donor) & 0xFF
+    raw_tag = DOL_UI_TAG_EXPECTED.get(donor)
+    if not raw_tag:
+        return cleanup_wrote, cleanup_failed + 1
+    tag = bytes(raw_tag).split(b"\x00", 1)[0]
+    if len(tag) != 3:
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_detail"] = f"HIDDENSEQ REFUSED donor tag length={len(tag)}"
+        return cleanup_wrote, cleanup_failed + 1
+
+    select_target = b"select_" + tag + b"\x00"
+    name_target = b"name_" + tag + b"\x00"
+    if len(select_target) != len(YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE) or len(name_target) != len(YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE):
+        return cleanup_wrote, cleanup_failed + 1
+
+    select_allowed = set(_hidden_seq_known_tag_strings(b"select_"))
+    name_allowed = set(_hidden_seq_known_tag_strings(b"name_"))
+    select_allowed.add(YAMI_PANEL_HIDDEN_SEQ_SELECT_NATIVE)
+    name_allowed.add(YAMI_PANEL_HIDDEN_SEQ_NAME_NATIVE)
+
+    wrote = 0
+    failed = 0
+    window_addr = base + int(YAMI_PANEL_HIDDEN_SEQ_START_OFF)
+    for off in sel_offs:
+        addr = window_addr + int(off)
+        cur = _safe_read(addr, len(select_target))
+        if cur == select_target:
+            continue
+        if cur not in select_allowed:
+            failed += 1
+            continue
+        if _safe_write_bytes(addr, select_target) and _safe_read(addr, len(select_target)) == select_target:
+            wrote += 1
+        else:
+            failed += 1
+
+    for off in name_offs:
+        addr = window_addr + int(off)
+        cur = _safe_read(addr, len(name_target))
+        if cur == name_target:
+            continue
+        if cur not in name_allowed:
+            failed += 1
+            continue
+        if _safe_write_bytes(addr, name_target) and _safe_read(addr, len(name_target)) == name_target:
+            wrote += 1
+        else:
+            failed += 1
+
+    _YAMI_PANEL_HIDDEN_SEQ_SESSION["select_desired"] = select_target
+    _YAMI_PANEL_HIDDEN_SEQ_SESSION["name_desired"] = name_target
+    _YAMI_PANEL_HIDDEN_SEQ_SESSION["active_yami"] = int(yami_id)
+    _YAMI_PANEL_HIDDEN_SEQ_SESSION["donor_id"] = donor
+
+    # Count exact live strings for a useful user-facing proof.
+    blob = _safe_read(
+        window_addr,
+        int(YAMI_PANEL_HIDDEN_SEQ_END_OFF) - int(YAMI_PANEL_HIDDEN_SEQ_START_OFF),
+    ) or b""
+    live_select = len(_find_cstring_offsets(blob, select_target))
+    live_name = len(_find_cstring_offsets(blob, name_target))
+    expected = int(YAMI_PANEL_HIDDEN_SEQ_EXPECTED_COUNT)
+    installed = failed == 0 and live_select == expected and live_name == expected
+    donor_label = _yami_visual_donor_label(donor)
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_panel_installed"] = bool(installed)
+        _ROSTER_STATE["yami_visual_panel_mode"] = "hidden chrsel.seq select/name donor"
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            f"HIDDENSEQ LIVE Y{int(yami_id)-0x16}->{donor_label} tag={tag.decode('ascii','ignore')}; "
+            f"select={live_select}/{expected}({select_target[:-1].decode('ascii','ignore')}) "
+            f"name={live_name}/{expected}({name_target[:-1].decode('ascii','ignore')}); "
+            f"base=0x{base:08X} wrote={wrote} failed={failed}"
+        )
+        if failed:
+            _ROSTER_STATE["last_error"] = "Yami hidden select/name scene write failed"
+        elif installed:
+            _ROSTER_STATE["last_error"] = ""
+    return cleanup_wrote + wrote, cleanup_failed + failed
+
+
+def _seq37_operand_span(word: int) -> int:
+    """Return the byte span consumed by 0x800E0380 for one operand descriptor.
+
+    This mirrors the recomp exactly enough for structural scanning.  The
+    0x40-clear form and the 0x80-set form both consume eight bytes.  With 0x40
+    set and 0x80 clear, the ordinary table/global forms consume four bytes,
+    while special type 0x3F consumes eight.
+    """
+    type_byte = int(word) & 0xFF
+    if (type_byte & 0x40) == 0:
+        return 8
+    if (type_byte & 0x80) != 0:
+        return 8
+    return 8 if (type_byte & 0x3F) == 0x3F else 4
+
+
+def _seq37_cstring(blob: bytes, off: int, max_len: int = 48) -> str:
+    if off < 0 or off >= len(blob):
+        return ""
+    end_limit = min(len(blob), int(off) + max(1, int(max_len)))
+    end = blob.find(b"\x00", int(off), end_limit)
+    if end < 0:
+        return ""
+    raw = blob[int(off):end]
+    if not raw:
+        return ""
+    if any(b < 0x20 or b > 0x7E for b in raw):
+        return ""
+    try:
+        return raw.decode("ascii")
+    except Exception:
+        return ""
+
+
+def _seq37_u32(blob: bytes, off: int) -> int | None:
+    if off < 0 or off + 4 > len(blob):
+        return None
+    return int.from_bytes(blob[off:off + 4], "big", signed=False)
+
+
+def _seq37_scan_commands(base: int) -> list[dict[str, Any]]:
+    """Inventory opcode-0x37 tagged-texture commands in the loaded chrsel.seq.
+
+    The scanner is deliberately structural rather than signature-only.  A
+    candidate must parse all three 0x800E0380 operands and land on a printable
+    inline prefix exactly where the recomp says the command stores it.
+    """
+    scan_start = max(0, int(YAMI_PANEL_SEQ37_SCAN_START_OFF))
+    scan_end = min(int(CHRSEL_SEQ_HEAP_SIZE), int(YAMI_PANEL_SEQ37_SCAN_END_OFF))
+    blob = _safe_read(int(base) + scan_start, scan_end - scan_start)
+    if not blob:
+        return []
+
+    out: list[dict[str, Any]] = []
+    # Commands are word aligned in chrsel.seq.
+    for local in range(0, max(0, len(blob) - 48), 4):
+        cmd_off = scan_start + local
+        # 0x800E7084 extracts bits 16..23 of the big-endian command word: the
+        # second byte in memory is the opcode byte.
+        if blob[local + 1] != int(YAMI_PANEL_SEQ37_OPCODE):
+            continue
+        d1 = local + 8
+        w1 = _seq37_u32(blob, d1)
+        if w1 is None:
+            continue
+        s1 = _seq37_operand_span(w1)
+        d2 = d1 + s1
+        w2 = _seq37_u32(blob, d2)
+        if w2 is None:
+            continue
+        s2 = _seq37_operand_span(w2)
+        d3 = d2 + s2
+        w3 = _seq37_u32(blob, d3)
+        if w3 is None:
+            continue
+        s3 = _seq37_operand_span(w3)
+        tail = d3 + s3
+        prefix_off_local = tail + 8
+        prefix = _seq37_cstring(blob, prefix_off_local, 40)
+        if not prefix:
+            continue
+        # The handler advances across the NUL-containing word, so the next
+        # inline string starts at the next four-byte boundary.
+        dest_off_local = (prefix_off_local + len(prefix) + 1 + 3) & ~3
+        dest = _seq37_cstring(blob, dest_off_local, 48)
+
+        hidden = (
+            int(YAMI_PANEL_SEQ37_HIDDEN_START_OFF)
+            <= int(cmd_off)
+            < int(YAMI_PANEL_SEQ37_HIDDEN_END_OFF)
+        )
+        global_match = prefix in YAMI_PANEL_SEQ37_GLOBAL_PREFIXES
+        hidden_match = hidden and prefix in YAMI_PANEL_SEQ37_HIDDEN_PREFIXES
+
+        # Keep every structurally valid 0x37 command in the inventory, not only
+        # the prefixes we already recognize.  We still WRITE only the explicit
+        # allowlists below.  The broader inventory makes the debug line useful
+        # if this game build names the large-card pane differently.
+        second_addr = int(base) + scan_start + d2
+        second_payload = _seq37_u32(blob, d2 + 4) if s2 >= 8 else None
+        second_type = int(w2) & 0xFF
+        source_addr: int | None = None
+        source_value: int | None = None
+        source_kind = "dynamic"
+        # 0x7F is the direct-inline form we install.  0x3F is the related
+        # relative-pointer form from the 0x40-clear branch; it can be resolved
+        # statically from sequence bytes and is very useful diagnostically.
+        if second_type == 0x7F and s2 == 8:
+            source_addr = second_addr + 4
+            source_value = second_payload
+            source_kind = "inline"
+        elif second_type == 0x3F and s2 == 8 and second_payload is not None:
+            rel = int(second_payload)
+            if rel & 0x80000000:
+                rel -= 0x100000000
+            source_addr = (second_addr + 8 + rel) & 0xFFFFFFFF
+            if int(base) <= source_addr < int(base) + int(CHRSEL_SEQ_HEAP_SIZE) - 3:
+                source_value = _safe_read_u32be(source_addr)
+                source_kind = "seq-relative"
+            else:
+                source_kind = "relative"
+
+        out.append({
+            "cmd_off": int(cmd_off),
+            "cmd_addr": int(base) + int(cmd_off),
+            "prefix": prefix,
+            "dest": dest,
+            "hidden": bool(hidden),
+            "target_known": bool(global_match or hidden_match),
+            "second_off": scan_start + d2,
+            "second_addr": second_addr,
+            "second_word": int(w2),
+            "second_payload": second_payload,
+            "second_type": second_type,
+            "second_span": int(s2),
+            "source_addr": source_addr,
+            "source_value": source_value,
+            "source_kind": source_kind,
+        })
+    return out
+
+
+def _seq37_command_summary(commands: list[dict[str, Any]], limit: int = 5) -> str:
+    if not commands:
+        return "seq37: no tagged-texture commands found"
+    face = [c for c in commands if c.get("prefix") in YAMI_PANEL_SEQ37_GLOBAL_PREFIXES]
+    hidden = [c for c in commands if c.get("hidden")]
+    known = [c for c in commands if c.get("target_known")]
+    safe = [c for c in known if int(c.get("second_span", 0) or 0) == 8]
+    prefixes: list[str] = []
+    for c in commands:
+        prefix = str(c.get("prefix") or "")
+        if prefix and prefix not in prefixes:
+            prefixes.append(prefix)
+    samples: list[str] = []
+    # Put recognized candidate commands first so the compact debug line does
+    # not get filled by unrelated sequence texture binds.
+    ordered = known + [c for c in commands if not c.get("target_known")]
+    for c in ordered[:max(0, int(limit))]:
+        sv = c.get("source_value")
+        sval = "?" if sv is None else f"0x{int(sv) & 0xFFFFFFFF:02X}"
+        samples.append(
+            f"+0x{int(c['cmd_off']):X}:{c.get('prefix','?')}->{c.get('dest','?') or '?'} "
+            f"op2=0x{int(c.get('second_type',0)):02X}/{int(c.get('second_span',0))} src={sval}"
+        )
+    return (
+        f"seq37 cmds={len(commands)} known={len(known)} face/name={len(face)} hidden={len(hidden)} "
+        f"safe8={len(safe)} prefixes={','.join(prefixes[:10]) or '-'}; " + " | ".join(samples)
+    )
+
+
+def _clear_yami_panel_seq37_session(*, keep_scan: bool = False) -> None:
+    commands = list(_YAMI_PANEL_SEQ37_SESSION.get("commands") or []) if keep_scan else []
+    base = int(_YAMI_PANEL_SEQ37_SESSION.get("base") or 0) if keep_scan else 0
+    scan_summary = str(_YAMI_PANEL_SEQ37_SESSION.get("scan_summary") or "") if keep_scan else ""
+    _YAMI_PANEL_SEQ37_SESSION.update({
+        "base": base,
+        "commands": commands,
+        "originals": {},
+        "desired": {},
+        "active_yami": None,
+        "donor_id": None,
+        "scan_summary": scan_summary,
+    })
+
+
+def _restore_yami_panel_seq37_route_only(*, keep_scan: bool = True) -> tuple[int, int]:
+    originals = dict(_YAMI_PANEL_SEQ37_SESSION.get("originals") or {})
+    desired = dict(_YAMI_PANEL_SEQ37_SESSION.get("desired") or {})
+    session_base = int(_YAMI_PANEL_SEQ37_SESSION.get("base") or 0)
+    if not originals:
+        _YAMI_PANEL_SEQ37_SESSION["active_yami"] = None
+        _YAMI_PANEL_SEQ37_SESSION["donor_id"] = None
+        return 0, 0
+
+    current_base = _resolve_chrsel_seq_heap_base()
+    if current_base is None or int(current_base) != session_base:
+        # Scene was rebuilt.  Never write old heap addresses into the new scene.
+        _clear_yami_panel_seq37_session(keep_scan=False)
+        return 0, 0
+
+    wrote = 0
+    failed = 0
+    for addr, original in originals.items():
+        addr_i = int(addr)
+        original_b = bytes(original)
+        current = _safe_read(addr_i, len(original_b))
+        ours = desired.get(addr_i)
+        # Restore only bytes we still own.  If the game or another probe changed
+        # them, leave them alone rather than trampling a live sequence command.
+        if ours is not None and current != bytes(ours):
+            continue
+        if _safe_write_bytes(addr_i, original_b) and _safe_read(addr_i, len(original_b)) == original_b:
+            wrote += 1
+        else:
+            failed += 1
+
+    _clear_yami_panel_seq37_session(keep_scan=bool(keep_scan))
+    return wrote, failed
+
+
+def _ensure_yami_panel_seq37_scan(base: int) -> list[dict[str, Any]]:
+    if (
+        int(_YAMI_PANEL_SEQ37_SESSION.get("base") or 0) == int(base)
+        and _YAMI_PANEL_SEQ37_SESSION.get("commands")
+    ):
+        return list(_YAMI_PANEL_SEQ37_SESSION.get("commands") or [])
+
+    # A different heap means all old addresses are dead.  Do not restore them.
+    _clear_yami_panel_seq37_session(keep_scan=False)
+    commands = _seq37_scan_commands(int(base))
+    summary = _seq37_command_summary(commands)
+    _YAMI_PANEL_SEQ37_SESSION["base"] = int(base)
+    _YAMI_PANEL_SEQ37_SESSION["commands"] = list(commands)
+    _YAMI_PANEL_SEQ37_SESSION["scan_summary"] = summary
+    return commands
+
+
+def _tick_yami_panel_seq37_route() -> tuple[int, int]:
+    """Force the renderer's actual tagged-texture operand while Yami is hovered.
+
+    This replaces the owner-pointer experiment.  It is derived directly from
+    the recomp's opcode-0x37 handler and changes only same-size operand records
+    in the already-loaded chrsel.seq.  Roster IDs and the working 16-bit cursor
+    icon lane remain untouched.
+    """
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+
+    if not bool(status.get("active")) or not requested or not enabled or not bool(status.get("patch_present")):
+        wrote, failed = _restore_yami_panel_seq37_route_only(keep_scan=False)
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = ""
+            _ROSTER_STATE["yami_visual_panel_detail"] = "seq37 panel route idle"
+        return wrote, failed
+
+    base = _resolve_chrsel_seq_heap_base()
+    if base is None:
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = ""
+            _ROSTER_STATE["yami_visual_panel_detail"] = "seq37: chrsel.seq heap not reachable"
+        return 0, 1
+
+    commands = _ensure_yami_panel_seq37_scan(int(base))
+    scan_summary = str(_YAMI_PANEL_SEQ37_SESSION.get("scan_summary") or "")
+    if not commands:
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "seq37 scan"
+            _ROSTER_STATE["yami_visual_panel_detail"] = scan_summary
+        return 0, 0
+
+    yami_id = _panel_owner_active_yami_hover()
+    if yami_id is None:
+        wrote, failed = _restore_yami_panel_seq37_route_only(keep_scan=True)
+        summary = ", ".join(
+            f"Y{int(yid) - 0x16}={_yami_visual_donor_label(YAMI_PANEL_DONOR_BY_ID.get(int(yid)))}"
+            for yid in YAMI_NATIVE_BLANK_IDS
+        )
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "seq37 armed"
+            _ROSTER_STATE["yami_visual_panel_detail"] = (
+                f"seq37 armed; hover Yami 1/2/3; {summary}; {scan_summary}"
+            )
+        return wrote, failed
+
+    _ensure_yami_visual_config_loaded()
+    donor = YAMI_PANEL_DONOR_BY_ID.get(int(yami_id))
+    if donor is None:
+        wrote, failed = _restore_yami_panel_seq37_route_only(keep_scan=True)
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "seq37 native"
+            _ROSTER_STATE["yami_visual_panel_detail"] = (
+                f"Y{int(yami_id)-0x16}=Native; seq37 commands restored; {scan_summary}"
+            )
+        return wrote, failed
+
+    donor = int(donor) & 0xFF
+    if donor not in _valid_yami_visual_donor_ids():
+        return 0, 1
+
+    # Face/face_sita/Name commands are global tagged-texture commands and are
+    # only overridden while a Yami hover is live.  select_/name_/mof_ commands
+    # are included only inside the already-proven hidden-Yami handler window.
+    targets = [
+        c for c in commands
+        if int(c.get("second_span", 0) or 0) == 8
+        and (
+            c.get("prefix") in YAMI_PANEL_SEQ37_GLOBAL_PREFIXES
+            or (
+                bool(c.get("hidden"))
+                and c.get("prefix") in YAMI_PANEL_SEQ37_HIDDEN_PREFIXES
+            )
+        )
+    ]
+    skipped4 = sum(1 for c in commands if int(c.get("second_span", 0) or 0) != 8)
+    if not targets:
+        with _LOCK:
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = "seq37 scan only"
+            _ROSTER_STATE["yami_visual_panel_detail"] = (
+                f"Y{int(yami_id)-0x16}->{_yami_visual_donor_label(donor)}: no safe 8-byte op2; "
+                f"skipped4={skipped4}; {scan_summary}"
+            )
+        return 0, 0
+
+    originals: dict[int, bytes] = _YAMI_PANEL_SEQ37_SESSION.setdefault("originals", {})
+    desired: dict[int, bytes] = _YAMI_PANEL_SEQ37_SESSION.setdefault("desired", {})
+    wrote = 0
+    failed = 0
+    touched: list[str] = []
+    desired_bytes = int(YAMI_PANEL_SEQ37_INLINE_U32).to_bytes(4, "big") + int(donor).to_bytes(4, "big")
+
+    for c in targets:
+        addr = int(c["second_addr"])
+        current = _safe_read(addr, 8)
+        if current is None or len(current) != 8:
+            failed += 1
+            continue
+        previous_ours = desired.get(addr)
+        if addr not in originals:
+            # Only claim a command when it still matches what the structural
+            # scan saw, unless it is already an exact write from this route.
+            scanned = int(c.get("second_word", 0)).to_bytes(4, "big") + int(c.get("second_payload", 0) or 0).to_bytes(4, "big")
+            if current != scanned and current != desired_bytes:
+                continue
+            originals[addr] = bytes(current)
+        elif previous_ours is not None and current not in (bytes(previous_ours), desired_bytes):
+            # Another writer reclaimed this operand.  Stop owning it.
+            continue
+
+        desired[addr] = desired_bytes
+        if current == desired_bytes:
+            touched.append(f"+0x{int(c['cmd_off']):X}:{c.get('prefix','?')}")
+            continue
+        if _safe_write_bytes(addr, desired_bytes) and _safe_read(addr, 8) == desired_bytes:
+            wrote += 1
+            touched.append(f"+0x{int(c['cmd_off']):X}:{c.get('prefix','?')}")
+        else:
+            failed += 1
+
+    _YAMI_PANEL_SEQ37_SESSION["active_yami"] = int(yami_id)
+    _YAMI_PANEL_SEQ37_SESSION["donor_id"] = donor
+    donor_label = _yami_visual_donor_label(donor)
+    installed = bool(touched) and failed == 0
+    with _LOCK:
+        _ROSTER_STATE["yami_visual_panel_installed"] = installed
+        _ROSTER_STATE["yami_visual_panel_mode"] = "recomp seq37 operand"
+        sample = ",".join(touched[:8]) or "none"
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            f"SEQ37 LIVE Y{int(yami_id)-0x16}->{donor_label} donor=0x{donor:02X} "
+            f"forced={len(touched)}/{len(targets)} wrote={wrote} failed={failed} skipped4={skipped4}; "
+            f"{sample}; {scan_summary}"
+        )
+        if failed:
+            _ROSTER_STATE["last_error"] = "Yami seq37 panel operand write failed"
+    return wrote, failed
+
+def _display_profile_for_hover_lane(lane_index: int, hover: int | None) -> tuple[int | None, str]:
+    """Return the live big-card presentation profile for one hover lane.
+
+    IMPORTANT: this is deliberately separate from the roster table. The
+    working Extra Characters layout proves the DOL tag maps can be changed
+    without changing the already-instantiated large card. The live focus/profile
+    mirror is what the active card follows. For a hidden Yami hover, route only
+    that presentation mirror to the configured donor while leaving the roster
+    row and hover ID at 0x17/0x18/0x19.
+
+    ``Native`` means use the real hidden Yami ID as the profile instead of
+    inheriting a stale neighboring stock profile. ID 0 remains the strict Solo
+    helper and still borrows Zero only at the physical Solo slot.
     """
     if hover is None:
         return None, ""
-    yami_profile = YAMI_HOVER_DISPLAY_PROFILE_IDS.get(int(hover))
+
+    hover_id = int(hover) & 0xFF
+    if hover_id in YAMI_NATIVE_BLANK_IDS:
+        _ensure_yami_visual_config_loaded()
+        donor = YAMI_PANEL_DONOR_BY_ID.get(hover_id)
+        desired = hover_id if donor is None else int(donor) & 0xFF
+        return desired, (
+            f"Yami 0x{hover_id:02X} big card -> "
+            f"{_yami_visual_donor_label(donor)} profile 0x{desired:02X}"
+        )
+
+    # Retain compatibility with any explicit research-only profile map.
+    yami_profile = YAMI_HOVER_DISPLAY_PROFILE_IDS.get(hover_id)
     if yami_profile is not None:
-        return int(yami_profile), f"Yami 0x{int(hover):02X} -> Ryu profile 0x{int(yami_profile):02X}"
-    if int(hover) != 0x00:
+        return int(yami_profile), f"profile override 0x{hover_id:02X} -> 0x{int(yami_profile):02X}"
+
+    if hover_id != 0x00:
         return None, ""
     if not (0 <= int(lane_index) < len(YAMI_HOVER_DISPLAY_PROFILE_CURSOR_ADDRS)):
         return None, ""
@@ -2348,10 +4181,11 @@ def _restore_yami_hover_display_profile_route_only() -> tuple[int, int]:
 
 
 def _tick_yami_hover_display_profile_route() -> tuple[int, int]:
-    """Route Character Select presentation caches without changing fighter IDs.
+    """Route the active large-card profile without changing roster fighter IDs.
 
-    Yami is intentionally untouched so its silhouette and rear card stay blank.
-    The physical Solo/null slot uses Zero only while that exact slot is hovered.
+    Hidden Yami hovers use ``YAMI_PANEL_DONOR_BY_ID``. The cursor/wheel icon is
+    owned by the separate 16-bit material-ID route and is not touched here.
+    The physical Solo/null slot still uses Zero only while that slot is hovered.
     """
     status = _select_screen_status()
     with _LOCK:
@@ -2387,12 +4221,27 @@ def _tick_yami_hover_display_profile_route() -> tuple[int, int]:
     with _LOCK:
         installed = bool(active_lanes) and failed == 0
         _ROSTER_STATE["yami_hover_display_profile_installed"] = installed
-        _ROSTER_STATE["yami_hover_display_profile_mode"] = "Solo null -> Zero; Yami native blank presentation" if installed else ""
+        _ROSTER_STATE["yami_hover_display_profile_mode"] = "live big-card donor profile" if installed else ""
         _ROSTER_STATE["yami_hover_display_profile_detail"] = (
-            "; ".join(active_lanes) if active_lanes else "Yami blank; waiting for Solo null hover"
+            "; ".join(active_lanes) if active_lanes else "waiting for Yami/Solo hover"
+        )
+        # Surface this through the user-facing Panel status as well. The old
+        # DOL tag-map status was misleading because those writes are not used by
+        # the working inserted-roster card renderer.
+        _ROSTER_STATE["yami_visual_panel_installed"] = installed
+        _ROSTER_STATE["yami_visual_panel_mode"] = (
+            ", ".join(
+                f"Y{int(yid) - 0x16}={_yami_visual_donor_label(YAMI_PANEL_DONOR_BY_ID.get(int(yid)))}"
+                for yid in YAMI_NATIVE_BLANK_IDS
+            )
+            if installed else ""
+        )
+        _ROSTER_STATE["yami_visual_panel_detail"] = (
+            "live big-card profile: " + "; ".join(active_lanes)
+            if active_lanes else "live big-card profile armed; hover Yami 1/2/3"
         )
         if failed:
-            _ROSTER_STATE["last_error"] = "Yami hover display profile cache write failed"
+            _ROSTER_STATE["last_error"] = "Yami big-card profile write failed"
     return wrote, failed
 
 
@@ -3193,9 +5042,13 @@ def _tick_extra_characters_request() -> None:
         return
 
     if present:
+        # Keep the selector-only 0x16..0x19 bypass so hidden Yami IDs remain
+        # valid teammates. This does NOT affect the fighter heap classifier.
+        legacy_wrote, legacy_failed = _install_yami_partner_eligibility_bypass()
+
         # PTX remains the authoritative/core transaction. Gold Lightan is an
-        # additive transaction installed only after PTX + shared heap budget are
-        # confirmed, so a Lightan failure cannot roll PTX back.
+        # additive transaction installed only after PTX + its giant heap budget
+        # are confirmed, so a Lightan failure cannot roll PTX back.
         gate_wrote = 0
         gate_failed = 0
         if not _mixed_giant_sequence_gate_present():
@@ -3210,8 +5063,8 @@ def _tick_extra_characters_request() -> None:
             lightan_wrote, lightan_failed = _install_lightan_mixed_team_gate()
 
         with _LOCK:
-            _ROSTER_STATE["patches"] = int(_ROSTER_STATE.get("patches", 0) or 0) + int(gate_wrote) + int(lightan_wrote)
-            _ROSTER_STATE["failed"] = int(_ROSTER_STATE.get("failed", 0) or 0) + int(gate_failed) + int(lightan_failed)
+            _ROSTER_STATE["patches"] = int(_ROSTER_STATE.get("patches", 0) or 0) + int(legacy_wrote) + int(gate_wrote) + int(lightan_wrote)
+            _ROSTER_STATE["failed"] = int(_ROSTER_STATE.get("failed", 0) or 0) + int(legacy_failed) + int(gate_failed) + int(lightan_failed)
             _ROSTER_STATE["extra_characters_enabled"] = gate_failed == 0
             if gate_failed:
                 if lightan_failed:
@@ -3228,11 +5081,11 @@ def _tick_extra_characters_request() -> None:
                     )
                     _ROSTER_STATE["last_error"] = "PTX/shared giant heap patch pending"
             elif lightan_failed:
-                _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts + PTX mixed-team gate + heap budget; Lightan pending"
+                _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts; Yami selector bypass + normal heap; PTX giant support; Lightan pending"
                 _ROSTER_STATE["last_action"] = f"PTX preserved; Gold Lightan gate failed={lightan_failed}"
                 _ROSTER_STATE["last_error"] = "Gold Lightan gate failed; PTX remains active"
             else:
-                _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts + PTX/Lightan mixed-team gates + shared heap budget"
+                _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts; Yami selector bypass + normal heap; PTX/Lightan exact-ID giant support"
                 _ROSTER_STATE["last_action"] = f"Extra Characters roster + PTX/Lightan gates present wrote={gate_wrote + lightan_wrote}"
                 _ROSTER_STATE["last_error"] = ""
         return
@@ -3287,7 +5140,7 @@ def _ptx_giant_heap_budget_patch_present() -> bool:
 
 
 def _install_ptx_giant_heap_budget_patch() -> tuple[int, int]:
-    """Give a mixed PTX team enough contiguous fighter-heap room for slot 4."""
+    """Install the guarded PTX reserve without ever changing normal/Yami arenas."""
     addr, native, patched, label = PTX_GIANT_HEAP_BUDGET_PATCH
     current = _safe_read_u32be(int(addr))
     if current is None:
@@ -3295,41 +5148,50 @@ def _install_ptx_giant_heap_budget_patch() -> tuple[int, int]:
     current_i = int(current) & 0xFFFFFFFF
     if current_i == int(patched):
         return 0, 0
-    if current_i != int(native):
+
+    legacy = int(PTX_GIANT_HEAP_BUDGET_LEGACY_PATCHED) & 0xFFFFFFFF
+    native_i = int(native) & 0xFFFFFFFF
+    if current_i not in (native_i, legacy):
         with _LOCK:
             _ROSTER_STATE["last_error"] = (
-                f"PTX heap patch refused: {label}; expected 0x{int(native):08X}, "
-                f"found 0x{current_i:08X}"
+                f"PTX heap patch refused: {label}; expected native 0x{native_i:08X} "
+                f"or legacy 0x{legacy:08X}, found 0x{current_i:08X}"
             )
         return 0, 1
-    _PTX_GIANT_HEAP_BUDGET_SESSION.setdefault(int(addr), current_i)
+
+    # A running Dolphin may still contain the previous 0x4E build. Treat that
+    # as a migration, but remember stock as the restore target.
+    _PTX_GIANT_HEAP_BUDGET_SESSION.setdefault(int(addr), native_i)
     if not _safe_write_u32be(int(addr), int(patched)):
         return 0, 1
     if _safe_read_u32be(int(addr)) != int(patched):
         _safe_write_u32be(int(addr), current_i)
         _PTX_GIANT_HEAP_BUDGET_SESSION.pop(int(addr), None)
         return 0, 1
+    source = "legacy 0x4E0000" if current_i == legacy else "native 0x700000"
     print(
         f"[char select] PTX mixed-team heap budget installed at 0x{int(addr):08X}: "
-        "0x700000 -> 0x4E0000",
+        f"{source} -> 0x480000",
         flush=True,
     )
     return 1, 0
 
 
 def _restore_ptx_giant_heap_budget_patch() -> tuple[int, int]:
-    """Restore the native 7 MiB giant reservation if this exact patch is live."""
+    """Restore stock 0x700000 from either current or legacy PTX budget patch."""
     addr, native, patched, _label = PTX_GIANT_HEAP_BUDGET_PATCH
     current = _safe_read_u32be(int(addr))
     if current is None:
         return 0, 1
     current_i = int(current) & 0xFFFFFFFF
-    if current_i == int(native):
+    native_i = int(native) & 0xFFFFFFFF
+    legacy = int(PTX_GIANT_HEAP_BUDGET_LEGACY_PATCHED) & 0xFFFFFFFF
+    if current_i == native_i:
         _PTX_GIANT_HEAP_BUDGET_SESSION.pop(int(addr), None)
         return 0, 0
-    if current_i != int(patched):
+    if current_i not in (int(patched) & 0xFFFFFFFF, legacy):
         return 0, 1
-    if _safe_write_u32be(int(addr), int(native)) and _safe_read_u32be(int(addr)) == int(native):
+    if _safe_write_u32be(int(addr), native_i) and _safe_read_u32be(int(addr)) == native_i:
         _PTX_GIANT_HEAP_BUDGET_SESSION.pop(int(addr), None)
         return 1, 0
     return 0, 1
@@ -3435,7 +5297,7 @@ def _install_mixed_giant_sequence_gate() -> tuple[int, int]:
         _ROSTER_STATE["mixed_giant_classifier_installed"] = installed
         _ROSTER_STATE["mixed_giant_classifier_detail"] = "; ".join(details)
         _ROSTER_STATE["mixed_giant_partner_enabled"] = installed
-        _ROSTER_STATE["mixed_giant_partner_mode"] = "PTX mixed-team chrsel.seq + heap budget" if installed else ""
+        _ROSTER_STATE["mixed_giant_partner_mode"] = "PTX mixed-team chrsel.seq + 0x480000 heap budget" if installed else ""
         if installed:
             _ROSTER_STATE["last_action"] = f"PTX mixed-team gate installed wrote={wrote}"
             _ROSTER_STATE["last_error"] = ""
@@ -3801,6 +5663,33 @@ def _restore_mixed_giant_sequence_gate() -> tuple[int, int]:
         _ROSTER_STATE["mixed_giant_partner_enabled"] = False
         _ROSTER_STATE["mixed_giant_partner_mode"] = ""
     return restored, failed
+
+
+def _install_yami_partner_eligibility_bypass() -> tuple[int, int]:
+    """Keep hidden Yami IDs selectable without changing their heap class."""
+    addr, native, patched, label = YAMI_PARTNER_ELIGIBILITY_PATCH
+    current = _safe_read_u32be(int(addr))
+    if current is None:
+        return 0, 1
+    current_i = int(current) & 0xFFFFFFFF
+    if current_i == int(patched):
+        with _LOCK:
+            _ROSTER_STATE["yami_partner_eligibility"] = "present"
+        return 0, 0
+    if current_i != int(native):
+        with _LOCK:
+            _ROSTER_STATE["yami_partner_eligibility"] = f"foreign 0x{current_i:08X}"
+        return 0, 1
+    _YAMI_PARTNER_ELIGIBILITY_SESSION.setdefault(int(addr), current_i)
+    if not _safe_write_u32be(int(addr), int(patched)):
+        return 0, 1
+    if _safe_read_u32be(int(addr)) != int(patched):
+        _safe_write_u32be(int(addr), current_i)
+        _YAMI_PARTNER_ELIGIBILITY_SESSION.pop(int(addr), None)
+        return 0, 1
+    with _LOCK:
+        _ROSTER_STATE["yami_partner_eligibility"] = "selector bypass active; heap class unchanged"
+    return 1, 0
 
 
 def _install_mixed_giant_eligibility_classifier() -> tuple[int, int]:
@@ -4190,7 +6079,38 @@ def queue_yami_visual_table_three_donor_append() -> dict[str, Any]:
     return {"ok": True, "queued": True, "label": "Three-donor visual table append"}
 
 
+def _open_visual_overrides_if_subbutton_clicked() -> dict[str, Any] | None:
+    """Dispatch the Visuals half of the legacy Extra Characters hit target.
+
+    TvCGUI's outer pygame loop historically receives one rectangle for Extra
+    Characters.  The dock now draws a second Visuals button inside that same
+    rectangle so old callers keep working.  When the pointer is in that half,
+    open the Tk visual-override window and do not toggle the roster.
+    """
+    try:
+        from tvcgui.ui.components import character_select_visuals_hit_test
+        if not character_select_visuals_hit_test():
+            return None
+    except Exception:
+        return None
+
+    try:
+        from .window import open_char_test_window
+        open_char_test_window()
+        with _LOCK:
+            _ROSTER_STATE["last_action"] = "Character Select Visual Overrides opened"
+            _ROSTER_STATE["last_error"] = ""
+        return {"ok": True, "visuals_opened": True, "toggled": False}
+    except Exception as exc:
+        with _LOCK:
+            _ROSTER_STATE["last_error"] = f"Visual Overrides open failed: {exc}"
+        return {"ok": False, "visuals_opened": False, "toggled": False, "error": str(exc)}
+
+
 def queue_extra_characters_on() -> dict[str, Any]:
+    _visual_dispatch = _open_visual_overrides_if_subbutton_clicked()
+    if _visual_dispatch is not None:
+        return _visual_dispatch
     status = _update_extra_guard_state()
     active = bool(status.get("active"))
     present = bool(status.get("patch_present"))
@@ -4208,13 +6128,14 @@ def queue_extra_characters_on() -> dict[str, Any]:
     gate_wrote = 0
     gate_failed = 0
     if active:
+        legacy_wrote, legacy_failed = _install_yami_partner_eligibility_bypass()
         gate_wrote, gate_failed = _install_mixed_giant_sequence_gate()
         with _LOCK:
-            _ROSTER_STATE["patches"] = int(_ROSTER_STATE.get("patches", 0) or 0) + gate_wrote
-            _ROSTER_STATE["failed"] = int(_ROSTER_STATE.get("failed", 0) or 0) + gate_failed
+            _ROSTER_STATE["patches"] = int(_ROSTER_STATE.get("patches", 0) or 0) + legacy_wrote + gate_wrote
+            _ROSTER_STATE["failed"] = int(_ROSTER_STATE.get("failed", 0) or 0) + legacy_failed + gate_failed
             if present and gate_failed == 0:
                 _ROSTER_STATE["extra_characters_enabled"] = True
-                _ROSTER_STATE["extra_characters_mode"] = "3 Yami roster + PTX mixed-team gate + heap budget"
+                _ROSTER_STATE["extra_characters_mode"] = "3 Yami roster; Yami selector bypass + normal heap; PTX giant support"
                 _ROSTER_STATE["last_action"] = f"Extra characters ON; PTX mixed-team gate installed"
             elif gate_failed:
                 _ROSTER_STATE["last_action"] = "Extra characters armed; MEM2 gate will retry on service tick"
@@ -4231,10 +6152,17 @@ def queue_extra_characters_on() -> dict[str, Any]:
 
 
 def queue_extra_characters_off() -> dict[str, Any]:
+    _visual_dispatch = _open_visual_overrides_if_subbutton_clicked()
+    if _visual_dispatch is not None:
+        return _visual_dispatch
     status = _update_extra_guard_state()
     with _LOCK:
         _ROSTER_STATE["_off_cleanup_done"] = False
         _ROSTER_STATE["extra_characters_requested"] = False
+        try:
+            _publish_yami_name_overlay_state(force=True)
+        except Exception:
+            pass
         _ROSTER_STATE["last_error"] = ""
         if not status.get("active"):
             restored, failed = _restore_mixed_giant_sequence_gate()
@@ -4257,6 +6185,9 @@ def queue_extra_characters_off() -> dict[str, Any]:
 
 
 def toggle_extra_characters() -> dict[str, Any]:
+    _visual_dispatch = _open_visual_overrides_if_subbutton_clicked()
+    if _visual_dispatch is not None:
+        return _visual_dispatch
     with _LOCK:
         enabled = bool(_ROSTER_STATE.get("extra_characters_enabled") or _ROSTER_STATE.get("extra_characters_requested"))
     if enabled:
@@ -4479,8 +6410,10 @@ def _install_extra_characters_on() -> tuple[int, int]:
       Frank West -> Yami 1 -> PTX-40A
       Ryu -> ID 0x00 null test slot
 
-    The guarded roster table/count mirrors are written first, then the proven
-    PTX chrsel.seq gate + shared giant heap budget are installed. Gold Lightan's
+    The guarded roster table/count mirrors are written first. Legacy broad
+    PTX/Yami classifier edits are then removed so Yami stays on the normal
+    fighter path. The proven PTX exact-ID chrsel.seq gate + PTX giant heap
+    budget are installed afterward. Gold Lightan's
     four adjacent chrsel.seq words are applied afterward as a separate additive
     transaction. No live selector-result polling is used.
     """
@@ -4495,8 +6428,12 @@ def _install_extra_characters_on() -> tuple[int, int]:
     wrote += w
     failed += f
 
-    # Static DOL classifier experiments remain retired.  The PTX sequence
-    # session is intentionally retained so OFF can restore the scene words.
+    # The 0x8006C798 range check is selector eligibility, not fighter heap
+    # classification. Keep it bypassed so Yami 0x17/0x18/0x19 remain valid
+    # teammates, while their allocator path stays completely native/normal.
+    legacy_wrote, legacy_failed = _install_yami_partner_eligibility_bypass()
+    wrote += legacy_wrote
+    failed += legacy_failed
     _MIXED_GIANT_ELIGIBILITY_SESSION.clear()
 
     gate_wrote, gate_failed = _install_mixed_giant_sequence_gate()
@@ -4528,9 +6465,9 @@ def _install_extra_characters_on() -> tuple[int, int]:
         if failed:
             _ROSTER_STATE["extra_characters_mode"] = ""
         elif lightan_failed:
-            _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts + PTX mixed-team gate + heap budget; Lightan pending"
+            _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts; Yami selector bypass + normal heap; PTX giant support; Lightan pending"
         else:
-            _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts + PTX/Lightan mixed-team gates + shared heap budget"
+            _ROSTER_STATE["extra_characters_mode"] = "working 3-Yami inserts; Yami selector bypass + normal heap; PTX/Lightan exact-ID giant support"
         _ROSTER_STATE["last_action"] = (
             f"Working Extra Characters roster ON wrote={wrote} failed={failed}; "
             f"Lightan failed={lightan_failed}; count=0x{EXTRA_CLONE10_COUNT:02X}"
@@ -4811,6 +6748,103 @@ def get_roster_char_choices() -> list[str]:
     return out
 
 
+
+def get_yami_visual_donor_choices() -> list[dict[str, Any]]:
+    """Return stock Character Select donors in physical wheel order."""
+    out: list[dict[str, Any]] = [{"id": None, "label": "Native", "short": "Native"}]
+    seen: set[int] = set()
+    short_names = {
+        0x01: "Ken", 0x08: "Jun", 0x02: "Casshan", 0x03: "Tekkaman",
+        0x04: "Polimar", 0x05: "Yatter-1", 0x0A: "Karas", 0x06: "Doronjo",
+        0x07: "Ippatsu", 0x0B: "Lightan", 0x1A: "T.Blade", 0x1B: "Joe",
+        0x1C: "Yatter-2", 0x63: "Random", 0x1D: "Zero", 0x1E: "Frank",
+        0x16: "PTX", 0x11: "V.Joe", 0x14: "Saki", 0x13: "Roll",
+        0x15: "Soki", 0x12: "Volnutt", 0x0E: "Batsu", 0x10: "Alex",
+        0x0F: "Morrigan", 0x0D: "Chun-Li", 0x0C: "Ryu",
+    }
+    valid = _valid_yami_visual_donor_ids()
+    for _slot, cid, name in STOCK_ROSTER_SLOT_TABLE:
+        cid = int(cid)
+        if cid in seen or cid not in valid:
+            continue
+        seen.add(cid)
+        out.append({
+            "id": cid,
+            "label": str(name),
+            "short": short_names.get(cid, str(name)),
+        })
+    return out
+
+
+def get_yami_visual_override_state() -> dict[str, Any]:
+    _ensure_yami_visual_config_loaded()
+    return {
+        f"0x{int(yami_id):02X}": {
+            "name": str(YAMI_CUSTOM_NAME_TEXT.get(int(yami_id), "")),
+            "panel_donor": YAMI_PANEL_DONOR_BY_ID.get(int(yami_id)),
+            "panel_label": _yami_visual_donor_label(YAMI_PANEL_DONOR_BY_ID.get(int(yami_id))),
+            "icon_donor": YAMI_ICON_DONOR_BY_ID.get(int(yami_id)),
+            "icon_label": _yami_visual_donor_label(YAMI_ICON_DONOR_BY_ID.get(int(yami_id))),
+        }
+        for yami_id in YAMI_NATIVE_BLANK_IDS
+    }
+
+
+def queue_yami_panel_donor(yami_id: Any, donor_id: Any = None) -> dict[str, Any]:
+    _ensure_yami_visual_config_loaded()
+    yid = _parse_char_id_value(yami_id, 0x17) & 0xFF
+    if yid not in YAMI_NATIVE_BLANK_IDS:
+        return {"ok": False, "error": f"0x{yid:02X} is not a Yami visual ID"}
+    if donor_id is None or str(donor_id).strip().lower() in {"", "none", "native"}:
+        donor: int | None = None
+    else:
+        donor = _parse_char_id_value(donor_id, RYU_VISUAL_PROXY_ID) & 0xFF
+        if donor not in _valid_yami_visual_donor_ids():
+            return {"ok": False, "error": f"0x{donor:02X} is not a stock visual donor"}
+    with _LOCK:
+        YAMI_PANEL_DONOR_BY_ID[yid] = donor
+        _ROSTER_QUEUE.append({"op": "yami_visual_override_apply"})
+        _ROSTER_STATE["queued"] = len(_ROSTER_QUEUE)
+        _ROSTER_STATE["last_action"] = f"{CHAR_ID_TO_NAME.get(yid, 'Yami')} panel donor -> {_yami_visual_donor_label(donor)}"
+    _save_yami_visual_config()
+    return {"ok": True, "queued": True, "yami_id": yid, "donor_id": donor, "donor": _yami_visual_donor_label(donor)}
+
+
+def queue_yami_icon_donor(yami_id: Any, donor_id: Any = None) -> dict[str, Any]:
+    _ensure_yami_visual_config_loaded()
+    yid = _parse_char_id_value(yami_id, 0x17) & 0xFF
+    if yid not in YAMI_NATIVE_BLANK_IDS:
+        return {"ok": False, "error": f"0x{yid:02X} is not a Yami visual ID"}
+    if donor_id is None or str(donor_id).strip().lower() in {"", "none", "native"}:
+        donor: int | None = None
+    else:
+        donor = _parse_char_id_value(donor_id, RYU_VISUAL_PROXY_ID) & 0xFF
+        if donor not in _valid_yami_visual_donor_ids():
+            return {"ok": False, "error": f"0x{donor:02X} is not a stock visual donor"}
+    with _LOCK:
+        YAMI_ICON_DONOR_BY_ID[yid] = donor
+        _ROSTER_QUEUE.append({"op": "yami_visual_override_apply"})
+        _ROSTER_STATE["queued"] = len(_ROSTER_QUEUE)
+        _ROSTER_STATE["last_action"] = f"{CHAR_ID_TO_NAME.get(yid, 'Yami')} icon donor -> {_yami_visual_donor_label(donor)}"
+    _save_yami_visual_config()
+    return {"ok": True, "queued": True, "yami_id": yid, "donor_id": donor, "donor": _yami_visual_donor_label(donor)}
+
+
+def queue_yami_custom_label(yami_id: Any, text: str) -> dict[str, Any]:
+    _ensure_yami_visual_config_loaded()
+    yid = _parse_char_id_value(yami_id, 0x17) & 0xFF
+    if yid not in YAMI_NATIVE_BLANK_IDS:
+        return {"ok": False, "error": f"0x{yid:02X} is not a Yami visual ID"}
+    clean = str(text or "").strip()[:28] or f"YAMI {yid - 0x16}"
+    with _LOCK:
+        YAMI_CUSTOM_NAME_TEXT[yid] = clean
+        _ROSTER_QUEUE.append({"op": "yami_visual_name_apply"})
+        _ROSTER_STATE["queued"] = len(_ROSTER_QUEUE)
+        _ROSTER_STATE["last_action"] = f"{CHAR_ID_TO_NAME.get(yid, 'Yami')} label -> {clean}"
+    _save_yami_visual_config()
+    return {"ok": True, "queued": True, "yami_id": yid, "text": clean}
+
+
 def queue_roster_snapshot() -> dict[str, Any]:
     with _LOCK:
         _ROSTER_QUEUE.append({"op": "snapshot"})
@@ -4912,6 +6946,33 @@ def queue_yami_face_block_copy(donor: str = "gac") -> dict[str, Any]:
         _ROSTER_STATE["queued"] = len(_ROSTER_QUEUE)
         _ROSTER_STATE["last_action"] = f"Yami loaded face-block copy queued: {label}"
     return {"ok": True, "queued": True, "label": label, "donor": donor_key}
+
+
+def _suppress_yami_name_overlay(seconds: float = 5.0) -> None:
+    global _YAMI_NAME_OVERLAY_SUPPRESS_UNTIL
+    try:
+        duration = max(0.5, min(30.0, float(seconds)))
+    except Exception:
+        duration = 5.0
+    _YAMI_NAME_OVERLAY_SUPPRESS_UNTIL = time.monotonic() + duration
+    with _LOCK:
+        _ROSTER_STATE["yami_name_overlay_suppressed"] = True
+        _ROSTER_STATE["last_action"] = f"Yami overlay hidden for {duration:.1f}s; native name visible if binding worked"
+        _ROSTER_STATE["last_error"] = ""
+    _publish_yami_name_overlay_state(force=True)
+
+
+def queue_yami_native_name_test(seconds: float = 5.0) -> dict[str, Any]:
+    """Rescan the native name binding and briefly hide the overlay."""
+    try:
+        duration = max(0.5, min(30.0, float(seconds)))
+    except Exception:
+        duration = 5.0
+    with _LOCK:
+        _ROSTER_QUEUE.append({"op": "yami_native_name_test", "seconds": duration})
+        _ROSTER_STATE["queued"] = len(_ROSTER_QUEUE)
+        _ROSTER_STATE["last_action"] = "native Yami name-pointer rescan queued"
+    return {"ok": True, "queued": True, "seconds": duration}
 
 
 def queue_yami_pane_probe_snapshot() -> dict[str, Any]:
@@ -5866,6 +7927,662 @@ def _install_yami_face_block_copy(donor: str = "gac") -> tuple[int, int]:
     return 0, 1
 
 
+
+def _clear_yami_custom_name_session(*, stale: bool = False) -> None:
+    _YAMI_CUSTOM_NAME_SESSION["texture_addr"] = 0
+    _YAMI_CUSTOM_NAME_SESSION["original"] = b""
+    _YAMI_CUSTOM_NAME_SESSION["last_char_id"] = None
+    _YAMI_CUSTOM_NAME_SESSION["last_hovers"] = (None, None)
+    _YAMI_CUSTOM_NAME_SESSION["format"] = ""
+    _YAMI_CUSTOM_NAME_SESSION["width"] = 0
+    _YAMI_CUSTOM_NAME_SESSION["height"] = 0
+    _YAMI_CUSTOM_NAME_SESSION["source"] = ""
+    _YAMI_CUSTOM_NAME_SESSION["target_filename"] = ""
+    _YAMI_CUSTOM_NAME_SESSION["active_tag"] = ""
+    with _LOCK:
+        _ROSTER_STATE["yami_custom_name_installed"] = False
+        _ROSTER_STATE["yami_custom_name_text"] = ""
+        if stale:
+            _ROSTER_STATE["yami_custom_name_detail"] = "Character Select scene rebuilt; stale name texture session cleared"
+
+
+def _restore_yami_custom_name_texture_only() -> tuple[int, int]:
+    addr = int(_YAMI_CUSTOM_NAME_SESSION.get("texture_addr") or 0)
+    original = bytes(_YAMI_CUSTOM_NAME_SESSION.get("original") or b"")
+    if not addr or not original:
+        with _LOCK:
+            _ROSTER_STATE["yami_custom_name_installed"] = False
+            _ROSTER_STATE["yami_custom_name_text"] = ""
+        return 0, 0
+    # If the scene is gone, this address belongs to a dead heap. Never write it.
+    if not _chrsel_seq_heap_present():
+        _clear_yami_custom_name_session(stale=True)
+        return 0, 0
+    ok = _safe_write_bytes(addr, original)
+    if ok:
+        _clear_yami_custom_name_session()
+        with _LOCK:
+            _ROSTER_STATE["yami_custom_name_detail"] = "Ryu name texture restored"
+        return 1, 0
+    with _LOCK:
+        _ROSTER_STATE["last_error"] = "Yami custom name texture restore failed"
+    return 0, 1
+
+
+def _read_active_face_suffix() -> str:
+    """Read the selected-card donor suffix, preferring the live owner pointer."""
+    owner = _safe_read_u32be(YAMI_PANEL_OWNER_TAG_PTR_ADDR)
+    if owner is not None and 0x80000000 <= int(owner) < 0x94000000:
+        raw = _safe_read(int(owner), 12) or b""
+        tag = bytes(raw).split(b"\x00", 1)[0].decode("ascii", "ignore").strip().lower()
+        known = {bytes(v).split(b"\x00", 1)[0].decode("ascii", "ignore") for v in DOL_UI_TAG_EXPECTED.values()}
+        if tag in known:
+            return tag
+    raw = _safe_read(EXTRA_VISUAL_SCRATCH_SUFFIX_ADDR, 16) or b""
+    tag = bytes(raw).split(b"\x00", 1)[0].decode("ascii", "ignore").strip().lower()
+    if tag and all(ch.isalnum() or ch == "_" for ch in tag):
+        return tag[:8]
+    return ""
+
+
+def _find_yami_name_texture_target(filename: str | None = None) -> dict[str, Any] | None:
+    """Find the name texture actually used by the live large preview card.
+
+    Do not assume the Ryu hover icon implies a Ryu face/name package.  The two
+    paths are independent.  Prefer the live selected-card suffix and then use
+    known loaded donors as guarded fallbacks.
+    """
+    if find_name_tpl is None:
+        return None
+    base = int(YAMI_CUSTOM_NAME_SCAN_BASE)
+    size = int(YAMI_CUSTOM_NAME_SCAN_SIZE)
+    blob = _safe_read(base, size)
+    if not blob or len(blob) < 0x100:
+        return None
+
+    live_tag = _read_active_face_suffix()
+    candidates: list[str] = []
+    if filename:
+        candidates.append(str(filename))
+    if live_tag:
+        candidates.append(f"Name_{live_tag}.tpl")
+    # The hidden Yami large-card fallback seen in live screenshots is gac.
+    # Keep ryu second because the small cursor icon is intentionally Ryu, but
+    # that does not prove the large selected card is Ryu.
+    candidates.extend((
+        "Name_gac.tpl", "Name_ryu.tpl", "Name_chu.tpl", "Name_jun.tpl",
+        "Name_fra.tpl", "Name_tkb.tpl", "Name_ya2.tpl", "Name_tek.tpl", "Name_cas.tpl",
+    ))
+    seen: set[str] = set()
+    for wanted in candidates:
+        key = wanted.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            found = find_name_tpl(blob, wanted)
+        except Exception as exc:
+            with _LOCK:
+                _ROSTER_STATE["yami_custom_name_detail"] = f"name TPL parse failed for {wanted}: {exc!r}"
+            continue
+        if found is None:
+            continue
+        _archive_or_tpl_off, info = found
+        tpl_abs = base + int(info.file_offset)
+        data_addr = tpl_abs + int(info.image_data_offset)
+        palette_bytes = b""
+        if int(info.palette_data_offset or 0) and int(info.palette_entries or 0) > 0:
+            pal_addr = tpl_abs + int(info.palette_data_offset)
+            palette_bytes = _safe_read(pal_addr, int(info.palette_entries) * 2) or b""
+        original = _safe_read(data_addr, int(info.image_data_size))
+        if not original or len(original) != int(info.image_data_size):
+            continue
+
+        # Keep the raw TPL header addresses as evidence. The archive copy uses
+        # relative offsets; the runtime-bound copy we are looking for should
+        # carry an absolute image-data pointer instead.
+        image_header_addr = 0
+        image_data_field_addr = 0
+        try:
+            tpl_head = _safe_read(tpl_abs, 0x10)
+            if len(tpl_head) >= 12:
+                table_rel = int.from_bytes(tpl_head[8:12], "big")
+                desc = _safe_read(tpl_abs + table_rel, 8)
+                if len(desc) >= 4:
+                    image_header_rel = int.from_bytes(desc[:4], "big")
+                    image_header_addr = tpl_abs + image_header_rel
+                    image_data_field_addr = image_header_addr + 8
+        except Exception:
+            image_header_addr = 0
+            image_data_field_addr = 0
+
+        return {
+            "texture_addr": data_addr,
+            "original": bytes(original),
+            "width": int(info.width),
+            "height": int(info.height),
+            "fmt": int(info.fmt),
+            "format_name": str(info.format_name),
+            "palette_bytes": bytes(palette_bytes),
+            "palette_entries": int(info.palette_entries or 0),
+            "palette_format": int(info.palette_format),
+            "tpl_addr": tpl_abs,
+            "image_header_addr": image_header_addr,
+            "image_data_field_addr": image_data_field_addr,
+            "source": wanted,
+            "active_tag": live_tag,
+        }
+    return None
+
+
+def _choose_active_yami_hover() -> int | None:
+    hovers = tuple(_safe_read_u32be(addr) for addr in HOVER_CHAR_ID_ADDRS[:2])
+    old = tuple(_YAMI_CUSTOM_NAME_SESSION.get("last_hovers") or (None, None))
+    _YAMI_CUSTOM_NAME_SESSION["last_hovers"] = hovers
+    # Prefer the lane that actually changed this tick. This makes two-player
+    # navigation deterministic instead of always letting P1 win.
+    for i, value in enumerate(hovers):
+        if value in YAMI_CUSTOM_NAME_TEXT and (i >= len(old) or old[i] != value):
+            return int(value)
+    active = _YAMI_CUSTOM_NAME_SESSION.get("last_char_id")
+    if active in YAMI_CUSTOM_NAME_TEXT and active in hovers:
+        return int(active)
+    for value in hovers:
+        if value in YAMI_CUSTOM_NAME_TEXT:
+            return int(value)
+    return None
+
+
+
+def _clear_yami_native_name_session(*, stale: bool = False) -> None:
+    _YAMI_NATIVE_NAME_SESSION.update({
+        "target_filename": "",
+        "active_tag": "",
+        "source_texture_addr": 0,
+        "source_tpl_addr": 0,
+        "width": 0,
+        "height": 0,
+        "fmt": -1,
+        "format": "",
+        "last_char_id": None,
+        "scratch_addr": 0,
+        "pointer_fields": {},
+        "scan_complete": False,
+        "verified_candidates": [],
+        "raw_texture_refs": [],
+        "tpl_refs": [],
+        "header_refs": [],
+    })
+    with _LOCK:
+        _ROSTER_STATE["yami_native_name_pointer_installed"] = False
+        _ROSTER_STATE["yami_native_name_pointer_text"] = ""
+        if stale:
+            _ROSTER_STATE["yami_native_name_pointer_detail"] = (
+                "Character Select scene rebuilt; stale native name-pointer session cleared"
+            )
+
+
+def _scan_yami_native_name_pointer_evidence(target: dict[str, Any]) -> dict[str, list[int]]:
+    """Find runtime references to the stock name texture without writing them.
+
+    A verified bound TPL image header has this 12-byte shape:
+        u16 height, u16 width, u32 format, u32 absolute_image_pointer
+
+    The source archive copy uses a relative offset in that final word, so an
+    absolute pointer match plus matching geometry is strong evidence that the
+    runtime has already bound/copied the image descriptor.
+    """
+    texture_addr = int(target.get("texture_addr") or 0)
+    tpl_addr = int(target.get("tpl_addr") or 0)
+    image_header_addr = int(target.get("image_header_addr") or 0)
+
+    needles: dict[str, bytes] = {}
+    if texture_addr:
+        needles["texture"] = texture_addr.to_bytes(4, "big")
+    if tpl_addr:
+        needles["tpl"] = tpl_addr.to_bytes(4, "big")
+    if image_header_addr:
+        needles["header"] = image_header_addr.to_bytes(4, "big")
+
+    hits: dict[str, list[int]] = {"texture": [], "tpl": [], "header": [], "verified": []}
+    if not needles:
+        return hits
+
+    max_refs = 128
+    chunk_size = 0x10000
+    for _label, range_base, range_size in YAMI_NATIVE_NAME_POINTER_SCAN_RANGES:
+        end = int(range_base) + int(range_size)
+        pos = int(range_base)
+        while pos < end:
+            take = min(chunk_size, end - pos)
+            blob = _safe_read(pos, take)
+            if not blob:
+                pos += take
+                continue
+            for kind, needle in needles.items():
+                start = 0
+                while len(hits[kind]) < max_refs:
+                    idx = blob.find(needle, start)
+                    if idx < 0:
+                        break
+                    abs_addr = pos + idx
+                    # Runtime pointers/descriptor fields should be word-aligned.
+                    if (abs_addr & 3) == 0:
+                        hits[kind].append(abs_addr)
+                    start = idx + 1
+            pos += take
+
+    height = int(target.get("height") or 0)
+    width = int(target.get("width") or 0)
+    fmt = int(target.get("fmt", -1))
+    for ptr_field in hits["texture"]:
+        if ptr_field < 8:
+            continue
+        hdr = _safe_read(ptr_field - 8, 12)
+        if len(hdr) != 12:
+            continue
+        h = int.from_bytes(hdr[0:2], "big")
+        w = int.from_bytes(hdr[2:4], "big")
+        f = int.from_bytes(hdr[4:8], "big")
+        p = int.from_bytes(hdr[8:12], "big")
+        if h == height and w == width and f == fmt and p == texture_addr:
+            hits["verified"].append(ptr_field)
+
+    # Preserve ordering while removing duplicates.
+    for key, values in tuple(hits.items()):
+        hits[key] = list(dict.fromkeys(int(v) for v in values))
+    return hits
+
+
+def _restore_yami_native_name_pointer_only() -> tuple[int, int]:
+    pointer_fields = dict(_YAMI_NATIVE_NAME_SESSION.get("pointer_fields") or {})
+    if not pointer_fields:
+        with _LOCK:
+            _ROSTER_STATE["yami_native_name_pointer_installed"] = False
+            _ROSTER_STATE["yami_native_name_pointer_text"] = ""
+        return 0, 0
+
+    # Never write stale heap/object addresses after Character Select unloads.
+    if not _chrsel_seq_heap_present():
+        _clear_yami_native_name_session(stale=True)
+        return 0, 0
+
+    scratch_values = {int(v) for v in YAMI_NATIVE_NAME_SCRATCH_ADDRS.values()}
+    wrote = 0
+    failed = 0
+    for field_addr, original_ptr in pointer_fields.items():
+        field_addr = int(field_addr)
+        original_ptr = int(original_ptr)
+        current = _safe_read_u32be(field_addr)
+        # Guard the restore: only undo our own redirected pointer.
+        if current is None:
+            failed += 1
+            continue
+        if int(current) not in scratch_values:
+            continue
+        if _safe_write_u32be(field_addr, original_ptr):
+            wrote += 1
+        else:
+            failed += 1
+
+    _clear_yami_native_name_session()
+    with _LOCK:
+        _ROSTER_STATE["yami_native_name_pointer_detail"] = (
+            f"native name pointer restored ({wrote} pointer{'s' if wrote != 1 else ''})"
+            if failed == 0 else
+            f"native name pointer restore wrote={wrote} failed={failed}"
+        )
+    return wrote, failed
+
+
+def _tick_yami_native_name_pointer_route() -> tuple[int, int]:
+    """Try the native in-game nameplate route using a fresh texture address.
+
+    This intentionally leaves the overlay enabled. The native probe can be
+    visually inspected with the temporary overlay-suppression button in Char Test.
+    """
+    if not YAMI_NATIVE_NAME_POINTER_ENABLED or render_text_rgba is None or encode_texture is None:
+        return 0, 0
+
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+
+    if not bool(status.get("active")) or not requested or not enabled or not bool(status.get("patch_present")):
+        if bool(status.get("active")):
+            return _restore_yami_native_name_pointer_only()
+        _clear_yami_native_name_session(stale=True)
+        return 0, 0
+
+    target_id = _choose_active_yami_hover()
+    if target_id is None:
+        return _restore_yami_native_name_pointer_only()
+
+    text = str(YAMI_CUSTOM_NAME_TEXT[int(target_id)])
+    live_tag = _read_active_face_suffix()
+    wanted = f"Name_{live_tag}.tpl" if live_tag else ""
+    current_file = str(_YAMI_NATIVE_NAME_SESSION.get("target_filename") or "")
+
+    # Big-card donor changed underneath the same Ryu/Yami wheel icon.
+    if current_file and wanted and current_file.lower() != wanted.lower():
+        _restore_yami_native_name_pointer_only()
+
+    target = _find_yami_name_texture_target(wanted or None)
+    if target is None:
+        with _LOCK:
+            _ROSTER_STATE["yami_native_name_pointer_installed"] = False
+            _ROSTER_STATE["yami_native_name_pointer_text"] = ""
+            _ROSTER_STATE["yami_native_name_pointer_detail"] = (
+                f"native probe: active big-card tag={live_tag or '?'}; Name_*.tpl not found"
+            )
+        return 0, 0
+
+    source_texture_addr = int(target.get("texture_addr") or 0)
+    target_file = str(target.get("source") or "")
+    same_source = bool(
+        current_file
+        and current_file.lower() == target_file.lower()
+        and int(_YAMI_NATIVE_NAME_SESSION.get("source_texture_addr") or 0) == source_texture_addr
+    )
+
+    # Once this source/form has been scanned, stay quiet. This applies even
+    # when no verified pointer was found; otherwise a failed native probe would
+    # rescan/write scratch memory every 50 ms. The Char Test rescan button clears
+    # the session explicitly when we want another attempt.
+    if (
+        same_source
+        and _YAMI_NATIVE_NAME_SESSION.get("last_char_id") == int(target_id)
+        and bool(_YAMI_NATIVE_NAME_SESSION.get("scan_complete"))
+    ):
+        return 0, 0
+
+    try:
+        pixels = render_text_rgba(int(target["width"]), int(target["height"]), text)
+        encoded = encode_texture(
+            pixels,
+            int(target["width"]),
+            int(target["height"]),
+            int(target["fmt"]),
+            palette_bytes=bytes(target.get("palette_bytes") or b""),
+            palette_entries=int(target.get("palette_entries") or 0),
+            palette_format=int(target.get("palette_format", -1)),
+        )
+    except Exception as exc:
+        with _LOCK:
+            _ROSTER_STATE["yami_native_name_pointer_detail"] = f"native probe encode failed: {exc}"
+            _ROSTER_STATE["last_error"] = f"Yami native pointer encode failed: {exc!r}"
+        return 0, 1
+
+    scratch_addr = int(YAMI_NATIVE_NAME_SCRATCH_ADDRS[int(target_id)])
+    if not encoded or len(encoded) > int(YAMI_NATIVE_NAME_SCRATCH_MAX):
+        with _LOCK:
+            _ROSTER_STATE["yami_native_name_pointer_detail"] = (
+                f"native probe rejected texture size 0x{len(encoded):X}; scratch max "
+                f"0x{int(YAMI_NATIVE_NAME_SCRATCH_MAX):X}"
+            )
+        return 0, 1
+    if not _safe_write_bytes(scratch_addr, bytes(encoded)):
+        with _LOCK:
+            _ROSTER_STATE["yami_native_name_pointer_detail"] = (
+                f"native probe could not write scratch texture @ 0x{scratch_addr:08X}"
+            )
+        return 0, 1
+
+    evidence: dict[str, list[int]]
+    pointer_fields = dict(_YAMI_NATIVE_NAME_SESSION.get("pointer_fields") or {})
+    scan_complete = bool(_YAMI_NATIVE_NAME_SESSION.get("scan_complete"))
+    if same_source and scan_complete:
+        evidence = {
+            "verified": [int(x) for x in _YAMI_NATIVE_NAME_SESSION.get("verified_candidates") or []],
+            "texture": [int(x) for x in _YAMI_NATIVE_NAME_SESSION.get("raw_texture_refs") or []],
+            "tpl": [int(x) for x in _YAMI_NATIVE_NAME_SESSION.get("tpl_refs") or []],
+            "header": [int(x) for x in _YAMI_NATIVE_NAME_SESSION.get("header_refs") or []],
+        }
+    else:
+        evidence = _scan_yami_native_name_pointer_evidence(target)
+        verified = list(evidence.get("verified") or [])[: int(YAMI_NATIVE_NAME_MAX_POINTER_PATCHES)]
+        pointer_fields = {}
+        for field_addr in verified:
+            original_ptr = _safe_read_u32be(int(field_addr))
+            if original_ptr == source_texture_addr:
+                pointer_fields[int(field_addr)] = int(original_ptr)
+
+        _YAMI_NATIVE_NAME_SESSION.update({
+            "target_filename": target_file,
+            "active_tag": str(target.get("active_tag") or live_tag),
+            "source_texture_addr": source_texture_addr,
+            "source_tpl_addr": int(target.get("tpl_addr") or 0),
+            "width": int(target.get("width") or 0),
+            "height": int(target.get("height") or 0),
+            "fmt": int(target.get("fmt", -1)),
+            "format": str(target.get("format_name") or ""),
+            "pointer_fields": pointer_fields,
+            "scan_complete": True,
+            "verified_candidates": list(evidence.get("verified") or []),
+            "raw_texture_refs": list(evidence.get("texture") or []),
+            "tpl_refs": list(evidence.get("tpl") or []),
+            "header_refs": list(evidence.get("header") or []),
+        })
+
+    if not pointer_fields:
+        _YAMI_NATIVE_NAME_SESSION["last_char_id"] = int(target_id)
+        _YAMI_NATIVE_NAME_SESSION["scratch_addr"] = scratch_addr
+        raw_refs = list(evidence.get("texture") or [])
+        tpl_refs = list(evidence.get("tpl") or [])
+        header_refs = list(evidence.get("header") or [])
+        sample = ", ".join(f"0x{x:08X}" for x in raw_refs[:4]) or "none"
+        with _LOCK:
+            _ROSTER_STATE["yami_native_name_pointer_installed"] = False
+            _ROSTER_STATE["yami_native_name_pointer_text"] = ""
+            _ROSTER_STATE["yami_native_name_pointer_detail"] = (
+                f"native probe: 0 verified bound TPL headers; "
+                f"{len(raw_refs)} raw texture refs ({sample}); "
+                f"{len(tpl_refs)} TPL refs; {len(header_refs)} image-header refs"
+            )
+        return 0, 0
+
+    wrote = 0
+    failed = 0
+    for field_addr, original_ptr in pointer_fields.items():
+        current = _safe_read_u32be(int(field_addr))
+        # Accept either stock pointer or another Yami scratch pointer when
+        # switching YAMI 1 -> 2 -> 3 without restoring in between.
+        if current is None:
+            failed += 1
+            continue
+        if int(current) != int(original_ptr) and int(current) not in set(YAMI_NATIVE_NAME_SCRATCH_ADDRS.values()):
+            failed += 1
+            continue
+        if _safe_write_u32be(int(field_addr), scratch_addr):
+            wrote += 1
+        else:
+            failed += 1
+
+    _YAMI_NATIVE_NAME_SESSION["last_char_id"] = int(target_id)
+    _YAMI_NATIVE_NAME_SESSION["scratch_addr"] = scratch_addr
+    verified_all = list(_YAMI_NATIVE_NAME_SESSION.get("verified_candidates") or [])
+    field_sample = ", ".join(f"0x{x:08X}" for x in list(pointer_fields)[:4])
+    with _LOCK:
+        _ROSTER_STATE["yami_native_name_pointer_installed"] = bool(wrote and failed == 0)
+        _ROSTER_STATE["yami_native_name_pointer_text"] = text if wrote else ""
+        _ROSTER_STATE["yami_native_name_pointer_detail"] = (
+            f"{text}: fresh texture 0x{scratch_addr:08X}; redirected {wrote}/"
+            f"{len(pointer_fields)} verified pointer fields [{field_sample}]; "
+            f"{len(verified_all)} verified candidates total"
+        )
+        if failed:
+            _ROSTER_STATE["last_error"] = f"Yami native name pointer redirect failed={failed}"
+    return wrote, failed
+
+
+def _yami_overlay_lane_text(value: int | None) -> str:
+    try:
+        return str(YAMI_CUSTOM_NAME_TEXT.get(int(value), ""))
+    except Exception:
+        return ""
+
+
+def _publish_yami_name_overlay_state(*, force: bool = False) -> None:
+    """Publish the tiny state consumed by the Dolphin-parented name overlay.
+
+    Presentation only: no character IDs, resources, textures, or gameplay state
+    are changed here.
+    """
+    global _YAMI_NAME_OVERLAY_LAST_JSON
+    path = str(YAMI_NAME_OVERLAY_STATE_FILE or "")
+    if not path:
+        return
+
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+
+    active_scene = bool(status.get("active")) and requested and enabled
+    p1_id = _safe_read_u32be(HOVER_CHAR_ID_ADDRS[0]) if active_scene else None
+    p2_id = _safe_read_u32be(HOVER_CHAR_ID_ADDRS[1]) if active_scene else None
+    p1 = _yami_overlay_lane_text(p1_id)
+    p2 = _yami_overlay_lane_text(p2_id)
+    suppressed = bool(time.monotonic() < float(_YAMI_NAME_OVERLAY_SUPPRESS_UNTIL))
+
+    payload = {
+        "active": bool(active_scene and (p1 or p2) and not suppressed),
+        "scene_active": bool(active_scene),
+        "p1": p1,
+        "p2": p2,
+        "p1_id": int(p1_id) if p1_id is not None else None,
+        "p2_id": int(p2_id) if p2_id is not None else None,
+        "mode": "overlay_nameplate",
+        "suppressed": bool(suppressed),
+    }
+    text = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    if not force and text == _YAMI_NAME_OVERLAY_LAST_JSON:
+        return
+
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+        _YAMI_NAME_OVERLAY_LAST_JSON = text
+        with _LOCK:
+            _ROSTER_STATE["yami_custom_name_installed"] = bool(payload["active"])
+            _ROSTER_STATE["yami_custom_name_text"] = p1 or p2
+            _ROSTER_STATE["yami_name_overlay_suppressed"] = bool(suppressed)
+            _ROSTER_STATE["yami_custom_name_detail"] = (
+                ("overlay temporarily hidden for native-name inspection"
+                 if suppressed and active_scene else
+                 f"overlay label P1={p1 or '-'} P2={p2 or '-'}")
+                if active_scene else "Yami name overlay idle"
+            )
+    except Exception as exc:
+        with _LOCK:
+            _ROSTER_STATE["last_error"] = f"Yami name overlay publish failed: {exc!r}"
+
+
+def _tick_yami_custom_name_texture_route() -> tuple[int, int]:
+    """Render YAMI 1/2/3 into the native selected-card name texture only."""
+    if not YAMI_CUSTOM_NAME_ENABLED or render_text_rgba is None or encode_texture is None:
+        return 0, 0
+    status = _select_screen_status()
+    with _LOCK:
+        requested = bool(_ROSTER_STATE.get("extra_characters_requested"))
+        enabled = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+    if not bool(status.get("active")) or not requested or not enabled or not bool(status.get("patch_present")):
+        if bool(status.get("active")):
+            return _restore_yami_custom_name_texture_only()
+        _clear_yami_custom_name_session(stale=True)
+        return 0, 0
+
+    target_id = _choose_active_yami_hover()
+    if target_id is None:
+        return _restore_yami_custom_name_texture_only()
+    text = str(YAMI_CUSTOM_NAME_TEXT[int(target_id)])
+
+    live_tag = _read_active_face_suffix()
+    wanted = f"Name_{live_tag}.tpl" if live_tag else ""
+    session_file = str(_YAMI_CUSTOM_NAME_SESSION.get("target_filename") or "")
+
+    # The large card may change donor independently of the small Ryu hover icon.
+    # Restore any previous donor before owning the newly active name texture.
+    if session_file and wanted and session_file.lower() != wanted.lower():
+        _restore_yami_custom_name_texture_only()
+
+    addr = int(_YAMI_CUSTOM_NAME_SESSION.get("texture_addr") or 0)
+    original = bytes(_YAMI_CUSTOM_NAME_SESSION.get("original") or b"")
+    target: dict[str, Any] | None = None
+    if not addr or not original:
+        target = _find_yami_name_texture_target(wanted or None)
+        if target is None:
+            with _LOCK:
+                _ROSTER_STATE["yami_custom_name_installed"] = False
+                _ROSTER_STATE["yami_custom_name_text"] = ""
+                _ROSTER_STATE["yami_custom_name_detail"] = (
+                    f"active big-card tag={live_tag or '?'}; matching Name_*.tpl was not located"
+                )
+            return 0, 0
+        _YAMI_CUSTOM_NAME_SESSION.update({
+            "texture_addr": int(target["texture_addr"]),
+            "original": bytes(target["original"]),
+            "format": str(target["format_name"]),
+            "width": int(target["width"]),
+            "height": int(target["height"]),
+            "source": str(target["source"]),
+            "target_filename": str(target["source"]),
+            "active_tag": str(target.get("active_tag") or live_tag),
+        })
+        addr = int(target["texture_addr"])
+        original = bytes(target["original"])
+    else:
+        target = _find_yami_name_texture_target(session_file or wanted or None)
+        if target is None or int(target.get("texture_addr") or 0) != addr:
+            _clear_yami_custom_name_session(stale=True)
+            return 0, 0
+
+    if _YAMI_CUSTOM_NAME_SESSION.get("last_char_id") == int(target_id):
+        return 0, 0
+
+    try:
+        pixels = render_text_rgba(int(target["width"]), int(target["height"]), text)
+        encoded = encode_texture(
+            pixels,
+            int(target["width"]),
+            int(target["height"]),
+            int(target["fmt"]),
+            palette_bytes=bytes(target.get("palette_bytes") or b""),
+            palette_entries=int(target.get("palette_entries") or 0),
+            palette_format=int(target.get("palette_format", -1)),
+        )
+    except Exception as exc:
+        with _LOCK:
+            _ROSTER_STATE["yami_custom_name_installed"] = False
+            _ROSTER_STATE["yami_custom_name_detail"] = f"custom name encode unsupported: {exc}"
+            _ROSTER_STATE["last_error"] = f"Yami custom name encode failed: {exc!r}"
+        return 0, 1
+
+    if len(encoded) != len(original):
+        with _LOCK:
+            _ROSTER_STATE["last_error"] = "Yami custom name encoded payload size mismatch"
+        return 0, 1
+    if not _safe_write_bytes(addr, encoded):
+        with _LOCK:
+            _ROSTER_STATE["last_error"] = "Yami custom name texture write failed"
+        return 0, 1
+
+    _YAMI_CUSTOM_NAME_SESSION["last_char_id"] = int(target_id)
+    with _LOCK:
+        _ROSTER_STATE["yami_custom_name_installed"] = True
+        _ROSTER_STATE["yami_custom_name_text"] = text
+        _ROSTER_STATE["yami_custom_name_detail"] = (
+            f"{text} -> {target['source']} (live big-card tag={live_tag or '?'}) pixels; "
+            f"{int(target['width'])}x{int(target['height'])} {target['format_name']} @ 0x{addr:08X}"
+        )
+        _ROSTER_STATE["last_error"] = ""
+    return 1, 0
+
+
 def _force_yami_hover(slot: int, target: int) -> tuple[int, int]:
     wrote = 0
     failed = 0
@@ -5904,6 +8621,26 @@ def _do_restore() -> dict[str, int]:
     restored += w
     failed += f
 
+    w, f = _restore_yami_panel_seq5c_code_route_only()
+    restored += w
+    failed += f
+
+    w, f = _restore_yami_panel_hidden_seq_route_only()
+    restored += w
+    failed += f
+
+    w, f = _restore_yami_panel_seq37_route_only(keep_scan=False)
+    restored += w
+    failed += f
+
+    w, f = _restore_yami_panel_override_route_only()
+    restored += w
+    failed += f
+
+    w, f = _restore_yami_icon_override_route_only()
+    restored += w
+    failed += f
+
     w, f = _restore_yami_dol_icon_tag_route_only()
     restored += w
     failed += f
@@ -5916,6 +8653,14 @@ def _do_restore() -> dict[str, int]:
     restored += w
     failed += f
     w, f = _restore_yami_wheel_random_icon_route_only()
+    restored += w
+    failed += f
+
+    w, f = _restore_yami_native_name_pointer_only()
+    restored += w
+    failed += f
+
+    w, f = _restore_yami_custom_name_texture_only()
     restored += w
     failed += f
 
@@ -5972,6 +8717,12 @@ def _do_restore() -> dict[str, int]:
             _ROSTER_STATE["yami_hover_display_profile_installed"] = False
             _ROSTER_STATE["yami_hover_display_profile_mode"] = ""
             _ROSTER_STATE["yami_hover_display_profile_detail"] = ""
+            _ROSTER_STATE["yami_visual_panel_installed"] = False
+            _ROSTER_STATE["yami_visual_panel_mode"] = ""
+            _ROSTER_STATE["yami_visual_panel_detail"] = ""
+            _ROSTER_STATE["yami_visual_icon_installed"] = False
+            _ROSTER_STATE["yami_visual_icon_mode"] = ""
+            _ROSTER_STATE["yami_visual_icon_detail"] = ""
             _ROSTER_STATE["yami_dol_icon_tag_installed"] = False
             _ROSTER_STATE["yami_dol_icon_tag_mode"] = ""
             _ROSTER_STATE["yami_dol_icon_tag_detail"] = ""
@@ -6018,11 +8769,19 @@ def _tick_roster_actions() -> None:
         # Restore only our wheel icon bindings before normal roster cleanup.
         # Also clean a scene-route patch left by an older build; this build never
         # applies that large-preview route.
+        _restore_yami_panel_override_route_only()
+        _restore_yami_icon_override_route_only()
         _restore_yami_dol_icon_tag_route_only()
+        _restore_yami_panel_seq5c_code_route_only()
+        _restore_yami_panel_hidden_seq_route_only()
+        _restore_yami_panel_seq37_route_only(keep_scan=False)
+        _restore_yami_panel_owner_route_only()
         _restore_yami_hover_display_profile_route_only()
         _restore_yami_hover_icon_id_route_only()
         _restore_yami_wheel_random_icon_route_only()
         _restore_yami_runtime_preview_route_only()
+        _restore_yami_native_name_pointer_only()
+        _publish_yami_name_overlay_state(force=True)
         if not bool(status.get("patch_present") or status.get("extended_layout_present")):
             return
         with _LOCK:
@@ -6045,11 +8804,25 @@ def _tick_roster_actions() -> None:
 
     if extra_requested:
         _tick_extra_characters_request()
-        # Core Extra Characters and mixed giant routes are one-shot. The only
-        # presentation cache that remains dynamic belongs to the optional Solo
-        # null slot, so do not service it unless Solo Team is requested.
-        if solo_requested:
-            _tick_yami_hover_display_profile_route()
+        # Presentation overrides are independent from fighter identity. Keep
+        # them serviced while Extra Characters is live so a rebuilt
+        # Character Select scene immediately gets the configured panel/icon
+        # donors without touching the Yami roster IDs.
+        # Small cursor/wheel icons keep the proven 16-bit material-ID route.
+        # The old DOL tag-map panel route is intentionally not serviced here:
+        # live testing proved it can contain the requested donor and still have
+        # zero effect on the instantiated big card.
+        _ensure_yami_visual_config_loaded()
+        _visual_wrote, _visual_failed = _apply_yami_icon_override_route()
+        # Large card/panel donor goes through the verified hidden-Yami scene
+        # strings themselves: native `select_gac` is the stubborn Ken card.
+        _panel_wrote, _panel_failed = _tick_yami_panel_hidden_seq_route()
+        _visual_wrote += _panel_wrote
+        _visual_failed += _panel_failed
+        if _visual_wrote or _visual_failed:
+            with _LOCK:
+                _ROSTER_STATE["patches"] = int(_ROSTER_STATE.get("patches", 0) or 0) + int(_visual_wrote)
+                _ROSTER_STATE["failed"] = int(_ROSTER_STATE.get("failed", 0) or 0) + int(_visual_failed)
         _clear_mixed_giant_partner_latches()
     else:
         _clear_mixed_giant_partner_latches()
@@ -6094,6 +8867,7 @@ def _tick_roster_actions() -> None:
                 "yami_far_donor_probe",
                 "yami_face_resource_probe",
                 "yami_face_block_copy",
+                "yami_native_name_test",
                 "yami_pane_probe_snapshot",
                 "yami_frank_face_lock",
                 "yami_ken_dupe_soft_frank",
@@ -6104,6 +8878,8 @@ def _tick_roster_actions() -> None:
                 "yami_visual_table_frank_append",
                 "yami_visual_table_native_append",
                 "yami_visual_table_three_donor_append",
+                "yami_visual_override_apply",
+                "yami_visual_name_apply",
                 "extra_chars_on",
                 "extra_chars_off",
                 "solo_team_on",
@@ -6158,6 +8934,15 @@ def _tick_roster_actions() -> None:
                     w, f = _install_yami_face_block_copy(str(action.get("donor") or "gac"))
                     wrote += w
                     failed += f
+                if op == "yami_native_name_test":
+                    w, f = _restore_yami_native_name_pointer_only()
+                    wrote += w
+                    failed += f
+                    _clear_yami_native_name_session()
+                    _suppress_yami_name_overlay(float(action.get("seconds", 5.0) or 5.0))
+                    w, f = _tick_yami_native_name_pointer_route()
+                    wrote += w
+                    failed += f
                 if op == "yami_pane_probe_snapshot":
                     _capture_yami_pane_probe_snapshot()
                 if op == "yami_frank_face_lock":
@@ -6192,12 +8977,39 @@ def _tick_roster_actions() -> None:
                     w, f = _install_yami_visual_table_append(VISUAL_TABLE_THREE_DONOR_APPEND_INDEX, VISUAL_TABLE_THREE_DONOR_LABEL)
                     wrote += w
                     failed += f
+                if op == "yami_visual_override_apply":
+                    _ensure_yami_visual_config_loaded()
+                    status = _select_screen_status()
+                    with _LOCK:
+                        _extra_requested_for_visual = bool(_ROSTER_STATE.get("extra_characters_requested"))
+                        _extra_enabled_for_visual = bool(_ROSTER_STATE.get("extra_characters_enabled"))
+                    if status.get("active") and _extra_requested_for_visual and _extra_enabled_for_visual:
+                        # Icon route is static per-row. Panel route is live per
+                        # hover, so update the upstream owner immediately too.
+                        w, f = _apply_yami_icon_override_route()
+                        wrote += w
+                        failed += f
+                        w, f = _tick_yami_panel_hidden_seq_route()
+                        wrote += w
+                        failed += f
+                    else:
+                        with _LOCK:
+                            _ROSTER_STATE["last_action"] = "Yami visual override saved; will apply on active Character Select"
+                if op == "yami_visual_name_apply":
+                    _publish_yami_name_overlay_state(force=True)
                 if op == "extra_chars_on":
                     status = _update_extra_guard_state()
                     if status.get("active"):
                         w, f = _install_extra_characters_on()
                         wrote += w
                         failed += f
+                        if f == 0:
+                            w, f = _apply_yami_icon_override_route()
+                            wrote += w
+                            failed += f
+                            w, f = _tick_yami_panel_hidden_seq_route()
+                            wrote += w
+                            failed += f
                     else:
                         with _LOCK:
                             _ROSTER_STATE["extra_characters_requested"] = True
@@ -6205,8 +9017,29 @@ def _tick_roster_actions() -> None:
                             _ROSTER_STATE["last_action"] = "Extra characters ON deferred; not on character select"
                             _ROSTER_STATE["last_error"] = ""
                 if op == "extra_chars_off":
+                    w, f = _restore_yami_panel_override_route_only()
+                    wrote += w
+                    failed += f
+                    w, f = _restore_yami_panel_seq5c_code_route_only()
+                    wrote += w
+                    failed += f
+                    w, f = _restore_yami_panel_hidden_seq_route_only()
+                    wrote += w
+                    failed += f
+                    w, f = _restore_yami_panel_seq37_route_only(keep_scan=False)
+                    wrote += w
+                    failed += f
+                    w, f = _restore_yami_panel_owner_route_only()
+                    wrote += w
+                    failed += f
+                    w, f = _restore_yami_icon_override_route_only()
+                    wrote += w
+                    failed += f
                     status = _update_extra_guard_state()
                     if status.get("active"):
+                        w, f = _restore_yami_native_name_pointer_only()
+                        wrote += w
+                        failed += f
                         w, f = _restore_mixed_giant_sequence_gate()
                         wrote += w
                         failed += f
@@ -6331,6 +9164,7 @@ def _tick_roster_actions() -> None:
 
 
 def get_roster_patch_state() -> dict[str, Any]:
+    _ensure_yami_visual_config_loaded()
     with _LOCK:
         state = dict(_ROSTER_STATE)
         state["restore_available"] = bool(_ROSTER_ORIGINALS or _ROSTER_BYTE_ORIGINALS)
@@ -6350,6 +9184,8 @@ def get_roster_patch_state() -> dict[str, Any]:
         ]
         state["clone_count"] = f"0x{YAMI_CLONE_COUNT:02X}"
         state["count_addrs"] = {f"0x{addr:08X}": label for addr, label in ROSTER_COUNT_ADDRS}
+        state["yami_visual_overrides"] = get_yami_visual_override_state()
+        state["yami_visual_donors"] = get_yami_visual_donor_choices()
         state["visual_alias_presets"] = {
             key: {
                 "label": preset_label,
@@ -6374,6 +9210,37 @@ def get_roster_patch_state() -> dict[str, Any]:
         ]
         state["face_resource_donors"] = {k: v[0] for k, v in FACE_RESOURCE_DONORS.items()}
         state["face_block_copy_donors"] = {k: v[0] for k, v in FACE_BLOCK_COPY_DONORS.items()}
+        state["yami_custom_name_session"] = {
+            "texture_addr": _hex(int(_YAMI_CUSTOM_NAME_SESSION.get("texture_addr") or 0)) if _YAMI_CUSTOM_NAME_SESSION.get("texture_addr") else "",
+            "format": str(_YAMI_CUSTOM_NAME_SESSION.get("format") or ""),
+            "width": int(_YAMI_CUSTOM_NAME_SESSION.get("width") or 0),
+            "height": int(_YAMI_CUSTOM_NAME_SESSION.get("height") or 0),
+            "last_char_id": _YAMI_CUSTOM_NAME_SESSION.get("last_char_id"),
+            "target_filename": str(_YAMI_CUSTOM_NAME_SESSION.get("target_filename") or ""),
+            "active_tag": str(_YAMI_CUSTOM_NAME_SESSION.get("active_tag") or ""),
+        }
+        state["yami_native_name_session"] = {
+            "source_texture_addr": _hex(int(_YAMI_NATIVE_NAME_SESSION.get("source_texture_addr") or 0)) if _YAMI_NATIVE_NAME_SESSION.get("source_texture_addr") else "",
+            "source_tpl_addr": _hex(int(_YAMI_NATIVE_NAME_SESSION.get("source_tpl_addr") or 0)) if _YAMI_NATIVE_NAME_SESSION.get("source_tpl_addr") else "",
+            "scratch_addr": _hex(int(_YAMI_NATIVE_NAME_SESSION.get("scratch_addr") or 0)) if _YAMI_NATIVE_NAME_SESSION.get("scratch_addr") else "",
+            "format": str(_YAMI_NATIVE_NAME_SESSION.get("format") or ""),
+            "width": int(_YAMI_NATIVE_NAME_SESSION.get("width") or 0),
+            "height": int(_YAMI_NATIVE_NAME_SESSION.get("height") or 0),
+            "last_char_id": _YAMI_NATIVE_NAME_SESSION.get("last_char_id"),
+            "target_filename": str(_YAMI_NATIVE_NAME_SESSION.get("target_filename") or ""),
+            "active_tag": str(_YAMI_NATIVE_NAME_SESSION.get("active_tag") or ""),
+            "verified_candidates": [f"0x{int(x):08X}" for x in (_YAMI_NATIVE_NAME_SESSION.get("verified_candidates") or [])],
+            "raw_texture_refs": [f"0x{int(x):08X}" for x in (_YAMI_NATIVE_NAME_SESSION.get("raw_texture_refs") or [])],
+            "tpl_refs": [f"0x{int(x):08X}" for x in (_YAMI_NATIVE_NAME_SESSION.get("tpl_refs") or [])],
+            "header_refs": [f"0x{int(x):08X}" for x in (_YAMI_NATIVE_NAME_SESSION.get("header_refs") or [])],
+            "pointer_fields": {
+                f"0x{int(addr):08X}": f"0x{int(value):08X}"
+                for addr, value in dict(_YAMI_NATIVE_NAME_SESSION.get("pointer_fields") or {}).items()
+            },
+        }
+        state["yami_name_overlay_suppressed"] = bool(
+            time.monotonic() < float(_YAMI_NAME_OVERLAY_SUPPRESS_UNTIL)
+        )
         state["face_resource_plan"] = [
             {"addr": _hex(addr), "expected": expected.decode("ascii", "replace"), "label": label}
             for addr, expected, label in FACE_RESOURCE_FIELD_PLAN
@@ -6407,20 +9274,96 @@ def char_test_needs_service() -> bool:
             _ROSTER_STATE.get("extra_characters_requested")
             and not _ROSTER_STATE.get("extra_characters_enabled")
         )
+        custom_name_live = bool(
+            YAMI_CUSTOM_NAME_ENABLED
+            and _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
+        native_name_live = bool(
+            YAMI_NATIVE_NAME_POINTER_ENABLED
+            and _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
+        overlay_name_live = bool(
+            YAMI_NAME_OVERLAY_ENABLED
+            and _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
+        panel_hidden_seq_live = bool(
+            _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
         return bool(
             _ROSTER_QUEUE
             or extra_waiting
             or _ROSTER_STATE.get("solo_team_requested")
+            or custom_name_live
+            or native_name_live
+            or overlay_name_live
+            or panel_hidden_seq_live
         )
 
 
 def tick_char_test() -> None:
-    global _CHAR_TEST_LAST_SERVICE
+    global _CHAR_TEST_LAST_SERVICE, _YAMI_CUSTOM_NAME_LAST_TICK, _YAMI_NATIVE_NAME_LAST_TICK, _YAMI_NAME_OVERLAY_LAST_TICK, _YAMI_PANEL_HIDDEN_SEQ_LAST_TICK
     if not char_test_needs_service():
         return
     now = time.monotonic()
     with _LOCK:
         has_queued_action = bool(_ROSTER_QUEUE)
+        extra_waiting = bool(
+            _ROSTER_STATE.get("extra_characters_requested")
+            and not _ROSTER_STATE.get("extra_characters_enabled")
+        )
+        solo_requested = bool(_ROSTER_STATE.get("solo_team_requested"))
+        custom_name_live = bool(
+            YAMI_CUSTOM_NAME_ENABLED
+            and _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
+        native_name_live = bool(
+            YAMI_NATIVE_NAME_POINTER_ENABLED
+            and _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
+        overlay_name_live = bool(
+            YAMI_NAME_OVERLAY_ENABLED
+            and _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
+        panel_hidden_seq_live = bool(
+            _ROSTER_STATE.get("extra_characters_requested")
+            and _ROSTER_STATE.get("extra_characters_enabled")
+        )
+
+    # The hidden-Yami scene strings are tiny same-length data edits. Service
+    # them at frame-like cadence so each Yami form can have its own configured
+    # donor and native `select_gac` is restored immediately when hover leaves.
+    if panel_hidden_seq_live and (now - float(_YAMI_PANEL_HIDDEN_SEQ_LAST_TICK)) >= YAMI_PANEL_HIDDEN_SEQ_TICK_SEC:
+        _YAMI_PANEL_HIDDEN_SEQ_LAST_TICK = now
+        _tick_yami_panel_hidden_seq_route()
+
+    if overlay_name_live and (now - float(_YAMI_NAME_OVERLAY_LAST_TICK)) >= YAMI_NAME_OVERLAY_TICK_SEC:
+        _YAMI_NAME_OVERLAY_LAST_TICK = now
+        _publish_yami_name_overlay_state()
+
+    # Native pointer rebinding is also a tiny steady-state service: after the
+    # one-time pointer scan it reads two hover IDs and only rewrites a pointer
+    # when the hovered Yami form changes.
+    if native_name_live and (now - float(_YAMI_NATIVE_NAME_LAST_TICK)) >= YAMI_NATIVE_NAME_TICK_SEC:
+        _YAMI_NATIVE_NAME_LAST_TICK = now
+        _tick_yami_native_name_pointer_route()
+
+    # Legacy same-address texture writer remains disabled by default.
+    if custom_name_live and (now - float(_YAMI_CUSTOM_NAME_LAST_TICK)) >= YAMI_CUSTOM_NAME_TICK_SEC:
+        _YAMI_CUSTOM_NAME_LAST_TICK = now
+        _tick_yami_custom_name_texture_route()
+
+    # Preserve the old quiet one-shot roster service cadence. Do not run the
+    # heavyweight roster transaction every 50 ms merely because custom names are live.
+    needs_roster = bool(has_queued_action or extra_waiting or solo_requested)
+    if not needs_roster:
+        return
     if not has_queued_action and (now - float(_CHAR_TEST_LAST_SERVICE)) < _CHAR_TEST_SERVICE_MIN_INTERVAL_SEC:
         return
     _CHAR_TEST_LAST_SERVICE = now

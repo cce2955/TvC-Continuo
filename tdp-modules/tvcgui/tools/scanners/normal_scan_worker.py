@@ -1,8 +1,9 @@
 # Background normal-scan coordinator.
 #
-# Compact HUD cache reads stay in a lightweight thread. Expensive dynamic and
-# workbench scans run in a separate process so Python parsing and profile writes
-# cannot monopolize the HUD process through the GIL.
+# Compact HUD/cache reads stay in a lightweight thread. Expensive dynamic
+# discovery runs in a separate process so Python parsing and profile writes
+# cannot monopolize the HUD process through the GIL. Workbench opens use the
+# in-process saved profile cache and do not pay Windows/PyInstaller spawn cost.
 
 from __future__ import annotations
 
@@ -193,22 +194,28 @@ class ScanNormalsWorker(threading.Thread):
                         res = self._full_scan_func(**full_kwargs) if full_kwargs else self._full_scan_func()
                         rich = res
                 elif want_workbench and self._workbench_scan_func is not None:
+                    # Workbench requests are cache-only profile loads. Spawning
+                    # a second Python/PyInstaller process on Windows is very
+                    # expensive and also throws away the in-process profile
+                    # cache. Dynamic/full discovery remains process-isolated.
                     mode = "workbench"
-                    if self._isolate_heavy_scans:
-                        try:
-                            compact, rich = self._run_isolated(mode, {}, retain_rich=retain_rich)
-                            res = rich if retain_rich and rich is not None else compact
-                            if retain_rich and rich is not None:
-                                self._cached_compact_after_heavy = compact
-                            else:
-                                mode = "workbench_compact"
-                        except Exception as isolated_error:
-                            print(f"[fd profile] isolated workbench unavailable, using compatibility fallback: {isolated_error}", flush=True)
-                            res = self._workbench_scan_func()
-                            rich = res
-                    else:
+                    res = None
+                    # The compact scanner already resolved slot identity/table
+                    # signature. If that snapshot is fresh, load the rich saved
+                    # profile directly from it with zero additional Dolphin
+                    # table reads. Fall back when stale/invalid so correctness
+                    # always wins over startup speed.
+                    try:
+                        age = time.time() - float(self._last_ts or 0.0)
+                        snapshot = self._last if 0.0 <= age <= 2.0 else None
+                        if snapshot is not None:
+                            from tvcgui.tools.scanners import normal_scanner
+                            res = normal_scanner.load_workbench_from_snapshot(snapshot)
+                    except Exception:
+                        res = None
+                    if res is None:
                         res = self._workbench_scan_func()
-                        rich = res
+                    rich = res
                 else:
                     if self._cached_compact_after_heavy is not None:
                         res = self._cached_compact_after_heavy

@@ -1,11 +1,50 @@
 {
-  "action_id": 320,
-  "cooldown_sec": 3.0,
+  "action_id": 19,
+  "auto_add_jump": false,
+  "cooldown_sec": 3.2,
   "enabled": false,
-  "move_label": "Eagle Rush A [0x140]",
+  "last_delay_frames": 0,
+  "last_random_max_frames": 4,
+  "last_random_min_frames": 1,
+  "last_transition": "cancel",
+  "legacy_jump_delay_migrated": true,
+  "move_label": "Jump",
+  "presets": {},
   "random_interval": false,
   "random_max_sec": 10.0,
   "random_min_sec": 5.0,
+  "randomize_presets": false,
+  "require_neutral": true,
+  "sequence": [
+    {
+      "action_id": 19,
+      "delay_frames": 0,
+      "kind": "jump",
+      "move_label": "Jump",
+      "random_max_frames": 4,
+      "random_min_frames": 1,
+      "transition": "cancel"
+    },
+    {
+      "action_id": 267,
+      "delay_frames": 0,
+      "kind": "move",
+      "move_label": "j.C [0x10B]",
+      "random_max_frames": 4,
+      "random_min_frames": 1,
+      "transition": "cancel"
+    },
+    {
+      "action_id": 322,
+      "delay_frames": 0,
+      "kind": "move",
+      "move_label": "Air Grenade C [0x142]",
+      "random_max_frames": 4,
+      "random_min_frames": 1,
+      "transition": "cancel"
+    }
+  ],
   "show_countdown": true,
+  "step_timeout_frames": 60,
   "target_slot": "P2-C1"
 }

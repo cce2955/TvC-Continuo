@@ -35,6 +35,7 @@ from tvcgui.runtime.input_monitor import action_name as realtime_action_name
 DATA_FILE = user_data_path("overlay", "hud_overlay_data.json")
 REALTIME_INPUT_FILE = user_data_path("overlay", "hud_input_realtime.json")
 REALTIME_STUN_FILE = os.path.join(tempfile.gettempdir(), "tvcgui_hud_stun_realtime.json")
+REALTIME_MOVES_FILE = os.path.join(tempfile.gettempdir(), "tvcgui_hud_moves_realtime.json")
 TARGET_FPS = 60
 COLORKEY = (0, 0, 0)
 
@@ -80,8 +81,9 @@ ASSIST_ATTACK_IDS  = {420, 426, 427, 428}
 ASSIST_OFF_IDS     = ASSIST_STANDBY_IDS 
 
 PASSIVE_LABELS = {
-    "idle", "crouched", "couching", "standing", "jump", "jump forward",
-    "jump back", "landing", "rising", "assist standby", "assist leave",
+    "idle", "crouch", "crouched", "crouching", "couching", "stand", "standing",
+    "jump", "jump forward", "jump back", "jump cancel", "landing", "rising",
+    "assist standby", "assist leave",
     "assist attack", "assist taunt", "tag out", "tag in",
 }
 
@@ -836,6 +838,7 @@ def _get_slot_anim(slot_label: str):
         "last_input_sample_seq": 0,
         "last_input_timestamp_frame": -999999,
         "last_action_sample_seq": 0,
+        "last_move_log_seq": 0,
         "damage_scale_visual_pct": None,
         "damage_scale_target_pct": None,
         "damage_scale_pulse": 0.0,
@@ -1141,6 +1144,15 @@ _last_realtime_input_signature: tuple[int, int, int, int] | None = None
 _cached_realtime_inputs: dict = {}
 _last_realtime_stun_signature: tuple[int, int, int, int] | None = None
 _cached_realtime_stun: dict = {}
+_last_realtime_moves_signature: tuple[int, int, int, int] | None = None
+_cached_realtime_moves: dict = {}
+# Per-slot frame-locked stun edge consumers. The producer preserves every
+# native +0x1204/+0x1210/+0x1220 transition; the renderer consumes at most one
+# new native edge per 60 Hz draw so short counters visibly advance 1F at a time.
+_realtime_stun_edge_cursor: dict[str, int] = {}
+_realtime_stun_edge_base: dict[str, int] = {}
+_realtime_stun_edge_pending: dict[str, list[dict]] = {}
+_realtime_stun_edge_display: dict[str, dict] = {}
 
 def read_slot_data() -> dict:
     global _last_data_signature, _cached_slots
@@ -1205,6 +1217,103 @@ def read_realtime_stun_data() -> dict:
     return _cached_realtime_stun
 
 
+def read_realtime_move_data() -> dict:
+    """Read the attack-only edge IPC.  This is intentionally separate from
+    the per-frame combat/stun file so move chips can appear on the first render
+    after the native edge is sampled.
+    """
+    global _last_realtime_moves_signature, _cached_realtime_moves
+    try:
+        stat = os.stat(REALTIME_MOVES_FILE)
+        signature = (
+            int(getattr(stat, "st_mtime_ns", int(stat.st_mtime * 1_000_000_000))),
+            int(getattr(stat, "st_ctime_ns", int(stat.st_ctime * 1_000_000_000))),
+            int(stat.st_size),
+            int(getattr(stat, "st_ino", 0)),
+        )
+        if signature != _last_realtime_moves_signature:
+            with open(REALTIME_MOVES_FILE, encoding="utf-8") as f:
+                loaded = json.load(f)
+            if isinstance(loaded, dict):
+                _cached_realtime_moves = loaded
+                _last_realtime_moves_signature = signature
+    except Exception:
+        pass
+    return _cached_realtime_moves
+
+
+def _consume_realtime_stun_edges(combat_slot_map: dict) -> dict[str, dict]:
+    """Return one exact native stun sample per slot for this render frame.
+
+    The IPC writer and this renderer both orbit the game's 60 Hz cadence. A
+    latest-only file can race that boundary and make two native decrements look
+    like one 2F jump. The producer now retains a short edge ring; this consumer
+    drains one unseen edge per draw. No wall-clock interpolation is used, so
+    Dolphin pause and frame-step remain authoritative.
+    """
+    out: dict[str, dict] = {}
+    if not isinstance(combat_slot_map, dict):
+        return out
+    for raw_slot, state in combat_slot_map.items():
+        slot = str(raw_slot or "")
+        if not slot or not isinstance(state, dict):
+            continue
+        latest = state.get("latest") if isinstance(state.get("latest"), dict) else {}
+        samples = state.get("stun_samples") if isinstance(state.get("stun_samples"), list) else []
+        clean_samples = []
+        for item in samples:
+            if not isinstance(item, dict):
+                continue
+            try:
+                sample_ns = int(item.get("sample_ns", 0) or 0)
+            except Exception:
+                sample_ns = 0
+            if sample_ns > 0:
+                clean_samples.append((sample_ns, dict(item)))
+        clean_samples.sort(key=lambda pair: pair[0])
+        try:
+            latest_base = int(latest.get("base", 0) or 0)
+        except Exception:
+            latest_base = 0
+        previous_base = int(_realtime_stun_edge_base.get(slot, 0) or 0)
+        if latest_base and previous_base and latest_base != previous_base:
+            _realtime_stun_edge_cursor.pop(slot, None)
+            _realtime_stun_edge_pending.pop(slot, None)
+            _realtime_stun_edge_display.pop(slot, None)
+        if latest_base:
+            _realtime_stun_edge_base[slot] = latest_base
+
+        cursor = _realtime_stun_edge_cursor.get(slot)
+        if cursor is None:
+            # First sight of a slot starts at current native state rather than
+            # replaying stale history from before the overlay opened.
+            if clean_samples:
+                sample_ns, item = clean_samples[-1]
+                _realtime_stun_edge_cursor[slot] = sample_ns
+                _realtime_stun_edge_display[slot] = dict(item)
+            elif latest:
+                _realtime_stun_edge_display[slot] = dict(latest)
+            out[slot] = dict(_realtime_stun_edge_display.get(slot) or latest)
+            continue
+
+        pending = _realtime_stun_edge_pending.setdefault(slot, [])
+        queued_ns = {int(item.get("sample_ns", 0) or 0) for item in pending if isinstance(item, dict)}
+        for sample_ns, item in clean_samples:
+            if sample_ns > int(cursor) and sample_ns not in queued_ns:
+                pending.append(dict(item))
+                queued_ns.add(sample_ns)
+        pending.sort(key=lambda item: int(item.get("sample_ns", 0) or 0))
+        if pending:
+            item = pending.pop(0)
+            sample_ns = int(item.get("sample_ns", 0) or 0)
+            _realtime_stun_edge_cursor[slot] = sample_ns
+            _realtime_stun_edge_display[slot] = dict(item)
+        elif slot not in _realtime_stun_edge_display and latest:
+            _realtime_stun_edge_display[slot] = dict(latest)
+        out[slot] = dict(_realtime_stun_edge_display.get(slot) or latest)
+    return out
+
+
 def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
     """Overlay realtime inputs plus the independent native-stun transport."""
     if not isinstance(slots, dict) or not isinstance(realtime_payload, dict):
@@ -1217,6 +1326,34 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
     combat_slot_map = combat_payload.get("slots") if isinstance(combat_payload, dict) else None
     if not isinstance(combat_slot_map, dict):
         combat_slot_map = slot_map
+
+    # MOVES bypasses the busy combat/stun transport.  Overlay the tiny
+    # attack-only ring onto a shallow copy of the combat map.  Guard by fighter
+    # base so a stale file from a previous match/tag can never repaint history.
+    combat_slot_map = {
+        key: dict(value) if isinstance(value, dict) else {}
+        for key, value in (combat_slot_map or {}).items()
+    }
+    move_payload = read_realtime_move_data()
+    move_slots = move_payload.get("slots") if isinstance(move_payload, dict) else None
+    if isinstance(move_slots, dict):
+        for move_slot, move_state in move_slots.items():
+            if not isinstance(move_state, dict):
+                continue
+            snap = slots.get(move_slot) if isinstance(slots, dict) else None
+            try:
+                move_base = int(move_state.get("base", 0) or 0)
+                snap_base = int((snap or {}).get("base", 0) or 0)
+            except Exception:
+                move_base = snap_base = 0
+            if move_base and snap_base and move_base != snap_base:
+                continue
+            state = combat_slot_map.setdefault(move_slot, {})
+            raw_log = move_state.get("move_log")
+            if isinstance(raw_log, list):
+                state["move_log"] = [dict(item) for item in raw_log if isinstance(item, dict)]
+
+    frame_stun_samples = _consume_realtime_stun_edges(combat_slot_map)
 
     now_ns = time.monotonic_ns()
     max_age_ns = 2_000_000_000
@@ -1251,13 +1388,18 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
             snap["input_held"] = int(latest.get("held", snap.get("input_held", 0)) or 0) & 0xFFFF
             snap["input_pressed"] = int(latest.get("pressed", 0) or 0) & 0xFFFF
             snap["input_released"] = int(latest.get("released", 0) or 0) & 0xFFFF
-            # These are the same 240 Hz fighter snapshot, not extra reads. Keep
-            # the victim's exact engine counters available to the HS renderer.
-            snap["realtime_blockstun_remaining"] = max(0, int(latest.get("blockstun_remaining", 0) or 0))
+            # Inputs/actions use newest 240 Hz state. Stun counters use the
+            # frame-locked edge consumer so the visible number changes by one
+            # native frame per 60 Hz draw instead of occasionally jumping 2F.
+            stun_latest = frame_stun_samples.get(str(slot_label)) or latest
+            snap["realtime_blockstun_remaining"] = max(0, int(stun_latest.get("blockstun_remaining", 0) or 0))
+            # HS/AIR HS are reset-sensitive. Never replay an older queued
+            # counter after a new cancel hit has already replaced the native
+            # timer; use the newest 240 Hz packet directly.
             snap["realtime_hitstun_remaining"] = max(0, int(latest.get("hitstun_remaining", 0) or 0))
             snap["realtime_untech_remaining"] = max(0, int(latest.get("untech_remaining", 0) or 0))
             snap["realtime_impact_freeze_remaining"] = max(0, int(latest.get("impact_freeze_remaining", 0) or 0))
-            snap["realtime_combat_sample_ns"] = latest_ns
+            snap["realtime_combat_sample_ns"] = int(latest.get("sample_ns", latest_ns) or latest_ns)
             try:
                 realtime_action_id = int(latest.get("action_id", snap.get("mv_id_display", 0)) or 0) & 0x7FFF
                 realtime_action_frame = max(0, int(latest.get("action_frame", 0) or 0))
@@ -1316,6 +1458,51 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
             snap["realtime_action_frame"] = live_action_frame
             snap["realtime_char_id"] = live_char_id
             snap["realtime_action_label"] = live_label
+
+            # FD timing now travels with the native action sample.  This lets
+            # the rail arm on action frame 0/1 instead of waiting for the
+            # slower full scanner/profile payload to identify the move again.
+            if "fd_available" in latest and "fd_action_id" in latest:
+                try:
+                    fd_action_id = int(latest.get("fd_action_id", 0) or 0) & 0x7FFF
+                except Exception:
+                    fd_action_id = 0
+                if fd_action_id == live_action:
+                    fd_available = bool(latest.get("fd_available", False))
+                    snap["realtime_fd_action_id"] = fd_action_id
+                    snap["realtime_fd_available"] = fd_available
+                    if fd_available:
+                        windows = []
+                        for pair in (latest.get("fd_active_windows") or []):
+                            if not isinstance(pair, (list, tuple)) or len(pair) < 2:
+                                continue
+                            try:
+                                start_i = int(pair[0])
+                                end_i = int(pair[1])
+                            except (TypeError, ValueError):
+                                continue
+                            if start_i >= 0 and end_i >= start_i:
+                                windows.append([start_i, end_i])
+                        snap["startup"] = max(0, int(latest.get("fd_startup", 0) or 0))
+                        snap["active_start"] = latest.get("fd_active_start")
+                        snap["active_end"] = latest.get("fd_active_end")
+                        snap["active_windows"] = windows
+                        snap["recovery"] = max(0, int(latest.get("fd_recovery", 0) or 0))
+                    else:
+                        # Clear only stale timing from a different action. If
+                        # the full payload has already caught up to this same
+                        # action, it remains a valid fallback.
+                        try:
+                            full_timing_action = int(snap.get("move_metadata_action_id", 0) or 0) & 0x7FFF
+                        except Exception:
+                            full_timing_action = 0
+                        if full_timing_action != live_action:
+                            snap["startup"] = None
+                            snap["active_start"] = None
+                            snap["active_end"] = None
+                            snap["active_windows"] = []
+                            snap["recovery"] = None
+
             raw_action_samples = combat_state.get("actions") if isinstance(combat_state, dict) else None
             if isinstance(raw_action_samples, list):
                 fresh_action_samples = []
@@ -1329,6 +1516,16 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
                     if item_ns <= 0 or now_ns - item_ns <= max_age_ns:
                         fresh_action_samples.append(dict(item))
                 snap["realtime_action_samples"] = fresh_action_samples[-24:]
+
+            # Unlike the transient combat/action samples above, this is an
+            # authoritative committed history ring.  Never age entries out
+            # before the renderer consumes them; a short A>B>C>special chain
+            # must survive even if the HUD misses several draw frames.
+            raw_move_log = combat_state.get("move_log") if isinstance(combat_state, dict) else None
+            if isinstance(raw_move_log, list):
+                snap["realtime_move_log"] = [
+                    dict(item) for item in raw_move_log[-96:] if isinstance(item, dict)
+                ]
             if live_action:
                 snap["mv_id_display"] = live_action
                 # Never pair a new native action ID with a stale old label. If
@@ -1389,7 +1586,14 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
             if enriched_hs:
                 victim_slot = str(enriched_hs.get("victim_slot") or "")
                 victim_state = combat_slot_map.get(victim_slot)
+                # HS/AIR HS must follow the newest native victim state.  The
+                # old frame-edge playback queue could lag behind a cancel and
+                # feed the new contact generation values from the previous hit.
+                # Keep that queue for presentation-sensitive BS, but never use
+                # stale replay data to drive hitstun.
                 victim_latest = victim_state.get("latest") if isinstance(victim_state, dict) else None
+                if not isinstance(victim_latest, dict) or not victim_latest:
+                    victim_latest = frame_stun_samples.get(victim_slot)
                 if isinstance(victim_latest, dict):
                     try:
                         victim_ns = int(victim_latest.get("sample_ns", 0) or 0)
@@ -1400,6 +1604,21 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
                         enriched_hs["native_hitstun_current"] = max(0, int(victim_latest.get("hitstun_remaining", 0) or 0))
                         enriched_hs["native_untech_current"] = max(0, int(victim_latest.get("untech_remaining", 0) or 0))
                         enriched_hs["native_current_sample_ns"] = victim_ns
+                        # Some launch routes publish +0x1210 on the contact
+                        # packet and arm +0x1220 one native frame later.  Let
+                        # the same hit generation promote itself to AIR HS so
+                        # it cannot get stuck displaying the ground clock.
+                        if (
+                            str(enriched_hs.get("clock_source") or "") == "hitstun"
+                            and int(enriched_hs.get("native_untech_current", 0) or 0) > 0
+                        ):
+                            promoted = int(enriched_hs.get("native_untech_current", 0) or 0)
+                            loss = max(0, int(enriched_hs.get("decay_frames", 0) or 0))
+                            enriched_hs["clock_source"] = "untech"
+                            enriched_hs["native_untech"] = promoted
+                            enriched_hs["target"] = promoted
+                            enriched_hs["raw_estimate"] = promoted + loss
+                            enriched_hs["source_promoted"] = True
 
             for suffix in ("C1", "C2"):
                 team_snap = slots.get(f"{team}-{suffix}")
@@ -1415,6 +1634,11 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
     # +0x1204 plus the impact-freeze re-arm edge. The current counter is merged
     # here every render so Dolphin pause/frame-step controls the entire gauge.
     bs_teams = combat_payload.get("bs_teams") if isinstance(combat_payload, dict) else None
+    # The normal BS token is attacker-owned and drives blockstring/gap timing.
+    # Rebuild a separate victim-owned mirror every render for punish training.
+    for _slot_snap in slots.values():
+        if isinstance(_slot_snap, dict):
+            _slot_snap.pop("realtime_punish_blockstun_contact", None)
     if isinstance(bs_teams, dict):
         for team, bs_state in bs_teams.items():
             if team not in {"P1", "P2"} or not isinstance(bs_state, dict):
@@ -1435,7 +1659,9 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
             if enriched_bs:
                 victim_slot = str(enriched_bs.get("victim_slot") or "")
                 victim_state = combat_slot_map.get(victim_slot)
-                victim_latest = victim_state.get("latest") if isinstance(victim_state, dict) else None
+                victim_latest = frame_stun_samples.get(victim_slot)
+                if not isinstance(victim_latest, dict) or not victim_latest:
+                    victim_latest = victim_state.get("latest") if isinstance(victim_state, dict) else None
                 if isinstance(victim_latest, dict):
                     try:
                         victim_ns = int(victim_latest.get("sample_ns", 0) or 0)
@@ -1455,6 +1681,12 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
                     team_snap["realtime_blockstun_contact"] = dict(enriched_bs)
                 else:
                     team_snap.pop("realtime_blockstun_contact", None)
+
+            if enriched_bs:
+                victim_slot = str(enriched_bs.get("victim_slot") or "")
+                victim_snap = slots.get(victim_slot)
+                if isinstance(victim_snap, dict):
+                    victim_snap["realtime_punish_blockstun_contact"] = dict(enriched_bs)
 
 # ---------------------------------------------------------------------------
 # Drawing helpers
@@ -1950,13 +2182,13 @@ def _draw_slot_row(screen, font, font_sm, slot_label, snap,
     move_col   = COL_TEXT_DIM if ((is_passive and not is_baroque) or not is_active_char or is_dead) else COL_TEXT
     move_surf  = font_sm.render(mv_label_display or "---", True, move_col)
 
-    # Move history tracking
+    # Move history tracking. Passive/native state labels are intentional
+    # evidence too; do not discard Idle/Crouch/Jump/etc.
     prev_move_label = slot_anim.get("prev_move_label", "")
     prev_move_id = slot_anim.get("prev_move_id")
     if (
         mv_label
         and mv_label != "---"
-        and ((not is_passive) or is_baroque)
         and not is_dead
     ):
         move_events = slot_anim["move_events"]
@@ -2621,11 +2853,14 @@ def _compact_event_move_label(snap: dict) -> str:
         return ""
     lowered = label.lower()
     try:
-        is_baroque = move_id is not None and int(move_id) in BAROQUE_CANCEL_IDS
+        move_id_int = int(move_id) if move_id is not None else -1
+        is_baroque = move_id_int in BAROQUE_CANCEL_IDS
     except Exception:
+        move_id_int = -1
         is_baroque = False
-    if lowered in PASSIVE_LABELS and not is_baroque:
-        return ""
+    # Resolved low-ID states are useful evidence: Idle, Crouch, Jump,
+    # Jump Cancel, Landing, etc. Unknown low IDs never reach this point because
+    # realtime_action_name() returns an empty label for them.
     return label
 
 
@@ -2905,58 +3140,137 @@ def _compact_track_slot(slot_label: str, snap: dict) -> None:
             slot_anim, input_held, input_pressed, input_released, int(_frame)
         )
 
-    # Consume native action edges directly from the tiny 240 Hz combat sidecar.
-    # This is the history trigger. The slower full snapshot is enrichment only.
-    action_samples_raw = snap.get("realtime_action_samples")
-    action_samples = [item for item in action_samples_raw if isinstance(item, dict)] if isinstance(action_samples_raw, list) else []
-    last_action_seq = int(slot_anim.get("last_action_sample_seq", 0) or 0)
-    max_action_seq = max((int(item.get("seq", 0) or 0) for item in action_samples), default=0)
-    if max_action_seq and max_action_seq < last_action_seq:
-        last_action_seq = 0
-    pending_actions = [item for item in action_samples if int(item.get("seq", 0) or 0) > last_action_seq]
-    pending_actions.sort(key=lambda item: (int(item.get("seq", 0) or 0), int(item.get("sample_ns", 0) or 0)))
-    if pending_actions:
+    # Consume the authoritative committed native move log.  The producer
+    # records every action transition before a later snapshot can overwrite it,
+    # which makes fast cancel chains real history rather than best-effort HUD
+    # observations.  Fall back to the older transient action ring only when a
+    # move-log producer is not present (e.g. older sidecar files during upgrade).
+    committed_raw = snap.get("realtime_move_log")
+    committed = [item for item in committed_raw if isinstance(item, dict)] if isinstance(committed_raw, list) else []
+    # Presence of the ring, even when empty, means the authoritative producer is
+    # active.  Falling back merely because the ring is empty reintroduced old
+    # IDLE/FORWARD debugger states before the first attack of a round.
+    use_committed_log = isinstance(committed_raw, list)
+    if use_committed_log:
+        # Authoritative mode is intentionally dumb: the visible per-slot MOVES
+        # row is a mirror of the producer's last five committed attack-instance
+        # events.  Do not consume through a cursor and do not reconstruct from
+        # the current snapshot.  If the renderer misses several frames, the next
+        # draw still receives the exact last five moves in the ring.
+        events = slot_anim["move_events"]
+        try:
+            committed_base = int(snap.get("base", 0) or 0)
+        except Exception:
+            committed_base = 0
+        previous_base = int(slot_anim.get("move_log_base", 0) or 0)
+        if (
+            not bool(slot_anim.get("committed_move_log_active", False))
+            or (committed_base and previous_base and committed_base != previous_base)
+        ):
+            events.clear()
+        slot_anim["committed_move_log_active"] = True
+        if committed_base:
+            slot_anim["move_log_base"] = committed_base
+
+        ordered = sorted(
+            committed,
+            key=lambda item: (
+                int(item.get("log_seq", 0) or 0),
+                int(item.get("sample_ns", 0) or 0),
+            ),
+        )
         now_ns = time.monotonic_ns()
         game_frame_ns = 1_000_000_000.0 / 60.0
-        events = slot_anim["move_events"]
-        for action_sample in pending_actions:
+        displayable = []
+        for action_sample in ordered:
             try:
                 action_id = int(action_sample.get("action_id", 0) or 0) & 0x7FFF
                 char_id = int(action_sample.get("char_id", snap.get("id", 0)) or 0)
                 sample_ns = int(action_sample.get("sample_ns", 0) or 0)
+                log_seq = int(action_sample.get("log_seq", 0) or 0)
             except Exception:
                 continue
             if action_id <= 0:
-                slot_anim["prev_compact_move_key"] = ""
                 continue
             action_label = realtime_action_name(action_id, char_id) or (f"0x{action_id:04X}" if action_id >= 0x100 else "")
-            action_snap = {"mv_id_display": action_id, "mv_label": action_label}
-            base_action_label = _compact_event_move_label(action_snap)
+            base_action_label = _compact_event_move_label({"mv_id_display": action_id, "mv_label": action_label})
             if not base_action_label:
-                slot_anim["prev_compact_move_key"] = ""
-                continue
-            action_key = f"id:{action_id}"
-            if action_key == str(slot_anim.get("prev_compact_move_key") or ""):
                 continue
             if sample_ns > 0 and now_ns >= sample_ns:
                 age_frames = int(round((now_ns - sample_ns) / game_frame_ns))
                 action_display_frame = int(_frame) - max(0, age_frames)
             else:
                 action_display_frame = int(_frame)
-            slot_anim["move_change_flash"] = 1.0
-            events.insert(0, {
+            displayable.append({
                 "text": base_action_label,
                 "base_text": base_action_label,
                 "action_id": action_id,
-                "native_state_flags": int(action_sample.get("state_flags_6c", 0) or 0) & 0xFFFFFFFF,
                 "created_at": time.time(),
                 "sample_ns": sample_ns,
+                "log_seq": log_seq,
                 "life": 1.0,
                 "frame": action_display_frame,
             })
-            del events[5:]
-            slot_anim["prev_compact_move_key"] = action_key
-        slot_anim["last_action_sample_seq"] = int(pending_actions[-1].get("seq", 0) or 0)
+        rebuilt = list(reversed(displayable[-5:]))
+
+        new_signature = tuple(int(item.get("log_seq", 0) or 0) for item in rebuilt)
+        if new_signature != tuple(slot_anim.get("move_log_signature", ())):
+            slot_anim["move_change_flash"] = 1.0
+            slot_anim["move_log_signature"] = new_signature
+        events.clear()
+        events.extend(rebuilt[:5])
+
+    if not use_committed_log:
+        action_samples_raw = snap.get("realtime_action_samples")
+        action_samples = [item for item in action_samples_raw if isinstance(item, dict)] if isinstance(action_samples_raw, list) else []
+        last_action_seq = int(slot_anim.get("last_action_sample_seq", 0) or 0)
+        max_action_seq = max((int(item.get("seq", 0) or 0) for item in action_samples), default=0)
+        if max_action_seq and max_action_seq < last_action_seq:
+            last_action_seq = 0
+        pending_actions = [item for item in action_samples if int(item.get("seq", 0) or 0) > last_action_seq]
+        pending_actions.sort(key=lambda item: (int(item.get("seq", 0) or 0), int(item.get("sample_ns", 0) or 0)))
+        if pending_actions:
+            now_ns = time.monotonic_ns()
+            game_frame_ns = 1_000_000_000.0 / 60.0
+            events = slot_anim["move_events"]
+            for action_sample in pending_actions:
+                try:
+                    action_id = int(action_sample.get("action_id", 0) or 0) & 0x7FFF
+                    char_id = int(action_sample.get("char_id", snap.get("id", 0)) or 0)
+                    sample_ns = int(action_sample.get("sample_ns", 0) or 0)
+                except Exception:
+                    continue
+                if action_id <= 0:
+                    slot_anim["prev_compact_move_key"] = ""
+                    continue
+                action_label = realtime_action_name(action_id, char_id) or (f"0x{action_id:04X}" if action_id >= 0x100 else "")
+                action_snap = {"mv_id_display": action_id, "mv_label": action_label}
+                base_action_label = _compact_event_move_label(action_snap)
+                if not base_action_label:
+                    slot_anim["prev_compact_move_key"] = ""
+                    continue
+                action_key = f"id:{action_id}"
+                if action_key == str(slot_anim.get("prev_compact_move_key") or ""):
+                    continue
+                if sample_ns > 0 and now_ns >= sample_ns:
+                    age_frames = int(round((now_ns - sample_ns) / game_frame_ns))
+                    action_display_frame = int(_frame) - max(0, age_frames)
+                else:
+                    action_display_frame = int(_frame)
+                slot_anim["move_change_flash"] = 1.0
+                events.insert(0, {
+                    "text": base_action_label,
+                    "base_text": base_action_label,
+                    "action_id": action_id,
+                    "native_state_flags": int(action_sample.get("state_flags_6c", 0) or 0) & 0xFFFFFFFF,
+                    "created_at": time.time(),
+                    "sample_ns": sample_ns,
+                    "life": 1.0,
+                    "frame": action_display_frame,
+                })
+                del events[5:]
+                slot_anim["prev_compact_move_key"] = action_key
+            slot_anim["last_action_sample_seq"] = int(pending_actions[-1].get("seq", 0) or 0)
 
     move_id = snap.get("mv_id_display")
     base_move_label = _compact_event_move_label(snap)
@@ -2979,18 +3293,30 @@ def _compact_track_slot(slot_label: str, snap: dict) -> None:
     )
     previous_key = str(slot_anim.get("prev_compact_move_key") or "")
     events = slot_anim["move_events"]
-    if move_key and move_key != previous_key:
-        slot_anim["move_change_flash"] = 1.0
-        events.insert(0, {
-            "text": display_move_label or base_move_label,
-            "base_text": base_move_label,
-            "action_id": move_id_key if move_id_key >= 0 else None,
-            "created_at": time.time(),
-            "life": 1.0,
-            "frame": _frame,
-        })
-        del events[5:]
-    elif move_key and events:
+    if not use_committed_log:
+        if move_key and move_key != previous_key:
+            slot_anim["move_change_flash"] = 1.0
+            events.insert(0, {
+                "text": display_move_label or base_move_label,
+                "base_text": base_move_label,
+                "action_id": move_id_key if move_id_key >= 0 else None,
+                "created_at": time.time(),
+                "life": 1.0,
+                "frame": _frame,
+            })
+            del events[5:]
+        elif move_key and events:
+            newest = events[0]
+            try:
+                newest_action = int(newest.get("action_id") or -1)
+            except Exception:
+                newest_action = -1
+            if newest_action == move_id_key and display_move_label:
+                newest["text"] = display_move_label
+                newest["life"] = 1.0
+    elif events:
+        # The committed FIFO owns event identity.  The live profiler may only
+        # enrich the newest chip's text; it may not insert or evict history.
         newest = events[0]
         try:
             newest_action = int(newest.get("action_id") or -1)
@@ -5343,6 +5669,816 @@ def _render_input_group_surface(font_sm, chip: dict, color: tuple[int, int, int]
     return unit
 
 
+
+def _compact_frame_data_state(snap: dict) -> dict:
+    """Build the live startup/active/recovery state for the compact HUD.
+
+    TvC's realtime action counter is zero-based.  The frame-data table's active
+    range is treated the same way as the hitbox timer: 8-17 displays nine
+    active ticks (9..1), so the end value is the recovery boundary rather than
+    an inclusive tenth active frame.
+    """
+    # Never draw timing that belongs to the previous action. The realtime FD
+    # sidecar supplies its own action identity; the full-payload metadata is a
+    # fallback for builds where that sidecar has not populated yet.
+    try:
+        live_action_id = int(snap.get("realtime_action_id", 0) or 0) & 0x7FFF
+    except Exception:
+        live_action_id = 0
+    try:
+        timing_action_id = int(
+            snap.get("realtime_fd_action_id", snap.get("move_metadata_action_id", 0)) or 0
+        ) & 0x7FFF
+    except Exception:
+        timing_action_id = 0
+    if live_action_id and timing_action_id and live_action_id != timing_action_id:
+        return {"available": False}
+
+    windows: list[tuple[int, int]] = []
+    for pair in (snap.get("active_windows") or []):
+        if not isinstance(pair, (list, tuple)) or len(pair) < 2:
+            continue
+        try:
+            start = int(pair[0])
+            end = int(pair[1])
+        except (TypeError, ValueError):
+            continue
+        if start < 0 or end < start:
+            continue
+        end_exclusive = end if end > start else start + 1
+        item = (start, end_exclusive)
+        if item not in windows:
+            windows.append(item)
+
+    if not windows:
+        try:
+            start = int(snap.get("active_start"))
+            end = int(snap.get("active_end"))
+        except (TypeError, ValueError):
+            start = end = -1
+        if start >= 0 and end >= start:
+            windows.append((start, end if end > start else start + 1))
+
+    windows.sort(key=lambda pair: (pair[0], pair[1]))
+    if not windows:
+        return {"available": False}
+
+    first_start = min(start for start, _end in windows)
+    final_boundary = max(end for _start, end in windows)
+    try:
+        recovery = max(0, int(snap.get("recovery") or 0))
+    except (TypeError, ValueError):
+        recovery = 0
+    try:
+        action_frame = max(0, int(snap.get("realtime_action_frame") or 0))
+    except (TypeError, ValueError):
+        action_frame = 0
+
+    phase = ""
+    remaining = 0
+    phase_key = "idle"
+    if action_frame < first_start:
+        phase = "START"
+        phase_key = "startup"
+        remaining = first_start - action_frame
+    else:
+        for start, end in windows:
+            if start <= action_frame < end:
+                phase = "ACTIVE"
+                phase_key = "active"
+                remaining = end - action_frame
+                break
+            if action_frame < start:
+                # Keep one move-level clock alive through a multi-hit gap.
+                phase = "NEXT"
+                phase_key = "gap"
+                remaining = start - action_frame
+                break
+        else:
+            if recovery > 0 and action_frame < final_boundary + recovery:
+                phase = "REC"
+                phase_key = "recovery"
+                remaining = final_boundary + recovery - action_frame
+
+    total = max(1, final_boundary + recovery)
+    startup_total = max(0, first_start)
+    active_total = sum(max(0, int(end) - int(start)) for start, end in windows)
+    done = not phase or remaining <= 0
+    return {
+        "available": True,
+        "windows": windows,
+        "first_start": first_start,
+        "final_boundary": final_boundary,
+        "startup_total": startup_total,
+        "active_total": active_total,
+        "recovery_total": recovery,
+        "recovery": recovery,
+        "action_frame": action_frame,
+        "total": total,
+        "phase": phase,
+        "phase_key": phase_key,
+        "remaining": max(0, remaining),
+        "done": done,
+    }
+
+
+def _update_compact_move_timing_race(
+    state: dict,
+    snap: dict,
+    race_clock: dict | None,
+    race_anim: dict | None,
+) -> dict | None:
+    """Latch the opponent's stun expiry into the current move's frame space.
+
+    This is deliberately action-instance based.  A hit that occurs *during*
+    the current move must not suddenly create a race against that same move.
+    The comparison arms only when a new action (or a same-ID frame reset)
+    begins while the opponent is already in hit/block stun.  That is the case
+    we care about for links, chains, and cancels.
+
+    Once armed, ``expiry_frame`` lives in the attacker's action-frame space:
+        attacker_action_frame + victim_stun_remaining
+    Because both native counters pause and advance with the game, the expiry
+    marker stays fixed while the move playhead approaches it.
+    """
+    if not isinstance(race_anim, dict):
+        return None
+    try:
+        action_id = int(snap.get("realtime_action_id", snap.get("mv_id_display", 0)) or 0) & 0x7FFF
+    except Exception:
+        action_id = 0
+    try:
+        action_frame = max(0, int(snap.get("realtime_action_frame", 0) or 0))
+    except Exception:
+        action_frame = 0
+
+    previous_id = int(race_anim.get("move_timing_last_action_id", -1) or -1)
+    previous_frame = int(race_anim.get("move_timing_last_action_frame", -1) or -1)
+    new_instance = bool(action_id != previous_id or (action_id == previous_id and previous_frame >= 0 and action_frame < previous_frame))
+
+    if new_instance:
+        # Clear any comparison owned by the previous move first.  This also
+        # means idle/non-FD actions cleanly separate two action instances.
+        for key in (
+            "move_timing_race_action_id",
+            "move_timing_race_expiry_frame",
+            "move_timing_race_arm_frame",
+            "move_timing_race_start_remaining",
+            "move_timing_race_kind",
+            "move_timing_race_generation",
+        ):
+            race_anim.pop(key, None)
+
+    # Do NOT require the stun clock to be present on the single render where
+    # the action id flips.  The realtime action lane and the contact sidecar
+    # can arrive one render apart, which made the prediction appear once and
+    # then seemingly never again.  While this action is still in authored
+    # startup, any live stun clock is safe to latch: the current move has not
+    # reached its own first active frame yet, so the clock cannot have been
+    # created by this move's hit.  This gives the two realtime lanes a whole
+    # startup window to handshake instead of a one-frame race.
+    try:
+        first_start_for_arm = max(0, int(state.get("first_start", 0) or 0))
+    except Exception:
+        first_start_for_arm = 0
+    try:
+        existing_race_action = int(race_anim.get("move_timing_race_action_id", -1) or -1)
+    except Exception:
+        existing_race_action = -1
+
+    can_late_arm = bool(
+        state.get("available")
+        and isinstance(race_clock, dict)
+        and existing_race_action != action_id
+        and first_start_for_arm > 0
+        and action_frame < first_start_for_arm
+    )
+    if can_late_arm:
+        try:
+            stun_remaining = max(0, int(race_clock.get("remaining", 0) or 0))
+        except Exception:
+            stun_remaining = 0
+        if bool(race_clock.get("active", False)) and stun_remaining > 0:
+            kind = str(race_clock.get("kind") or "HS").upper()
+            race_anim["move_timing_race_action_id"] = action_id
+            race_anim["move_timing_race_expiry_frame"] = action_frame + stun_remaining
+            race_anim["move_timing_race_arm_frame"] = action_frame
+            race_anim["move_timing_race_start_remaining"] = stun_remaining
+            race_anim["move_timing_race_kind"] = kind
+            race_anim["move_timing_race_generation"] = int(race_clock.get("generation", 0) or 0)
+
+    race_anim["move_timing_last_action_id"] = action_id
+    race_anim["move_timing_last_action_frame"] = action_frame
+
+    try:
+        race_action_id = int(race_anim.get("move_timing_race_action_id", -1) or -1)
+    except Exception:
+        race_action_id = -1
+    if not bool(state.get("available")) or race_action_id != action_id:
+        return None
+
+    try:
+        expiry_frame = max(0, int(race_anim.get("move_timing_race_expiry_frame", 0) or 0))
+        first_start = max(0, int(state.get("first_start", 0) or 0))
+        start_remaining = max(0, int(race_anim.get("move_timing_race_start_remaining", 0) or 0))
+    except Exception:
+        return None
+    if expiry_frame <= 0 or start_remaining <= 0:
+        return None
+
+    remaining_now = max(0, expiry_frame - action_frame)
+    margin = int(expiry_frame - first_start)
+    kind = str(race_anim.get("move_timing_race_kind") or "HS").upper()
+    return {
+        "kind": kind,
+        "expiry_frame": expiry_frame,
+        "remaining": remaining_now,
+        "start_remaining": start_remaining,
+        "margin": margin,
+        "generation": int(race_anim.get("move_timing_race_generation", 0) or 0),
+        "arm_frame": max(0, int(race_anim.get("move_timing_race_arm_frame", 0) or 0)),
+        "first_start": first_start,
+        "windows": list(state.get("windows") or []),
+    }
+
+
+
+
+def _realtime_punish_blockstun_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
+    """Return the blocker-owned copy of the native +0x1204 countdown.
+
+    The regular ``realtime_blockstun_contact`` token intentionally lives on the
+    attacker and powers blockstring timing.  This mirror lives on the fighter
+    who actually blocked so their STUN rail can deplete during blockstun and so
+    the punish session can survive the transition into the defender's response.
+    """
+    event = snap.get("realtime_punish_blockstun_contact") if isinstance(snap, dict) else None
+    if not isinstance(event, dict):
+        return None
+    try:
+        generation = max(0, int(event.get("generation", 0) or 0))
+        target = max(0, int(event.get("target", 0) or 0))
+    except Exception:
+        return None
+    if generation <= 0 or target <= 0:
+        return None
+
+    if generation != int(slot_anim.get("punish_bs_contact_generation", 0) or 0):
+        slot_anim["punish_bs_generation_flash"] = 1.0
+        slot_anim["punish_bs_contact_generation"] = generation
+        slot_anim["punish_bs_contact_target"] = target
+        slot_anim["punish_bs_contact_remaining"] = target
+        slot_anim["punish_bs_contact_move"] = str(event.get("move_label") or "")
+
+    target = max(0, int(slot_anim.get("punish_bs_contact_target", target) or 0))
+    try:
+        current = max(0, min(target, int(event.get("native_blockstun_current", event.get("native_blockstun", target)) or 0)))
+    except Exception:
+        current = max(0, int(slot_anim.get("punish_bs_contact_remaining", target) or target))
+    previous_remaining = max(0, min(target, int(slot_anim.get("punish_bs_contact_remaining", target) or target)))
+    remaining = min(previous_remaining, current)
+    if previous_remaining > 0 and remaining <= 0:
+        slot_anim["punish_bs_expire_flash"] = 1.0
+    slot_anim["punish_bs_contact_remaining"] = remaining
+    return {
+        "generation": 3_000_000 + generation,
+        "native_generation": generation,
+        "target": target,
+        "remaining": remaining,
+        "elapsed": max(0, target - remaining),
+        "active": remaining > 0,
+        "expired": remaining <= 0,
+        "move_label": str(slot_anim.get("punish_bs_contact_move") or ""),
+        "attacker_slot": str(event.get("attacker_slot") or ""),
+        "victim_slot": str(event.get("victim_slot") or ""),
+        "action_id": int(event.get("action_id", 0) or 0),
+        "attacker_action_frame": max(0, int(event.get("attacker_action_frame", 0) or 0)),
+        "attacker_move_end_frame": max(0, int(event.get("attacker_move_end_frame", 0) or 0)),
+    }
+
+
+def _update_compact_punish_race(state: dict, snap: dict, race_anim: dict | None) -> dict | None:
+    """Track one blocked move and grade the defender's attempted punish.
+
+    A block contact records the attacker's authored recovery boundary.  When the
+    blocker starts a move with frame data, we compare that move's first active
+    frame with the opponent's remaining recovery.  Positive margin means the
+    response becomes active while the opponent is still recovering; negative
+    margin means the opponent was already free.
+    """
+    if not isinstance(race_anim, dict):
+        return None
+
+    event = snap.get("realtime_punish_blockstun_contact") if isinstance(snap, dict) else None
+    if isinstance(event, dict):
+        try:
+            generation = max(0, int(event.get("generation", 0) or 0))
+        except Exception:
+            generation = 0
+        if generation > 0 and generation != int(race_anim.get("punish_generation", 0) or 0):
+            try:
+                victim_action_id = int(snap.get("realtime_action_id", snap.get("mv_id_display", 0)) or 0) & 0x7FFF
+            except Exception:
+                victim_action_id = 0
+            try:
+                victim_action_frame = max(0, int(snap.get("realtime_action_frame", 0) or 0))
+            except Exception:
+                victim_action_frame = 0
+            race_anim["punish_generation"] = generation
+            race_anim["punish_attacker_slot"] = str(event.get("attacker_slot") or "")
+            race_anim["punish_attacker_action_id"] = int(event.get("action_id", 0) or 0) & 0x7FFF
+            race_anim["punish_attacker_contact_frame"] = max(0, int(event.get("attacker_action_frame", 0) or 0))
+            race_anim["punish_attacker_move_end_frame"] = max(0, int(event.get("attacker_move_end_frame", 0) or 0))
+            race_anim["punish_block_target"] = max(0, int(event.get("target", 0) or 0))
+            race_anim["punish_block_remaining"] = max(0, int(event.get("native_blockstun_current", event.get("native_blockstun", 0)) or 0))
+            race_anim["punish_contact_victim_action_id"] = victim_action_id
+            race_anim["punish_contact_victim_action_frame"] = victim_action_frame
+            race_anim["punish_attempt_action_id"] = -1
+            race_anim["punish_attempt_expiry_frame"] = -1
+            race_anim["punish_attempt_margin"] = 0
+            race_anim["punish_attempt_cancelled"] = False
+            race_anim["punish_attempt_attacker_remaining"] = 0
+            race_anim["punish_attempt_first_start"] = 0
+            race_anim["punish_attempt_started"] = False
+        if generation > 0 and generation == int(race_anim.get("punish_generation", 0) or 0):
+            try:
+                race_anim["punish_block_remaining"] = max(0, int(event.get("native_blockstun_current", event.get("native_blockstun", 0)) or 0))
+            except Exception:
+                pass
+
+    generation = int(race_anim.get("punish_generation", 0) or 0)
+    if generation <= 0:
+        return None
+
+    try:
+        action_id = int(snap.get("realtime_action_id", snap.get("mv_id_display", 0)) or 0) & 0x7FFF
+    except Exception:
+        action_id = 0
+    try:
+        action_frame = max(0, int(snap.get("realtime_action_frame", 0) or 0))
+    except Exception:
+        action_frame = 0
+
+    attempt_id = int(race_anim.get("punish_attempt_action_id", -1) or -1)
+    if attempt_id >= 0:
+        if action_id != attempt_id:
+            return None
+        expiry_frame = max(0, int(race_anim.get("punish_attempt_expiry_frame", 0) or 0))
+        first_start = max(0, int(race_anim.get("punish_attempt_first_start", 0) or 0))
+        return {
+            "kind": "PUNISH",
+            "expiry_frame": expiry_frame,
+            "remaining": max(0, expiry_frame - action_frame),
+            "start_remaining": max(0, int(race_anim.get("punish_attempt_attacker_remaining", 0) or 0)),
+            "margin": int(race_anim.get("punish_attempt_margin", 0) or 0),
+            "generation": 4_000_000 + generation,
+            "arm_frame": max(0, int(race_anim.get("punish_attempt_arm_frame", 0) or 0)),
+            "first_start": first_start,
+            "windows": list(state.get("windows") or []),
+            "cancelled": bool(race_anim.get("punish_attempt_cancelled", False)),
+            "attacker_slot": str(race_anim.get("punish_attacker_slot") or ""),
+            "theoretical_window": max(0, int(race_anim.get("punish_theoretical_window", 0) or 0)),
+        }
+
+    if not bool(state.get("available")):
+        return None
+    first_start = max(0, int(state.get("first_start", 0) or 0))
+    contact_action_id = int(race_anim.get("punish_contact_victim_action_id", -1) or -1)
+    contact_action_frame = max(0, int(race_anim.get("punish_contact_victim_action_frame", 0) or 0))
+    is_new_response = bool(action_id != contact_action_id or action_frame < contact_action_frame)
+    if not is_new_response or action_id < 0x0100:
+        return None
+
+    attacker_slot = str(race_anim.get("punish_attacker_slot") or "")
+    attacker_original_action = int(race_anim.get("punish_attacker_action_id", 0) or 0) & 0x7FFF
+    attacker_move_end = max(0, int(race_anim.get("punish_attacker_move_end_frame", 0) or 0))
+    attacker_contact_frame = max(0, int(race_anim.get("punish_attacker_contact_frame", 0) or 0))
+    block_target = max(0, int(race_anim.get("punish_block_target", 0) or 0))
+    if attacker_move_end <= attacker_contact_frame:
+        return None
+
+    attacker_snap = _display_slots.get(attacker_slot) or {}
+    try:
+        attacker_now_action = int(attacker_snap.get("realtime_action_id", attacker_snap.get("mv_id_display", 0)) or 0) & 0x7FFF
+    except Exception:
+        attacker_now_action = 0
+    try:
+        attacker_now_frame = max(0, int(attacker_snap.get("realtime_action_frame", 0) or 0))
+    except Exception:
+        attacker_now_frame = 0
+
+    cancelled = False
+    if attacker_now_action == attacker_original_action:
+        attacker_remaining = max(0, attacker_move_end - attacker_now_frame)
+    else:
+        # A new offensive action means the attacker chained/cancelled instead of
+        # simply recovering.  That is blockstring territory, not a guaranteed
+        # punish against the original move.
+        cancelled = attacker_now_action >= 0x0100
+        attacker_remaining = 0
+
+    expiry_frame = action_frame + attacker_remaining
+    margin = int(expiry_frame - first_start)
+    theoretical_window = max(0, (attacker_move_end - attacker_contact_frame) - block_target)
+    race_anim["punish_attempt_action_id"] = action_id
+    race_anim["punish_attempt_expiry_frame"] = expiry_frame
+    race_anim["punish_attempt_margin"] = margin
+    race_anim["punish_attempt_cancelled"] = cancelled
+    race_anim["punish_attempt_attacker_remaining"] = attacker_remaining
+    race_anim["punish_attempt_first_start"] = first_start
+    race_anim["punish_attempt_arm_frame"] = action_frame
+    race_anim["punish_attempt_started"] = True
+    race_anim["punish_theoretical_window"] = theoretical_window
+
+    return {
+        "kind": "PUNISH",
+        "expiry_frame": expiry_frame,
+        "remaining": max(0, expiry_frame - action_frame),
+        "start_remaining": attacker_remaining,
+        "margin": margin,
+        "generation": 4_000_000 + generation,
+        "arm_frame": action_frame,
+        "first_start": first_start,
+        "windows": list(state.get("windows") or []),
+        "cancelled": cancelled,
+        "attacker_slot": attacker_slot,
+        "theoretical_window": theoretical_window,
+    }
+
+def _draw_compact_frame_data_bar(
+    screen,
+    font_sm,
+    snap: dict,
+    x: int,
+    y: int,
+    right: int,
+    scale: float,
+    *,
+    race_clock: dict | None = None,
+    race_anim: dict | None = None,
+    race_override: dict | None = None,
+) -> None:
+    """Draw a dedicated MOVE TIMING rail above the PHASE badges.
+
+    The timeline gets the first row directly beneath STUN so the two gauges
+    read as one visual race. PHASE remains a separate numeric badge row below
+    it and never compresses the MOVE TIMING runway. MOVE TIMING uses the same
+    left-to-right elapsed-frame axis as the STUN head, while the STUN fill
+    itself depletes from full to empty.
+    """
+    state = _compact_frame_data_state(snap or {})
+    row_h = max(font_sm.get_height() + max(5, int(6 * scale)), int(17 * scale))
+    row_gap = max(2, int(3 * scale))
+    timeline_y = y
+    phase_y = y + row_h + row_gap
+
+    # ---- Row 2: numeric phase / race badges only -------------------------
+    phase_label_w = _draw_history_header_chip(screen, font_sm, "PHASE", x, phase_y, scale)
+    phase_content_x = x + phase_label_w + max(5, int(6 * scale))
+
+    # Update the action-instance tracker even for actions without authored
+    # timing so an idle state cleanly resets the previous race.
+    race = race_override if isinstance(race_override, dict) else _update_compact_move_timing_race(state, snap or {}, race_clock, race_anim)
+
+    phase_colors = {
+        "startup": (242, 194, 92),
+        "active": (255, 104, 112),
+        "gap": (205, 173, 104),
+        "recovery": (112, 170, 245),
+        "idle": (126, 139, 160),
+    }
+    phase_fills = {
+        "startup": (126, 96, 42),
+        "active": (164, 53, 64),
+        "gap": (86, 73, 48),
+        "recovery": (49, 88, 146),
+        "idle": (55, 66, 84),
+    }
+
+    def draw_badge(cursor_x: int, text: str, fg, fill_rgb, *, min_text: str | None = None) -> pygame.Rect:
+        surf = font_sm.render(text, True, fg)
+        pad_x = max(4, int(5 * scale))
+        badge_h = max(surf.get_height() + max(3, int(4 * scale)), int(15 * scale))
+        min_w = font_sm.size(min_text)[0] + pad_x * 2 if min_text else 0
+        badge_w = max(min_w, surf.get_width() + pad_x * 2)
+        badge_y = phase_y + max(0, (row_h - badge_h) // 2)
+        rect = pygame.Rect(cursor_x, badge_y, badge_w, badge_h)
+        box = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+        box.fill((*fill_rgb, 116))
+        pygame.draw.rect(box, (*fg, 176), box.get_rect(), 1, border_radius=max(2, int(3 * scale)))
+        box.blit(surf, ((rect.width - surf.get_width()) // 2, (rect.height - surf.get_height()) // 2))
+        screen.blit(box, rect.topleft)
+        return rect
+
+    if state.get("available"):
+        phase_key = str(state.get("phase_key") or "idle")
+        remaining = int(state.get("remaining") or 0)
+        phase = str(state.get("phase") or "")
+        phase_color = phase_colors.get(phase_key, phase_colors["idle"])
+        status_text = f"{phase} {remaining}f" if phase and remaining > 0 else "DONE"
+        status_rect = draw_badge(
+            phase_content_x,
+            status_text,
+            phase_color if phase else phase_colors["idle"],
+            phase_fills.get(phase_key, phase_fills["idle"]),
+            min_text="ACTIVE 99f",
+        )
+        cursor_x = status_rect.right + max(5, int(6 * scale))
+
+        # Keep the live phase countdown, but also print the authored maximum
+        # for each phase so the player does not have to remember the first tick.
+        # For multi-hit moves ACTIVE is the total authored active frames across
+        # all windows; gaps remain represented on the MOVE TIMING rail.
+        startup_total = max(0, int(state.get("startup_total", state.get("first_start", 0)) or 0))
+        active_total = max(0, int(state.get("active_total", 0) or 0))
+        recovery_total = max(0, int(state.get("recovery_total", state.get("recovery", 0)) or 0))
+        summary_text = f"STARTUP {startup_total}f  ACTIVE {active_total}f  REC {recovery_total}f"
+        summary_surf = font_sm.render(summary_text, True, (164, 176, 196))
+        summary_gap = max(5, int(6 * scale))
+        # The summary is informational text rather than another status badge.
+        # Draw it whenever it fits; on very narrow panels retain the live timer
+        # and race verdict rather than clipping the row.
+        if cursor_x + summary_surf.get_width() + summary_gap <= right:
+            screen.blit(
+                summary_surf,
+                (cursor_x, phase_y + max(0, (row_h - summary_surf.get_height()) // 2)),
+            )
+            cursor_x += summary_surf.get_width() + summary_gap
+
+        if race:
+            kind = str(race.get("kind") or "HS").upper()
+            if kind == "AIR HS":
+                race_color = STUN_CLOCK_UNTECH_COLOR
+                race_fill = (77, 64, 112)
+            elif kind == "BS":
+                race_color = STUN_CLOCK_BLOCK_COLOR
+                race_fill = (116, 68, 42)
+            elif kind == "PUNISH":
+                race_color = (111, 225, 157)
+                race_fill = (37, 102, 69)
+            else:
+                race_color = STUN_CLOCK_HIT_COLOR
+                race_fill = (42, 84, 96)
+
+            if kind == "PUNISH":
+                stun_text = f"THEY READY {int(race.get('remaining', 0) or 0)}f"
+                min_stun_text = "THEY READY 99f"
+            else:
+                stun_text = f"{kind} END {int(race.get('remaining', 0) or 0)}f"
+                min_stun_text = "AIR HS END 99f" if kind == "AIR HS" else ("BS END 99f" if kind == "BS" else "HS END 99f")
+            stun_rect = draw_badge(cursor_x, stun_text, race_color, race_fill, min_text=min_stun_text)
+            cursor_x = stun_rect.right + max(4, int(5 * scale))
+
+            margin = int(race.get("margin", 0) or 0)
+            if kind == "PUNISH" and bool(race.get("cancelled", False)):
+                verdict_text = "CHAINED"
+                verdict_color = (242, 194, 92)
+                verdict_fill = (126, 96, 42)
+            elif kind == "PUNISH" and margin > 0:
+                verdict_text = f"{margin}F PUNISH"
+                verdict_color = (111, 225, 157)
+                verdict_fill = (37, 102, 69)
+            elif kind == "PUNISH" and margin == 0:
+                verdict_text = "LAST FRAME"
+                verdict_color = (242, 194, 92)
+                verdict_fill = (126, 96, 42)
+            elif margin > 0:
+                verdict_text = f"{margin}F EARLY"
+                verdict_color = (242, 194, 92)
+                verdict_fill = (126, 96, 42)
+            elif margin == 0:
+                verdict_text = "ON TIME"
+                verdict_color = (111, 225, 157)
+                verdict_fill = (37, 102, 69)
+            else:
+                verdict_text = f"{abs(margin)}F LATE"
+                verdict_color = (255, 113, 124)
+                verdict_fill = (126, 46, 56)
+
+            # Compact EARLY <-> LATE cue.  Zero is the center line, positive
+            # race margin lands to the left (early), and negative margin lands
+            # to the right (late).  Clamp large misses to the rail edge so the
+            # relationship stays readable during fast play.
+            verdict_s = font_sm.render(verdict_text, True, verdict_color)
+            verdict_pad = max(4, int(5 * scale))
+            verdict_w = verdict_s.get_width() + verdict_pad * 2
+            gap_w = max(4, int(5 * scale))
+            min_gauge_w = max(46, int(56 * scale))
+            max_gauge_w = max(min_gauge_w, int(82 * scale))
+            room_for_gauge = right - cursor_x - verdict_w - gap_w
+
+            if room_for_gauge >= min_gauge_w:
+                gauge_w = min(max_gauge_w, room_for_gauge)
+                gauge_h = max(6, int(7 * scale))
+                gauge_y = phase_y + max(0, (row_h - gauge_h) // 2)
+                gauge = pygame.Rect(cursor_x, gauge_y, gauge_w, gauge_h)
+                gauge_radius = max(2, gauge_h // 2)
+
+                pygame.draw.rect(screen, (24, 30, 40), gauge, border_radius=gauge_radius)
+                half_w = max(1, gauge.width // 2)
+                early_zone = pygame.Surface((half_w, gauge.height), pygame.SRCALPHA)
+                early_zone.fill((242, 194, 92, 42))
+                screen.blit(early_zone, gauge.topleft)
+                late_w = max(1, gauge.width - half_w)
+                late_zone = pygame.Surface((late_w, gauge.height), pygame.SRCALPHA)
+                late_zone.fill((255, 113, 124, 38))
+                screen.blit(late_zone, (gauge.x + half_w, gauge.y))
+                pygame.draw.rect(screen, (78, 91, 112), gauge, 1, border_radius=gauge_radius)
+
+                center_x = gauge.centerx
+                pygame.draw.line(
+                    screen,
+                    (111, 225, 157),
+                    (center_x, gauge.y - 2),
+                    (center_x, gauge.bottom + 1),
+                    max(1, int(1 * scale)),
+                )
+
+                visual_range = 12.0
+                signed_visual = max(-visual_range, min(visual_range, -float(margin)))
+                marker_frac = (signed_visual + visual_range) / (visual_range * 2.0)
+                marker_x = gauge.x + int(round(marker_frac * max(1, gauge.width - 1)))
+                marker_x = max(gauge.left + 1, min(gauge.right - 2, marker_x))
+                marker_color = _hud_brighten(verdict_color, 45)
+                pygame.draw.line(
+                    screen,
+                    marker_color,
+                    (marker_x, gauge.y - 3),
+                    (marker_x, gauge.bottom + 2),
+                    max(1, int(2 * scale)),
+                )
+                cap = max(2, int(2 * scale))
+                pygame.draw.polygon(
+                    screen,
+                    marker_color,
+                    [
+                        (marker_x - cap, gauge.y - 4),
+                        (marker_x + cap, gauge.y - 4),
+                        (marker_x, gauge.y - 1),
+                    ],
+                )
+                cursor_x = gauge.right + gap_w
+
+            if right - cursor_x >= max(48, verdict_w):
+                draw_badge(cursor_x, verdict_text, verdict_color, verdict_fill)
+    else:
+        muted = font_sm.render("-", True, (86, 96, 114))
+        screen.blit(muted, (phase_content_x, phase_y + max(0, (row_h - muted.get_height()) // 2)))
+
+    # ---- Row 1: dedicated MOVE TIMING rail -------------------------------
+    timing_label_w = _draw_history_header_chip(screen, font_sm, "MOVE TIMING", x, timeline_y, scale)
+    track_x = x + timing_label_w + max(5, int(6 * scale))
+    track_w = max(32, right - track_x)
+    track_h = max(9, int(10 * scale))
+    track_y = timeline_y + max(0, (row_h - track_h) // 2)
+    track_rect = pygame.Rect(track_x, track_y, track_w, track_h)
+    radius = max(2, track_h // 2)
+    pygame.draw.rect(screen, (20, 25, 34), track_rect, border_radius=radius)
+    pygame.draw.rect(screen, (72, 84, 106), track_rect, 1, border_radius=radius)
+
+    if not state.get("available"):
+        return
+
+    phase_key = str(state.get("phase_key") or "idle")
+    phase_color = phase_colors.get(phase_key, phase_colors["idle"])
+    move_total = max(1, int(state.get("total") or 1))
+    race_expiry = max(0, int(race.get("expiry_frame", 0) or 0)) if race else 0
+    # MOVE and stun expiry share one frame scale.  This rail does not borrow
+    # width from the badges above, so their physical relationship stays legible.
+    display_total = max(move_total, race_expiry, 1)
+    first_start = max(0, int(state.get("first_start") or 0))
+    final_boundary = max(first_start, int(state.get("final_boundary") or first_start))
+    recovery = max(0, int(state.get("recovery") or 0))
+    windows = list(state.get("windows") or [])
+
+    def px(frame_value: float) -> int:
+        frac = max(0.0, min(1.0, float(frame_value) / float(display_total)))
+        return track_rect.x + int(round(frac * track_rect.width))
+
+    inner_y = track_rect.y + 1
+    inner_h = max(1, track_rect.height - 2)
+
+    if first_start > 0:
+        sx0, sx1 = px(0), px(first_start)
+        if sx1 > sx0:
+            pygame.draw.rect(screen, (128, 98, 43), pygame.Rect(sx0, inner_y, sx1 - sx0, inner_h))
+
+    for start, end in windows:
+        ax0, ax1 = px(int(start)), px(int(end))
+        if ax1 > ax0:
+            pygame.draw.rect(screen, (168, 53, 64), pygame.Rect(ax0, inner_y, ax1 - ax0, inner_h))
+
+    if recovery > 0:
+        rx0, rx1 = px(final_boundary), px(final_boundary + recovery)
+        if rx1 > rx0:
+            pygame.draw.rect(screen, (48, 88, 148), pygame.Rect(rx0, inner_y, rx1 - rx0, inner_h))
+
+    if display_total > move_total:
+        move_end_x = px(move_total)
+        pygame.draw.line(screen, (102, 115, 136), (move_end_x, track_rect.y + 1), (move_end_x, track_rect.bottom - 2), 1)
+
+    current = max(0, int(state.get("action_frame") or 0))
+    elapsed_right = max(track_rect.left, min(track_rect.right, px(min(current + 1, display_total))))
+    if elapsed_right > track_rect.left:
+        elapsed = pygame.Surface((elapsed_right - track_rect.left, inner_h), pygame.SRCALPHA)
+        elapsed.fill((255, 255, 255, 26))
+        screen.blit(elapsed, (track_rect.left, inner_y))
+
+    for boundary in (first_start, final_boundary):
+        if boundary <= 0 or boundary >= display_total:
+            continue
+        bx = px(boundary)
+        pygame.draw.line(screen, (168, 181, 203), (bx, track_rect.y + 1), (bx, track_rect.bottom - 2), 1)
+
+    # Comparison marker on the same authored move axis. HS/BS use a live stun
+    # sweep. PUNISH instead marks when the opponent becomes actionable, because
+    # the defender's own playhead already shows where the punish attempt is now.
+    if race and race_expiry > 0:
+        kind = str(race.get("kind") or "HS").upper()
+        if kind == "AIR HS":
+            race_color = STUN_CLOCK_UNTECH_COLOR
+        elif kind == "BS":
+            race_color = STUN_CLOCK_BLOCK_COLOR
+        elif kind == "PUNISH":
+            race_color = (111, 225, 157)
+        else:
+            race_color = STUN_CLOCK_HIT_COLOR
+        race_head = _hud_brighten(race_color, 64)
+        deadline_x = max(track_rect.left + 1, min(track_rect.right - 1, px(race_expiry)))
+
+        if kind == "PUNISH":
+            # The green runway is the time the defender has before the blocked
+            # attacker becomes actionable. The red active segment crossing this
+            # marker is therefore a guaranteed punish at a glance.
+            if deadline_x > track_rect.left + 1:
+                ready_window = pygame.Surface((deadline_x - track_rect.left, inner_h), pygame.SRCALPHA)
+                ready_window.fill((*race_color, 24))
+                screen.blit(ready_window, (track_rect.left, inner_y))
+            line_y = track_rect.bottom - 2
+            if deadline_x > track_rect.left + 1:
+                pygame.draw.line(screen, race_color, (track_rect.left + 2, line_y), (deadline_x, line_y), max(1, int(2 * scale)))
+            pygame.draw.line(screen, race_head, (deadline_x, track_rect.y - 2), (deadline_x, track_rect.bottom + 2), max(1, int(2 * scale)))
+            cap = max(2, int(3 * scale))
+            pygame.draw.polygon(
+                screen,
+                race_head,
+                [(deadline_x - cap, track_rect.y - 3), (deadline_x + cap, track_rect.y - 3), (deadline_x, track_rect.y + 1)],
+            )
+        else:
+            hs_remaining = max(0, int(race.get("remaining", 0) or 0))
+            hs_elapsed = max(0, min(race_expiry, race_expiry - hs_remaining))
+            hs_now_x = max(track_rect.left + 1, min(track_rect.right - 1, px(hs_elapsed)))
+
+            if deadline_x > track_rect.left + 1:
+                stun_window = pygame.Surface((deadline_x - track_rect.left, inner_h), pygame.SRCALPHA)
+                stun_window.fill((*race_color, 28))
+                screen.blit(stun_window, (track_rect.left, inner_y))
+
+            strip_h = max(2, int(3 * scale))
+            strip_y = track_rect.bottom - strip_h - 1
+            if deadline_x > track_rect.left + 1:
+                strip_bg = pygame.Surface((deadline_x - track_rect.left, strip_h), pygame.SRCALPHA)
+                strip_bg.fill((*_hud_darken(race_color, 18), 122))
+                screen.blit(strip_bg, (track_rect.left, strip_y))
+            if hs_now_x > track_rect.left + 1:
+                strip_fill = pygame.Surface((hs_now_x - track_rect.left, strip_h), pygame.SRCALPHA)
+                strip_fill.fill((*race_color, 182))
+                screen.blit(strip_fill, (track_rect.left, strip_y))
+
+            pygame.draw.line(screen, race_color, (hs_now_x, track_rect.centery), (hs_now_x, track_rect.bottom + 1), 1)
+            now_cap = max(2, int(2 * scale))
+            pygame.draw.polygon(
+                screen,
+                race_color,
+                [(hs_now_x - now_cap, track_rect.bottom + 2), (hs_now_x + now_cap, track_rect.bottom + 2), (hs_now_x, track_rect.bottom - 1)],
+            )
+
+            line_y = track_rect.bottom - 2
+            if deadline_x > track_rect.left + 1:
+                pygame.draw.line(screen, race_color, (track_rect.left + 2, line_y), (deadline_x, line_y), max(1, int(2 * scale)))
+            pygame.draw.line(screen, race_head, (deadline_x, track_rect.y - 2), (deadline_x, track_rect.bottom + 2), max(1, int(2 * scale)))
+            cap = max(2, int(3 * scale))
+            pygame.draw.polygon(
+                screen,
+                race_head,
+                [(deadline_x - cap, track_rect.y - 3), (deadline_x + cap, track_rect.y - 3), (deadline_x, track_rect.y + 1)],
+            )
+
+    playhead_x = px(min(float(current) + 0.5, float(display_total)))
+    playhead_x = max(track_rect.left + 1, min(track_rect.right - 2, playhead_x))
+    playhead_w = max(2, int(2 * scale))
+    glow = pygame.Surface((playhead_w + 4, track_rect.height + 6), pygame.SRCALPHA)
+    pygame.draw.rect(glow, (238, 246, 255, 52), glow.get_rect(), border_radius=2)
+    screen.blit(glow, (playhead_x - playhead_w // 2 - 2, track_rect.y - 3))
+    pygame.draw.rect(
+        screen,
+        (246, 250, 255),
+        pygame.Rect(playhead_x - playhead_w // 2, track_rect.y - 2, playhead_w, track_rect.height + 4),
+        border_radius=1,
+    )
+    cap_r = max(2, int(2 * scale))
+    pygame.draw.circle(screen, phase_color, (playhead_x, track_rect.y - 2), cap_r)
+
 def _draw_compact_input_history(
     screen,
     font_sm,
@@ -5496,24 +6632,26 @@ def _draw_compact_input_history(
 
 
 def _merge_move_history(*lists: list[dict]) -> list[dict]:
+    """Return the literal five most recent committed move instances.
+
+    Repeated text is meaningful (2A -> 2A is two moves), so never deduplicate
+    this list by label.  Native sample time / log sequence outrank renderer
+    frame numbers, which may tie when several cancels are consumed in one draw.
+    """
     merged: list[dict] = []
     for seq in lists:
         for item in seq or []:
             if item and item.get("text"):
                 merged.append(item)
-    merged.sort(key=lambda item: int(item.get("frame", 0)), reverse=True)
-    # remove immediate duplicates while preserving order
-    filtered: list[dict] = []
-    last_text = None
-    for item in merged:
-        text = str(item.get("text") or "")
-        if text == last_text:
-            continue
-        filtered.append(item)
-        last_text = text
-        if len(filtered) >= 5:
-            break
-    return filtered
+    merged.sort(
+        key=lambda item: (
+            int(item.get("sample_ns", 0) or 0),
+            int(item.get("log_seq", 0) or 0),
+            int(item.get("frame", 0) or 0),
+        ),
+        reverse=True,
+    )
+    return merged[:5]
 
 
 def _draw_compact_move_history(screen, font_sm, items: list[dict], x: int, y: int, right: int, scale: float, prev_texts: list[str] | None = None, slide_progress: float = 0.0) -> None:
@@ -6497,7 +7635,11 @@ def _realtime_hs_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
     if generation <= 0 or target <= 0 or source not in {"hitstun", "untech"}:
         return None
 
-    if generation != int(slot_anim.get("hs_contact_generation", 0) or 0):
+    previous_generation = int(slot_anim.get("hs_contact_generation", 0) or 0)
+    source_promoted = bool(event.get("source_promoted", False))
+    if generation != previous_generation:
+        # A new hit is a hard reset, even when it lands during the previous
+        # hit's still-nonzero countdown.
         slot_anim["stun_generation_flash"] = 1.0
         slot_anim["hs_contact_generation"] = generation
         slot_anim["hs_contact_target"] = target
@@ -6505,6 +7647,14 @@ def _realtime_hs_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
         slot_anim["hs_contact_loss"] = loss
         slot_anim["hs_contact_source"] = source
         slot_anim["hs_contact_move"] = str(event.get("move_label") or "")
+        slot_anim["hs_contact_remaining"] = target
+    elif source_promoted and source == "untech" and str(slot_anim.get("hs_contact_source") or "") != "untech":
+        # Same physical hit, later authoritative air-recovery lane.  Switch to
+        # +0x1220 immediately rather than waiting for another contact.
+        slot_anim["hs_contact_target"] = target
+        slot_anim["hs_contact_raw"] = raw
+        slot_anim["hs_contact_loss"] = loss
+        slot_anim["hs_contact_source"] = source
         slot_anim["hs_contact_remaining"] = target
 
     target = max(0, int(slot_anim.get("hs_contact_target", target) or 0))
@@ -6521,8 +7671,8 @@ def _realtime_hs_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
     except Exception:
         current = max(0, int(slot_anim.get("hs_contact_remaining", target) or target))
 
-    # A same-generation clock may only drain. This protects the display from a
-    # stale sidecar sample arriving out of order without inventing any frames.
+    # A same-generation clock may only drain. New hits use a new generation,
+    # while the victim state above is always the newest monotonic native sample.
     previous_remaining = max(0, min(target, int(slot_anim.get("hs_contact_remaining", target) or target)))
     remaining = min(previous_remaining, current)
     if previous_remaining > 0 and remaining <= 0:
@@ -6630,6 +7780,8 @@ def _draw_compact_untech_scaling_row(
     right: int,
     scale: float,
     dt: float,
+    *,
+    move_prediction: dict | None = None,
 ) -> None:
     """Draw adaptive native hit/untech and blockstun clocks on one rail.
 
@@ -6695,7 +7847,8 @@ def _draw_compact_untech_scaling_row(
     else:
         hit_label, hit_value, hit_color = "AIR HS", "--", (91, 102, 119)
 
-    block_clock = _realtime_blockstun_contact_clock(slot_anim, snap)
+    punish_block_clock = _realtime_punish_blockstun_contact_clock(slot_anim, snap)
+    block_clock = punish_block_clock if punish_block_clock is not None else _realtime_blockstun_contact_clock(slot_anim, snap)
     if block_clock is None:
         block_target = 0
         block_remaining = 0
@@ -6731,7 +7884,7 @@ def _draw_compact_untech_scaling_row(
             screen.blit(ready, (content_right - ready.get_width(), rail.centery - ready.get_height() // 2))
         return
 
-    def draw_clock_cell(cell: pygame.Rect, label_text: str, value_text: str, color, current: int, total: int, *, raw_total: int | None = None, lost: int = 0, head_color=None, compact: bool = False, generation_flash: float = 0.0, expire_flash: float = 0.0):
+    def draw_clock_cell(cell: pygame.Rect, label_text: str, value_text: str, color, current: int, total: int, *, raw_total: int | None = None, lost: int = 0, head_color=None, compact: bool = False, generation_flash: float = 0.0, expire_flash: float = 0.0, prediction: dict | None = None):
         generation_flash = max(0.0, min(1.0, float(generation_flash or 0.0)))
         expire_flash = max(0.0, min(1.0, float(expire_flash or 0.0)))
         value_flash = max(generation_flash, expire_flash)
@@ -6763,14 +7916,127 @@ def _draw_compact_untech_scaling_row(
         if lost > 0 and usable_w < gw:
             lost_rect = pygame.Rect(gx + usable_w, gy, gw - usable_w, gh)
             _draw_vertical_gradient(screen, lost_rect, (242, 122, 136), (196, 76, 90), 245)
-        fill_w = max(0, min(usable_w, int(round(gw * max(0, current) / float(denom)))))
-        if fill_w > 0:
-            fill_rect = pygame.Rect(gx, gy, fill_w, gh)
+
+        # Project the newly-started move directly into the SAME native stun
+        # generation.  This turns STUN + MOVE TIMING into one race gauge:
+        # yellow = startup that still has to elapse, red = authored active
+        # window(s).  The geometry is expressed in stun-elapsed frames, so a
+        # red block before the right edge means the move becomes active while
+        # the victim is still stunned.  A red chevron at the right edge means
+        # first active occurs only after stun has expired.
+        if isinstance(prediction, dict) and total > 0:
+            try:
+                _pred_generation_raw = prediction.get("generation", -1)
+                pred_generation = int(-1 if _pred_generation_raw is None else _pred_generation_raw)
+                _cell_generation_raw = prediction.get("cell_generation", pred_generation)
+                cell_generation = int(pred_generation if _cell_generation_raw is None else _cell_generation_raw)
+                arm_remaining = max(0, int(prediction.get("start_remaining", 0) or 0))
+                arm_frame = max(0, int(prediction.get("arm_frame", 0) or 0))
+                first_start = max(0, int(prediction.get("first_start", 0) or 0))
+                pred_windows = list(prediction.get("windows") or [])
+            except Exception:
+                pred_generation = -1
+                cell_generation = -2
+                arm_remaining = 0
+                arm_frame = 0
+                first_start = 0
+                pred_windows = []
+
+            # Caller only attaches a prediction to the matching live clock,
+            # but keep generation validation here as a stale-hit guard.
+            if pred_generation >= 0 and pred_generation == cell_generation and arm_remaining > 0:
+                stun_elapsed_at_arm = max(0, min(int(total), int(total) - arm_remaining))
+
+                def pred_x(stun_elapsed_value: float) -> int:
+                    frac = max(0.0, min(1.0, float(stun_elapsed_value) / float(max(1, int(total)))))
+                    return gx + int(round(usable_w * frac))
+
+                startup_end_elapsed = stun_elapsed_at_arm + max(0, first_start - arm_frame)
+                startup_x0 = pred_x(stun_elapsed_at_arm)
+                startup_x1 = pred_x(min(int(total), startup_end_elapsed))
+                if startup_end_elapsed > stun_elapsed_at_arm and startup_x1 > startup_x0:
+                    startup_overlay = pygame.Surface((startup_x1 - startup_x0, gh), pygame.SRCALPHA)
+                    startup_overlay.fill((242, 194, 92, 146))
+                    screen.blit(startup_overlay, (startup_x0, gy))
+                    pygame.draw.line(screen, (250, 217, 129), (startup_x0, gy), (startup_x1 - 1, gy), 1)
+
+                first_active_elapsed = None
+                for win_start, win_end in pred_windows:
+                    try:
+                        win_start = int(win_start)
+                        win_end = int(win_end)
+                    except Exception:
+                        continue
+                    abs_start = stun_elapsed_at_arm + (win_start - arm_frame)
+                    abs_end = stun_elapsed_at_arm + (win_end - arm_frame)
+                    if first_active_elapsed is None or abs_start < first_active_elapsed:
+                        first_active_elapsed = abs_start
+                    clip_start = max(0, min(int(total), abs_start))
+                    clip_end = max(0, min(int(total), abs_end))
+                    if clip_end > clip_start:
+                        ax0, ax1 = pred_x(clip_start), pred_x(clip_end)
+                        if ax1 <= ax0:
+                            ax1 = min(gx + usable_w, ax0 + 1)
+                        if ax1 > ax0:
+                            active_overlay = pygame.Surface((ax1 - ax0, gh + 2), pygame.SRCALPHA)
+                            active_overlay.fill((255, 86, 101, 212))
+                            screen.blit(active_overlay, (ax0, gy - 1))
+                            pygame.draw.line(screen, (255, 176, 184), (ax0, gy - 2), (ax1 - 1, gy - 2), 1)
+
+                # First-active cue.  If it falls beyond stun, the cue lives on
+                # the expiration edge and points outward instead of pretending
+                # the active window existed inside the stun bar.
+                if first_active_elapsed is not None:
+                    if first_active_elapsed <= int(total):
+                        fx = max(gx, min(gx + usable_w - 1, pred_x(first_active_elapsed)))
+                        pygame.draw.line(screen, (255, 218, 223), (fx, gy - 3), (fx, gy + gh + 2), 1)
+                    else:
+                        edge_x = gx + usable_w
+                        cap = max(2, int(3 * scale))
+                        pygame.draw.polygon(
+                            screen,
+                            (255, 104, 118),
+                            [(edge_x - cap * 2, gy - cap), (edge_x - cap * 2, gy + gh + cap), (edge_x - 1, gy + gh // 2)],
+                        )
+
+        # Countdown is numeric and the bar now reads as REMAINING stun:
+        # full at generation, then depleted behind the forward-moving head.
+        # The head still travels left -> right on the same elapsed-frame axis
+        # used by MOVE TIMING, so the stacked rails remain directly comparable.
+        active_total = max(1, int(total))
+        current_clamped = max(0, min(active_total, int(current)))
+        elapsed_frames = active_total - current_clamped
+        progress_w = max(0, min(usable_w, int(round(usable_w * elapsed_frames / float(active_total)))))
+        remaining_w = max(0, usable_w - progress_w)
+        if remaining_w > 0:
+            fill_x = gx + progress_w
+            fill_rect = pygame.Rect(fill_x, gy, remaining_w, gh)
             _draw_vertical_gradient(screen, fill_rect, _hud_brighten(color, 14), _hud_darken(color, 8), 255)
-            pygame.draw.line(screen, (250, 250, 250), (fill_rect.x + 1, fill_rect.y + 1), (fill_rect.right - 1, fill_rect.y + 1), 1)
+            if fill_rect.width > 2:
+                pygame.draw.line(screen, (250, 250, 250), (fill_rect.x + 1, fill_rect.y + 1), (fill_rect.right - 1, fill_rect.y + 1), 1)
         if current > 0:
-            hx = gx + max(0, min(usable_w - 1, fill_w))
+            hx = gx + max(0, min(usable_w - 1, progress_w))
             pygame.draw.line(screen, head_color or color, (hx, gy - 2), (hx, gy + gh + 1), 1)
+
+    # Only paint a projected move on the exact stun generation it was armed
+    # against.  A fresh hit caused by the current move creates a new generation
+    # and must not be mistaken for the old link/cancel prediction.
+    hit_prediction = None
+    block_prediction = None
+    if isinstance(move_prediction, dict):
+        pred_kind = str(move_prediction.get("kind") or "HS").upper()
+        _pred_generation_raw = move_prediction.get("generation", -1)
+        pred_generation = int(-1 if _pred_generation_raw is None else _pred_generation_raw)
+        if pred_kind == "BS":
+            block_generation = int(block_clock.get("generation", -2)) if block_clock is not None and block_clock.get("generation", -2) is not None else -2
+            if block_clock is not None and pred_generation == block_generation:
+                block_prediction = dict(move_prediction)
+                block_prediction["cell_generation"] = block_generation
+        elif contact_clock is not None:
+            contact_generation = int(contact_clock.get("generation", -2)) if contact_clock.get("generation", -2) is not None else -2
+            if pred_generation == contact_generation:
+                hit_prediction = dict(move_prediction)
+                hit_prediction["cell_generation"] = contact_generation
 
     avail = max(40, content_right - content_x)
     hit_head = STUN_CLOCK_UNTECH_HEAD if clock_source == "untech" else STUN_CLOCK_HIT_HEAD
@@ -6785,8 +8051,8 @@ def _draw_compact_untech_scaling_row(
         block_cell = pygame.Rect(content_x + first + gap, rail.y + 1, max(20, avail - gap - first), max(1, rail.height - 2))
         sep_x = block_cell.x - gap // 2
         pygame.draw.line(screen, (47, 59, 75), (sep_x, rail.y + 4), (sep_x, rail.bottom - 4), 1)
-        draw_clock_cell(hit_cell, hit_label, hit_value, hit_color, remaining, target, raw_total=base_est, lost=(loss if clock_source == "untech" else 0), head_color=hit_head, generation_flash=hit_generation_flash, expire_flash=hit_expire_flash)
-        draw_clock_cell(block_cell, "BS", block_value, block_color, block_remaining, block_target, head_color=STUN_CLOCK_BLOCK_HEAD, generation_flash=block_generation_flash, expire_flash=block_expire_flash)
+        draw_clock_cell(hit_cell, hit_label, hit_value, hit_color, remaining, target, raw_total=base_est, lost=(loss if clock_source == "untech" else 0), head_color=hit_head, generation_flash=hit_generation_flash, expire_flash=hit_expire_flash, prediction=hit_prediction)
+        draw_clock_cell(block_cell, "BS", block_value, block_color, block_remaining, block_target, head_color=STUN_CLOCK_BLOCK_HEAD, generation_flash=block_generation_flash, expire_flash=block_expire_flash, prediction=block_prediction)
         return
 
     # One live clock gets almost the whole row. Its inactive sibling remains a
@@ -6797,7 +8063,7 @@ def _draw_compact_untech_scaling_row(
         active_w = max(24, avail - gap - compact_w)
         hit_cell = pygame.Rect(content_x, rail.y + 1, active_w, max(1, rail.height - 2))
         block_cell = pygame.Rect(content_x + active_w + gap, rail.y + 1, compact_w, max(1, rail.height - 2))
-        draw_clock_cell(hit_cell, hit_label, hit_value, hit_color, remaining, target, raw_total=base_est, lost=(loss if clock_source == "untech" else 0), head_color=hit_head, generation_flash=hit_generation_flash, expire_flash=hit_expire_flash)
+        draw_clock_cell(hit_cell, hit_label, hit_value, hit_color, remaining, target, raw_total=base_est, lost=(loss if clock_source == "untech" else 0), head_color=hit_head, generation_flash=hit_generation_flash, expire_flash=hit_expire_flash, prediction=hit_prediction)
         draw_clock_cell(block_cell, "BS", "--", (82, 94, 112), 0, 0, compact=True)
     else:
         inactive_text = font_sm.render(f"{hit_label} --", True, (82, 94, 112))
@@ -6806,7 +8072,7 @@ def _draw_compact_untech_scaling_row(
         hit_cell = pygame.Rect(content_x, rail.y + 1, compact_w, max(1, rail.height - 2))
         block_cell = pygame.Rect(content_x + compact_w + gap, rail.y + 1, block_w, max(1, rail.height - 2))
         draw_clock_cell(hit_cell, hit_label, "--", (82, 94, 112), 0, 0, compact=True)
-        draw_clock_cell(block_cell, "BS", block_value, block_color, block_remaining, block_target, head_color=STUN_CLOCK_BLOCK_HEAD, generation_flash=block_generation_flash, expire_flash=block_expire_flash)
+        draw_clock_cell(block_cell, "BS", block_value, block_color, block_remaining, block_target, head_color=STUN_CLOCK_BLOCK_HEAD, generation_flash=block_generation_flash, expire_flash=block_expire_flash, prediction=block_prediction)
 
 def _research_dock_active_panel(control=None) -> str | None:
     """Return one fallback research panel when the core HUD is hidden."""
@@ -8094,6 +9360,14 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     research_row_height = _compact_attack_badge_height(team, font_sm, scale) if show_attack_inline else 0
     research_gap = max(1, int(2 * scale)) if show_attack_inline else 0
     research_layout_extra = research_row_height + research_gap
+    # Move timing is a core two-row HUD block:
+    #   MOVE TIMING -> a dedicated full-runway timeline
+    #   PHASE       -> compact numeric badges only
+    # Reserve both rows at all times so the panel never jumps when a move starts.
+    frame_data_row_h = max(font_sm.get_height() + max(5, int(6 * scale)), int(17 * scale))
+    frame_data_inner_gap = max(2, int(3 * scale))
+    frame_data_gap = max(2, int(3 * scale))
+    frame_data_layout_extra = frame_data_row_h * 2 + frame_data_inner_gap + frame_data_gap
     compact_metric_rail_h = max(font_sm.get_height() + 4, int(17 * scale))
     meter_rail_height = max(6, int(7 * scale))
     meter_rail_gap = max(3, int(4 * scale))
@@ -8108,7 +9382,7 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     # Spend spare screen width on MOVE/history before compressing diagnostics.
     responsive_cap = min(max(base_width, int(620 * scale)), max(base_width, int(screen.get_width() * 0.36)))
     width = max(base_width, responsive_cap)
-    collapsed_height = max(154, int(166 * scale)) + meter_rail_layout_extra + research_layout_extra + scaling_layout_extra
+    collapsed_height = max(154, int(166 * scale)) + meter_rail_layout_extra + frame_data_layout_extra + research_layout_extra + scaling_layout_extra
     hold_extra_height = max(18, int(20 * scale))
     height = collapsed_height + int(hold_extra_height * hold_expand)
     # Keep both compact team panels flush with the game viewport corners.
@@ -8232,7 +9506,11 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     meter_rail_y = partner_hp_y + max(5, int(6 * scale)) + max(2, int(3 * scale))
     damage_scale_y = meter_rail_y + meter_rail_layout_extra
     untech_scale_y = damage_scale_y + (damage_scale_layout_extra if show_damage_inline else 0)
-    strip_y = meter_rail_y + meter_rail_layout_extra + scaling_layout_extra + int(1 * scale)
+    # Frame data belongs with the live combat clocks. Place it immediately
+    # beneath the STUN rail (or beneath the last enabled scaling rail) instead
+    # of burying it under INPUTS / FRAMES. Its reserved height is constant.
+    frame_data_y = meter_rail_y + meter_rail_layout_extra + scaling_layout_extra + int(1 * scale)
+    strip_y = frame_data_y + frame_data_layout_extra
     history_y = strip_y + max(17, int(18 * scale)) + int(3 * scale)
     input_y = history_y + max(12, int(13 * scale)) + int(2 * scale)
     input_row_h = max(15, int(17 * scale))
@@ -8572,6 +9850,37 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
             scale,
             dt,
         )
+    # Build one shared native race before drawing either rail.  STUN and MOVE
+    # TIMING now consume the same action instance, stun generation, and authored
+    # active windows.  That lets the STUN gauge project startup/active directly
+    # into its own clock instead of asking the user to compare two unrelated
+    # normalized meters.
+    race_clock = _realtime_hs_contact_clock(point_anim, point)
+    if isinstance(race_clock, dict):
+        race_clock = dict(race_clock)
+        race_clock["kind"] = "AIR HS" if str(race_clock.get("clock_source") or "") == "untech" else "HS"
+    if not isinstance(race_clock, dict) or not bool(race_clock.get("active", False)):
+        block_race = _realtime_blockstun_contact_clock(point_anim, point)
+        if isinstance(block_race, dict) and bool(block_race.get("active", False)):
+            race_clock = dict(block_race)
+            race_clock["kind"] = "BS"
+
+    move_timing_state = _compact_frame_data_state(point or {})
+    pressure_race = _update_compact_move_timing_race(
+        move_timing_state,
+        point or {},
+        race_clock if isinstance(race_clock, dict) else None,
+        point_anim,
+    )
+    punish_race = _update_compact_punish_race(
+        move_timing_state,
+        point or {},
+        point_anim,
+    )
+    # A defender-owned punish attempt is more specific than the generic
+    # pressure/link race, so let it own the MOVE TIMING verdict for that action.
+    shared_race = punish_race if isinstance(punish_race, dict) else pressure_race
+
     if show_untech_inline:
         _draw_compact_untech_scaling_row(
             screen,
@@ -8583,7 +9892,24 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
             right,
             scale,
             dt,
+            move_prediction=shared_race if isinstance(shared_race, dict) else None,
         )
+
+    # Render the move clock directly after the live stun/scaling rails. The
+    # action frame is refreshed through the realtime combat sidecar at native
+    # game-frame cadence, independently of the slower full HUD payload.
+    _draw_compact_frame_data_bar(
+        screen,
+        font_sm,
+        point,
+        left,
+        frame_data_y,
+        right,
+        scale,
+        race_clock=race_clock if isinstance(race_clock, dict) else None,
+        race_anim=point_anim,
+        race_override=shared_race if isinstance(shared_race, dict) else None,
+    )
 
     if control is None or getattr(control, "show_tag_card", True):
         _draw_tag_card(screen, font_sm, team_anim, x, y + height + int(5 * scale), width, scale, is_left, dt)

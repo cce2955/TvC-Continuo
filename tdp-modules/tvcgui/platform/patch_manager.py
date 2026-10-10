@@ -6,9 +6,11 @@ import time
 from typing import Any
 
 try:
-    from tvcgui.platform.dolphin import rbytes, wbytes
+    from tvcgui.platform.dolphin import patch_code, patch_code_many, rbytes, wbytes
 except Exception:  # pragma: no cover
     rbytes = None
+    patch_code = None
+    patch_code_many = None
     wbytes = None
 
 _LOCK = threading.RLock()
@@ -229,3 +231,164 @@ def get_runtime_patch_state() -> dict[str, Any]:
         else:
             stats["last_write_age_sec"] = -1.0
     return stats
+
+
+def write_code_bytes(
+    addr: int,
+    payload: bytes | bytearray,
+    *,
+    key: str = "code",
+    priority: int = 90,
+    force: bool = True,
+    log_slow: bool = True,
+) -> bool:
+    """Write executable PPC bytes and invalidate the JIT safely.
+
+    Code writes intentionally do not use the normal dirty-read shortcut.
+    Even when RAM already contains the requested bytes, the JIT may still
+    contain a previously compiled block and must be invalidated.
+    """
+    if patch_code is None:
+        _inc_stat("write_fail")
+        _set_stat("last_error", "dolphin_io.patch_code unavailable")
+        return False
+
+    try:
+        addr_i = int(addr)
+        data = bytes(payload)
+    except Exception as e:
+        _inc_stat("write_fail")
+        _set_stat("last_error", f"bad code write args: {e!r}")
+        return False
+
+    if addr_i <= 0 or not data:
+        _inc_stat("write_fail")
+        _set_stat(
+            "last_error",
+            f"bad code write addr/size: 0x{addr_i:08X}/{len(data)}",
+        )
+        return False
+
+    key_s = str(key or "code")
+
+    _inc_stat("write_calls")
+    t0 = _now()
+
+    try:
+        ok = bool(patch_code(addr_i, data))
+    except Exception as e:
+        ok = False
+        _set_stat("last_error", repr(e))
+
+    elapsed_ms = max(0.0, (_now() - t0) * 1000.0)
+
+    if not ok:
+        _inc_stat("write_fail")
+        if not _STATS.get("last_error"):
+            _set_stat(
+                "last_error",
+                f"patch_code returned false at 0x{addr_i:08X}",
+            )
+        return False
+
+    with _LOCK:
+        _LAST_WRITES[addr_i] = (data, _now(), key_s)
+        _STATS["write_ok"] = int(_STATS.get("write_ok", 0) or 0) + 1
+        _STATS["bytes_written"] = (
+            int(_STATS.get("bytes_written", 0) or 0) + len(data)
+        )
+        _STATS["last_write_key"] = key_s
+        _STATS["last_write_addr"] = addr_i
+        _STATS["last_write_size"] = len(data)
+        _STATS["last_write_ms"] = elapsed_ms
+        _STATS["last_error"] = ""
+
+    if log_slow and elapsed_ms >= SLOW_WRITE_MS:
+        _inc_stat("slow_writes")
+        _rate_limited_slow_log(
+            key_s,
+            f"[runtime code patch] slow write {elapsed_ms:.1f}ms "
+            f"key={key_s} addr=0x{addr_i:08X} size={len(data)}",
+        )
+
+    return True
+
+
+def write_code_u32(addr: int, value: int, **kwargs: Any) -> bool:
+    return write_code_bytes(
+        int(addr),
+        struct.pack(">I", int(value) & 0xFFFFFFFF),
+        **kwargs,
+    )
+
+
+
+def write_code_many(
+    writes: dict[int, bytes | bytearray],
+    *,
+    key: str = "code:many",
+    priority: int = 90,
+    force: bool = True,
+) -> bool:
+    if not isinstance(writes, dict) or not writes:
+        return True
+
+    if patch_code_many is None:
+        _inc_stat("write_fail")
+        _set_stat("last_error", "dolphin_io.patch_code_many unavailable")
+        return False
+
+    normalized = {}
+
+    try:
+        for addr, payload in writes.items():
+            normalized[int(addr)] = bytes(payload)
+    except Exception as e:
+        _inc_stat("write_fail")
+        _set_stat("last_error", f"bad code batch args: {e!r}")
+        return False
+
+    _inc_stat("write_calls")
+    t0 = _now()
+
+    try:
+        ok = bool(patch_code_many(normalized))
+    except Exception as e:
+        ok = False
+        _set_stat("last_error", repr(e))
+
+    elapsed_ms = max(0.0, (_now() - t0) * 1000.0)
+
+    if not ok:
+        _inc_stat("write_fail")
+        if not _STATS.get("last_error"):
+            _set_stat("last_error", "patch_code_many returned false")
+        return False
+
+    now = _now()
+    total_bytes = 0
+
+    with _LOCK:
+        for addr, data in normalized.items():
+            _LAST_WRITES[addr] = (data, now, str(key))
+            total_bytes += len(data)
+
+        _STATS["write_ok"] = int(_STATS.get("write_ok", 0) or 0) + 1
+        _STATS["bytes_written"] = (
+            int(_STATS.get("bytes_written", 0) or 0) + total_bytes
+        )
+        _STATS["last_write_key"] = str(key)
+        _STATS["last_write_addr"] = 0
+        _STATS["last_write_size"] = total_bytes
+        _STATS["last_write_ms"] = elapsed_ms
+        _STATS["last_error"] = ""
+
+    if elapsed_ms >= SLOW_WRITE_MS:
+        _inc_stat("slow_writes")
+        _rate_limited_slow_log(
+            str(key),
+            f"[runtime code batch] {len(normalized)} patches "
+            f"in {elapsed_ms:.1f}ms",
+        )
+
+    return True

@@ -17,6 +17,7 @@ from tvcgui.runtime import input_monitor
 
 REALTIME_SAMPLER_HZ = 240.0
 REALTIME_SAMPLE_QUEUE_LIMIT = 128
+REALTIME_ACTION_EDGE_HZ = 720.0
 
 
 class RealtimeCombatSampler:
@@ -41,6 +42,11 @@ class RealtimeCombatSampler:
         self._targets: dict[str, int] = {}
         self._latest_by_slot: dict[str, dict] = {}
         self._raw_state_by_slot: dict[str, tuple] = {}
+        # (fighter base, action id, action frame).  The frame is required to
+        # detect a repeated same-ID move: TvC restarts the native action frame
+        # without necessarily visiting a different action ID between two fast
+        # normals (for example 2A -> 2A).
+        self._fast_action_state: dict[str, tuple[int, int, int]] = {}
         self._listeners: list[Callable] = []
         self._lock = threading.RLock()
         self._stop = threading.Event()
@@ -49,8 +55,14 @@ class RealtimeCombatSampler:
             name="TvCRealtimeCombatSampler",
             daemon=True,
         )
+        self._action_thread = threading.Thread(
+            target=self._run_action_edges,
+            name="TvCRealtimeActionEdges",
+            daemon=True,
+        )
         if autostart:
             self._thread.start()
+            self._action_thread.start()
 
     def set_targets(self, render_snap_by_slot: dict) -> None:
         """Update slot to fighter-base targets without performing any reads."""
@@ -319,7 +331,104 @@ class RealtimeCombatSampler:
                 delay = 0.001
             self._stop.wait(delay)
 
+    def _run_action_edges(self) -> None:
+        """Publish only confirmed native action-instance edges.
+
+        This lane is deliberately independent of the 240 Hz combat packet.
+        It performs one tiny atomic-ish read of action ID + action frame and
+        emits an event only when a new native action instance begins.  The
+        overlay manager therefore receives a dumb event stream instead of
+        trying to reconstruct history from competing samplers.
+        """
+        interval = 1.0 / REALTIME_ACTION_EDGE_HZ
+        next_tick = time.perf_counter()
+        while not self._stop.is_set():
+            with self._lock:
+                targets = dict(self._targets)
+            for slot_label, base in targets.items():
+                try:
+                    edge = input_monitor.read_realtime_action_edge(base)
+                    action_id = int(edge.get("action_id", 0) or 0) & 0x7FFF
+                    action_frame = max(0, int(edge.get("action_frame", 0) or 0))
+                except Exception:
+                    continue
+
+                listeners = ()
+                event = None
+                with self._lock:
+                    previous = self._fast_action_state.get(slot_label)
+                    current_key = (int(base), action_id, action_frame)
+                    self._fast_action_state[slot_label] = current_key
+
+                    # A new fighter pointer owns this slot.  Emit an explicit
+                    # reset so the visible five-move FIFO cannot bleed across
+                    # tag/match transitions, then establish the baseline.
+                    if previous is None or int(previous[0]) != int(base):
+                        self._sample_sequence += 1
+                        cached = dict(self._latest_by_slot.get(slot_label) or {})
+                        event = {
+                            "seq": self._sample_sequence,
+                            "slot": slot_label,
+                            "base": int(base),
+                            "char_id": int(cached.get("char_id", 0) or 0),
+                            "action_id": action_id,
+                            "action_frame": action_frame,
+                            "sample_ns": time.monotonic_ns(),
+                            "fast_action_edge": True,
+                            "move_history_reset": True,
+                            "move_instance": False,
+                        }
+                        listeners = tuple(self._listeners)
+                    else:
+                        previous_action = int(previous[1])
+                        previous_frame = max(0, int(previous[2]))
+                        action_restarted = bool(
+                            previous_action == action_id and action_frame < previous_frame
+                        )
+                        if previous_action != action_id or action_restarted:
+                            self._sample_sequence += 1
+                            cached = dict(self._latest_by_slot.get(slot_label) or {})
+                            event = {
+                                "seq": self._sample_sequence,
+                                "slot": slot_label,
+                                "base": int(base),
+                                "char_id": int(cached.get("char_id", 0) or 0),
+                                "action_id": action_id,
+                                "action_frame": action_frame,
+                                "sample_ns": time.monotonic_ns(),
+                                "fast_action_edge": True,
+                                "move_history_reset": False,
+                                "move_instance": True,
+                            }
+                            # Keep only action identity current here.  HP, input,
+                            # stun, etc. remain owned by the regular sampler.
+                            cached.update({
+                                "slot": slot_label,
+                                "base": int(base),
+                                "action_id": action_id,
+                                "action_frame": action_frame,
+                                "sample_ns": event["sample_ns"],
+                            })
+                            self._latest_by_slot[slot_label] = cached
+                            listeners = tuple(self._listeners)
+
+                if event is not None:
+                    for listener in listeners:
+                        try:
+                            listener(slot_label, dict(event))
+                        except Exception:
+                            continue
+
+            next_tick += interval
+            delay = next_tick - time.perf_counter()
+            if delay <= 0.0:
+                next_tick = time.perf_counter()
+                delay = 0.0005
+            self._stop.wait(delay)
+
     def close(self) -> None:
         self._stop.set()
         if self._thread.is_alive():
             self._thread.join(timeout=1.0)
+        if self._action_thread.is_alive():
+            self._action_thread.join(timeout=1.0)

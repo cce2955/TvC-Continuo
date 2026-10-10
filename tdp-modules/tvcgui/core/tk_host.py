@@ -112,6 +112,19 @@ def ensure_tk_host() -> None:
     _TK_READY.wait(timeout=5.0)
 
 
+def tk_call_widget(widget: Any, fn: Callable[[], Any]) -> None:
+    """Compatibility helper for background workers targeting an existing widget.
+
+    Every TvCGUI Toplevel is owned by the dedicated Tk host thread, so the
+    safest way to marshal a no-argument widget callback is through the same
+    host queue rather than calling ``widget.after`` from the worker thread.
+    ``widget`` is accepted for the older call-site API and intentionally not
+    dereferenced off-thread.
+    """
+    _ = widget
+    tk_call(lambda _root: fn())
+
+
 def tk_call(fn: Callable[[tk.Tk], Any]) -> None:
     '\n    Fire-and-forget: schedule fn(root) on Tk thread.\n    Exceptions are swallowed (but printed to stderr) unless the operator use tk_call_sync().\n    '
     ensure_tk_host()

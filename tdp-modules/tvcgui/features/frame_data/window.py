@@ -5,7 +5,7 @@ from tvcgui.core.tk_host import tk_call
 from .timing_observations import apply_observations_to_scan_data
 
 try:
-    from .workbench import open_editable_frame_data_window as _open_new_editor
+    from .workbench_v3 import open_editable_frame_data_window as _open_new_editor
     HAVE_NEW_EDITOR = True
 except Exception as e:
     HAVE_NEW_EDITOR = False
@@ -177,12 +177,8 @@ def open_frame_data_window(slot_label, scan_data):
     """
     if not scan_data:
         return
-    try:
-        apply_observations_to_scan_data(scan_data)
-    except Exception:
-        pass
-
-    # Prefer NEW modular editor
+    # Prefer the lean modular editor. Timing observations are merged only for
+    # the requested fighter inside the editor entry point.
     if HAVE_NEW_EDITOR and _open_new_editor is not None:
         _open_new_editor(slot_label, scan_data)
         return

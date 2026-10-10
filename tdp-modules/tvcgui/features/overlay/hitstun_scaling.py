@@ -316,7 +316,13 @@ def _apply_untech_latch(team: str, state: dict) -> dict:
     # Only real contact evidence (HP/combo/counter transition) may mint a new
     # generation.
     contact_event = bool(combo_advanced or hp_dropped)
-    explicit_new_hit = bool(contact_event or (counter_changed and candidate_remaining > 0 and candidate_remaining >= previous))
+    sample_advanced = sample_ns <= 0 or sample_ns >= max(0, _safe_int(latch.get("sample_ns")))
+    timer_rearmed = bool(sample_advanced and candidate_remaining > 0 and candidate_remaining > previous)
+    explicit_new_hit = bool(
+        contact_event
+        or timer_rearmed
+        or (counter_changed and candidate_remaining > 0 and candidate_remaining >= previous)
+    )
 
     # Convert authored raw stun to the same inclusive endpoint convention used
     # by the HUD. Example: RAW 24 with -4F deterioration displays 21F.

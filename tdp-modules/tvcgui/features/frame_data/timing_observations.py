@@ -19,6 +19,7 @@ BLOCK_ADVANTAGE_OBSERVATION_ENABLED = False
 
 _LOCK = threading.RLock()
 _DOC: dict[str, Any] | None = None
+_REVISION = 0
 
 
 def _empty_doc() -> dict[str, Any]:
@@ -72,10 +73,11 @@ def _load() -> dict[str, Any]:
 
 
 def _save(doc: dict[str, Any]) -> None:
-    global _DOC
+    global _DOC, _REVISION
     with _LOCK:
         _write_doc_file(doc)
         _DOC = doc
+        _REVISION += 1
 
 
 def _consensus(samples: list[int]) -> dict[str, Any]:
@@ -146,6 +148,23 @@ def get_move_observations(char_id: int, action_id: int) -> dict[str, Any]:
         move = (((doc.get("characters") or {}).get(str(int(char_id))) or {}).get("moves") or {}).get(str(int(action_id)))
         return deepcopy(move) if isinstance(move, dict) else {}
 
+
+
+def observation_stamp():
+    """Cheap change token for live Frame Data windows.
+
+    Applying observations walks every cached move.  The old workbench did that
+    every 750 ms even when the observation document had not changed.  Return a
+    tiny in-process revision plus the file stamp so callers can skip the full
+    merge until there is actually new timing data.
+    """
+    with _LOCK:
+        revision = int(_REVISION)
+    try:
+        st = os.stat(OBSERVATION_FILE)
+        return (revision, int(st.st_mtime_ns), int(st.st_size))
+    except Exception:
+        return (revision, 0, 0)
 
 def _empty_value(value: Any) -> bool:
     return value is None or str(value).strip() in {"", "-", "?", "n/a", "N/A"}
@@ -237,6 +256,7 @@ __all__ = [
     "BLOCK_ADVANTAGE_OBSERVATION_ENABLED",
     "record_timing_result",
     "get_move_observations",
+    "observation_stamp",
     "apply_observations_to_scan_data",
     "summarize_move_observations",
 ]

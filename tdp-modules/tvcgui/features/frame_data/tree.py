@@ -31,16 +31,27 @@ from . import super_integration as FSI
 
 
 FD_COLUMNS = (
-    "move", "kind", "hits", "link", "context",
-    "damage",
-    "meter",
-    "startup", "active", "active2", "custom_cancel_window",
-    "hitstun", "invuln", "cancel_probe", "baroque_probe", "armor_probe", "blockstun", "hitstop",
-    "adv_block_derived", "adv_block_observed",
-    "hit_spark", "stretch_part", "stretch_len", "stretch_width", "stretch_height", "stretch_time", "post_link",
-    "kb_type", "launch_profile", "kb_unknown", "kb_x", "air_kb",
-    "speed_mod", "attack_property", "hit_reaction", "hit_result_flags",
-    "superbg",
+    # Main move table order. Keep the first block human-first and fighting-game
+    # first: identity, core frame data, stun/protection, then the deeper knobs.
+    "move", "hits", "damage", "meter",
+    "startup", "active", "recovery",
+    "hitstun", "blockstun", "invuln", "armor", "hitstop",
+    "guard_point", "counter",
+    "custom_cancel_window", "baroque_probe",
+    "adv_block_observed", "adv_block_derived", "adv_hit_derived",
+    "attack_property", "hit_reaction", "hit_result_flags",
+    "kb_type", "launch_profile", "kb_unknown",
+    "ground_kb_mode", "ground_kb", "ground_kb_y", "kb_x", "air_kb", "combo_kb_mod",
+    "hb_main", "hit_spark", "stretch_part", "stretch_len", "stretch_width", "stretch_height", "stretch_time",
+    "speed_mod", "superbg", "post_link",
+
+    # Secondary / research-facing move fields. These remain in the same table
+    # for the All view but no longer interrupt the basic frame-data read order.
+    "active2", "animation_total_frames", "active_windows",
+    "cancel_probe", "armor_probe",
+    "proj_dmg", "hb",
+    "link", "kind", "context",
+
     # Projectile columns are hidden from the simplest frame-data view but live
     # in the same Treeview so users no longer need a separate projectile table.
     *FPI.PROJECTILE_COLUMNS,
@@ -49,20 +60,18 @@ FD_COLUMNS = (
 )
 
 FD_CORE_COLUMNS = (
-    "move", "hits", "link",
-    "damage", "meter",
-    "startup", "active", "custom_cancel_window",
-    "hitstun", "invuln", "armor_probe", "blockstun", "hitstop",
-    "adv_block_derived", "adv_block_observed",
-    "hit_spark", "stretch_part", "stretch_len", "stretch_width", "stretch_height", "stretch_time", "post_link",
-    "kb_type", "launch_profile", "kb_unknown", "kb_x", "air_kb",
-    "speed_mod", "attack_property", "hit_reaction", "hit_result_flags",
-    # Keep only the compact projectile basics in the frame view. Dedicated
-    # projectile/super views move the heavy projectile columns up front so the
-    # user does not have to horizontal-scroll across the raw scout table.
-    "proj_speed", "proj_radius", "proj_life", "proj_fmt",
-    "dispatch_selector", "dispatch_phase", "dispatch_child_link",
-    "abs",
+    # Default Frame view requested order. Move already includes the action ID.
+    "move", "hits", "damage", "meter",
+    "startup", "active", "recovery",
+    "hitstun", "blockstun", "invuln", "armor", "hitstop",
+    "guard_point", "counter",
+    # After the core block, prioritize values that directly answer lab questions.
+    "custom_cancel_window", "baroque_probe",
+    "adv_block_observed", "adv_block_derived", "adv_hit_derived",
+    "attack_property", "hit_reaction", "hit_result_flags",
+    "kb_type", "ground_kb", "kb_x", "air_kb", "combo_kb_mod",
+    "hb_main", "hit_spark", "stretch_len", "stretch_width", "stretch_height",
+    "speed_mod", "superbg", "abs",
 )
 
 FD_PROJECTILE_COLUMNS_FOCUSED = (
@@ -94,12 +103,183 @@ FD_SUPER_COLUMNS_FOCUSED = (
     "proj_super_beam_scale", "proj_super_beam_width", "proj_super_beam_speed",
     "proj_super_beam_force", "proj_super_hit_radius", "proj_super_beam_visual",
     "proj_final_damage", "proj_final_lifetime", "proj_final_particle_fx", "proj_final_spawn_bone",
-    "startup", "active", "hitstun", "invuln", "blockstun", "hitstop",
+    "startup", "active", "recovery", "animation_total_frames", "hitstun", "invuln", "blockstun", "hitstop", "adv_hit_derived",
     "hit_spark", "stretch_part", "stretch_len", "stretch_width", "stretch_height", "stretch_time", "post_link",
-    "kb_type", "launch_profile", "kb_unknown", "kb_x", "air_kb",
+    "kb_type", "launch_profile", "kb_unknown", "ground_kb_mode", "ground_kb", "ground_kb_y", "kb_x", "air_kb", "combo_kb_mod",
     "speed_mod", "attack_property", "hit_reaction", "superbg",
     "abs",
 )
+
+
+# Human-sized field groups for the rebuilt workbench.  The old editor exposed
+# every subsystem in one horizontal schema, which made ordinary moves look
+# empty and forced the user to scroll through unrelated projectile/super data.
+# These are display presets only: the full cached/native payload remains in the
+# selected-move inspector.
+FD_VIEW_GROUPS = {
+    "core": (
+        "move", "hits", "damage", "meter", "startup", "active", "recovery",
+        "hitstun", "blockstun", "invuln", "armor", "hitstop",
+    ),
+    "defense": (
+        "move", "hits", "hitstun", "blockstun", "hitstop",
+        "invuln", "guard_point", "armor", "counter", "baroque_probe",
+        "damage_flag",
+    ),
+    "cancel": (
+        "move", "startup", "active", "recovery", "custom_cancel_window",
+        "baroque_probe", "adv_block_observed", "adv_block_derived",
+        "adv_hit_derived", "attack_property", "hit_reaction",
+    ),
+    "launch": (
+        "move", "hits", "damage", "hit_reaction", "hit_result_flags",
+        "kb_type", "launch_profile", "kb_unknown", "ground_kb_mode",
+        "ground_kb", "ground_kb_y", "kb_x", "air_kb", "combo_kb_mod",
+    ),
+    "hitbox": (
+        "move", "hits", "startup", "active", "hb_main", "hb_x", "hb_y",
+        "hit_spark", "stretch_part", "stretch_len", "stretch_width",
+        "stretch_height", "stretch_time",
+    ),
+    "projectile": FD_PROJECTILE_COLUMNS_FOCUSED,
+    "super": FD_SUPER_COLUMNS_FOCUSED,
+    "research": (
+        "move", "kind", "context", "source", "family_role", "table_rel",
+        "active_start_addr", "active_end_addr", "damage_value_addr",
+        "stun_addr", "stun_source_addr", "generic_write_verified",
+        "native_definition_status", "native_field_op_count",
+        "native_command_count", "abs",
+    ),
+}
+
+FD_VIEW_LABELS = {
+    "core": "Core",
+    "defense": "Defense",
+    "cancel": "Cancels",
+    "launch": "Launch / KB",
+    "hitbox": "Hitbox / Reach",
+    "projectile": "Projectiles",
+    "super": "Supers",
+    "research": "Research",
+    "all": "All",
+}
+
+
+# Selected-move inspector groups.  These are deliberately exhaustive at the
+# category level, but empty fields are hidden by default.  Any scanner key not
+# listed here still appears under Other / cached so new discoveries cannot be
+# silently lost just because the UI has not named a category yet.
+FD_INSPECTOR_GROUPS = (
+    ("Core", (
+        "hits", "damage", "meter", "startup", "active", "active2",
+        "active_windows", "recovery", "animation_total_frames",
+        "hitstun", "blockstun", "hitstop",
+    )),
+    ("Defense", (
+        "invuln", "invuln_kind", "invuln_frames", "invuln_ranges",
+        "invuln_confidence", "invuln_startup_active_limit",
+        "counter", "counter_mask", "counter_source", "counter_segments",
+        "guard_point", "guard_point_mask", "guard_point_source",
+        "guard_point_segments", "guard_point_probe_count", "guard_point_probes",
+        "armor", "armor_kind", "armor_mask", "armor_source", "armor_segments", "armor_mask_segments",
+        "baroque_probe", "baroque_ranges", "baroque_source", "baroque_research_probe",
+        "runtime_protection",
+    )),
+    ("Cancels / advantage", (
+        "custom_cancel_window", "custom_cancel_window_data", "cancel_probe",
+        "cancel_window_count", "cancel_windows",
+        "adv_hit_derived", "adv_block_derived", "adv_block_observed",
+    )),
+    ("Attack behavior", (
+        "attack_property", "hit_reaction", "hit_result_flags",
+        "speed_mod", "superbg", "damage_flag", "stun_default_level",
+    )),
+    ("Launch / knockback", (
+        "kb_type", "launch_profile", "kb_unknown", "ground_kb_mode",
+        "ground_kb", "ground_kb_y", "ground_kb_aux", "push_pull_packets",
+        "kb_x", "air_kb", "combo_kb_mod", "kb0", "kb1", "kb_traj",
+    )),
+    ("Hitbox / reach / FX", (
+        "hb_main", "hb", "hb_x", "hb_y", "hb_off",
+        "hit_spark", "stretch_part", "stretch_len", "stretch_width",
+        "stretch_height", "stretch_time",
+    )),
+    ("Projectile", tuple(FPI.PROJECTILE_COLUMNS) + (
+        "proj_radius_addr", "proj_tpl", "proj_marker", "proj_key",
+        "proj_move", "proj_slice", "proj_slices", "proj_aliases",
+        "dmg_write_addr", "emitter_count",
+    )),
+    ("Super / dispatch", tuple(FSI.SUPER_DISPATCH_COLUMNS) + (
+        "dispatch_fmt", "dispatch_key", "dispatch_index", "dispatch_count",
+        "dispatch_range_start", "dispatch_range_end", "selector_set",
+        "super_dispatch_row", "super_name", "map_move_name",
+        "super_entry_count", "super_entry_addr", "super_entry_post_link",
+        "owned_damage", "owned_damage_addr", "payload_field_summary",
+        "payload_only_summary", "payload_only_candidates",
+        "ownership_proof", "discovery_proof",
+    )),
+    ("Identity / lookup", (
+        "kind", "link", "context", "abs", "id", "move_name", "pretty_name",
+        "source", "action_name", "move_name_source", "normal_confirmed",
+        "family_role", "linked_owner_abs", "table_rel", "parent_id",
+        "parent_abs", "air_owner_addr", "char_id",
+    )),
+    ("Animation / recovery source", (
+        "animation_duration_seconds", "animation_char_key", "animation_motion",
+        "animation_clip_offset", "animation_duration_field_offset",
+        "recovery_formula", "runtime_observed_recovery", "recovery_source",
+    )),
+    ("Write targets / provenance", (
+        "damage_value_addr", "damage_write_verified",
+        "active_start_addr", "active_end_addr", "active_write_verified",
+        "stun_addr", "stun_source_addr", "stun_write_verified",
+        "hitstun_addr", "blockstun_addr", "hitstop_addr", "invuln_addr",
+        "hit_reaction_addr", "atkprop_addr",
+        "ground_kb_packet_addr", "ground_kb_addr", "ground_kb_y_addr",
+        "combo_kb_mod_addr", "generic_write_owner_start",
+        "generic_write_owner_end", "generic_write_verified",
+        "stun_source", "hitstun_source", "blockstun_source",
+        "hitstop_source", "runtime_profile_eligible",
+        "attack_property_sig", "combo_kb_sig",
+    )),
+    ("Native decode", (
+        "native_definition_status", "native_definition_scan_size",
+        "native_property_command_count", "native_property_phase_count",
+        "native_property_a", "native_property_a_text", "native_property_a_addr",
+        "native_property_b", "native_property_b_text",
+        "native_property_b_unknown_mask", "native_property_b_addr",
+        "native_property_a_initial", "native_property_a_final",
+        "native_property_a_initial_unknown_mask",
+        "native_property_a_final_unknown_mask",
+        "native_property_a_all_or_mask", "native_property_a_all_clear_mask",
+        "native_property_a_post_result_or_mask",
+        "native_property_b_initial", "native_property_b_final",
+        "native_property_a_modifier_count", "native_property_b_modifier_count",
+        "native_result_clear_mask", "native_hit_result_raw",
+        "native_hit_result_code", "native_hit_result_addr",
+        "native_phase_map", "native_phases", "native_operation_map",
+        "native_operations", "native_field_op_count", "native_field_op_map",
+        "native_command_count", "native_command_map",
+        "native_command_bytes_map", "native_root_word_map",
+        "native_raw_span_size", "native_raw_span_hex", "native_script_head_hex",
+    )),
+    ("Research evidence", (
+        "armor_probe", "property_probe_count", "property_probes",
+        "invuln_probe_count", "invuln_probes",
+        "guard_point_probe_count", "guard_point_probes",
+    )),
+    ("Dangerous links", ("post_link",)),
+)
+
+
+def inspector_group_for_key(key: str) -> str:
+    key = str(key)
+    for title, fields in FD_INSPECTOR_GROUPS:
+        if key in fields:
+            return title
+    if key.startswith("_"):
+        return "Internal / scanner"
+    return "Other / cached"
 
 FD_LABELS = {
     "move": "Move",
@@ -112,10 +292,14 @@ FD_LABELS = {
     "startup": "Startup",
     "active": "Active",
     "active2": "Active 2",
+    "recovery": "Recovery",
+    "animation_total_frames": "Total Anim Frames",
+    "active_windows": "All Active Windows",
     "custom_cancel_window": "Custom Cancel",
     "hitstun": "Hitstun",
     "blockstun": "Blockstun",
     "hitstop": "Hitstop",
+    "adv_hit_derived": "Derived Hit Adv",
     "adv_block_derived": "Derived Block Adv",
     "adv_block_observed": "Observed Block Adv",
     "hit_spark": "Hit Spark",
@@ -124,21 +308,179 @@ FD_LABELS = {
     "stretch_width": "Reach Width",
     "stretch_height": "Reach Height",
     "stretch_time": "Stretch Timing",
+    "hb_main": "Hitbox Radius",
+    "hb": "Hitbox Candidates",
     "post_link": "Post Link",
     "kb_type": "KB Style",
     "launch_profile": "Extra Launch",
     "kb_unknown": "Launch Adjust",
+    "ground_kb_mode": "Push/Pull Mode",
+    "ground_kb": "Push/Pull X",
+    "ground_kb_y": "Push/Pull Aux",
+    "ground_kb_aux": "Push/Pull Aux Raw",
+    "push_pull_packets": "Push/Pull Packets",
     "kb_x": "KB X",
     "air_kb": "Arc",
+    "combo_kb_mod": "Combo KB Mod",
+    "combo_kb_mod_addr": "Combo KB Mod Address",
     "speed_mod": "Speed Mod",
     "invuln": "Invuln",
+    "invuln_kind": "Invuln Kind",
+    "invuln_frames": "Invuln Frames",
+    "invuln_ranges": "Invuln Ranges",
+    "invuln_confidence": "Invuln Confidence",
+    "invuln_startup_active_limit": "Invuln Startup Limit",
+    "invuln_probe_count": "Invuln Probe Count",
+    "invuln_probes": "Invuln Probes",
+    "counter": "Counter",
+    "counter_mask": "Counter Height Mask",
+    "counter_source": "Counter Source",
+    "guard_point": "Guard Point",
+    "guard_point_mask": "Guard Height Mask",
+    "guard_point_source": "Guard Source",
+    "guard_point_probe_count": "Guard Probe Count",
+    "guard_point_probes": "Guard Probes",
+    "armor": "Armor",
+    "armor_kind": "Armor Kind",
+    "armor_mask": "Armor Mask",
+    "armor_source": "Armor Source",
     "cancel_probe": "Cancel windows ?",
+    "cancel_window_count": "Cancel Window Count",
+    "cancel_windows": "Cancel Windows Raw",
+    "property_probe_count": "Property Probe Count",
+    "property_probes": "Property Probes",
+    "baroque_research_probe": "Baroque Raw Evidence",
     "baroque_probe": "Baroque Window",
     "armor_probe": "Protection",
     "attack_property": "Attack Property",
     "hit_reaction": "Hit Reaction",
     "hit_result_flags": "Hit Result",
+    "proj_dmg": "Linked Proj Damage",
+    "proj_tpl": "Linked Proj Damage Address",
+    "proj_marker": "Linked Proj Marker Address",
     "superbg": "SuperBG",
+    "hb_x": "Hitbox X (raw)",
+    "hb_y": "Hitbox Y (raw)",
+    "native_definition_status": "Native Decode",
+    "native_definition_scan_size": "Decoded Bytes",
+    "native_property_command_count": "Property Ops",
+    "native_property_phase_count": "Property Phases",
+    "native_property_a": "Property A Raw",
+    "native_property_a_text": "Property A Decoded",
+    "native_property_a_addr": "Property A Address",
+    "native_property_b": "Property B Raw",
+    "native_property_b_text": "Property B Decoded",
+    "native_property_b_unknown_mask": "Property B Unknown",
+    "native_property_b_addr": "Property B Address",
+    "native_property_a_initial": "Property A Start",
+    "native_property_a_final": "Property A Final",
+    "native_property_a_initial_unknown_mask": "A Start Unknown",
+    "native_property_a_final_unknown_mask": "A Final Unknown",
+    "native_property_a_all_or_mask": "A OR Mask",
+    "native_property_a_all_clear_mask": "A Clear Mask",
+    "native_property_a_post_result_or_mask": "A Post-result OR",
+    "native_property_b_initial": "Property B Start",
+    "native_property_b_final": "Property B Final",
+    "native_property_a_modifier_count": "A Modifier Count",
+    "native_property_b_modifier_count": "B Modifier Count",
+    "native_result_clear_mask": "Result Clear Mask",
+    "native_hit_result_raw": "Native Hit Result",
+    "native_hit_result_code": "Native Result Code",
+    "native_hit_result_addr": "Result Write Address",
+    "native_phase_map": "Phase Chain",
+    "native_phases": "Phase Records Raw",
+    "native_operation_map": "Property Op Chain",
+    "native_operations": "Property Ops Raw",
+    "native_field_op_count": "Raw Field Ops",
+    "native_field_op_map": "Raw Field-op Map",
+    "native_command_count": "Known Cmd Packets",
+    "native_command_map": "Command Inventory",
+    "native_command_bytes_map": "Command Raw Bytes",
+    "native_root_word_map": "Root Words (raw)",
+    "native_raw_span_size": "Native Span Bytes",
+    "native_raw_span_hex": "Full Native Span",
+    "native_script_head_hex": "Raw Script Head",
+    "active_start_addr": "Active Start Address",
+    "active_end_addr": "Active End Address",
+    "active_write_verified": "Active Write Verified",
+    "damage_value_addr": "Damage Value Address",
+    "damage_write_verified": "Damage Write Verified",
+    "stun_addr": "Stun Packet Address",
+    "stun_source_addr": "Stun Source Address",
+    "stun_write_verified": "Stun Write Verified",
+    "hitstun_addr": "Hitstun Address",
+    "blockstun_addr": "Blockstun Address",
+    "hitstop_addr": "Hitstop Address",
+    "invuln_addr": "Invuln Address",
+    "hit_reaction_addr": "Hit Reaction Address",
+    "ground_kb_packet_addr": "Push/Pull Packet Address",
+    "ground_kb_addr": "Push/Pull X Address",
+    "ground_kb_y_addr": "Push/Pull Aux Address",
+    "generic_write_owner_start": "Write Owner Start",
+    "generic_write_owner_end": "Write Owner End",
+    "generic_write_verified": "Generic Write Verified",
+    "kb0": "KB Raw 0",
+    "kb1": "KB Raw 1",
+    "kb_traj": "KB Raw Trajectory",
+    "move_name_source": "Move Name Source",
+    "table_rel": "Table Relative Offset",
+    "atkprop_addr": "Attack Property Alias Address",
+    "source": "Move Anchor Source",
+    "air_owner_addr": "AIR Owner Address",
+    "family_role": "Family Role",
+    "linked_owner_abs": "Linked Owner Address",
+    "action_name": "Observed Action Name",
+    "animation_duration_seconds": "Anim Duration Seconds",
+    "animation_char_key": "Anim DB Character Key",
+    "animation_motion": "Anim MOT Source",
+    "animation_clip_offset": "Anim Clip Offset",
+    "animation_duration_field_offset": "Anim Duration Field Offset",
+    "recovery_formula": "Recovery Formula",
+    "runtime_observed_recovery": "Runtime Recovery (preserved)",
+    "attack_property_sig": "Attack Property Signature",
+    "combo_kb_sig": "Combo KB Signature",
+    "hb_off": "Selected Hitbox Offset",
+    "proj_radius_addr": "Projectile Radius Address",
+    "custom_cancel_window_data": "Custom Cancel Raw Data",
+    "dispatch_fmt": "Dispatch Format",
+    "dispatch_key": "Dispatch Key",
+    "proj_key": "Projectile Key",
+    "proj_move": "Projectile Move Link",
+    "proj_slice": "Projectile Slice",
+    "proj_slices": "Projectile Slices Raw",
+    "super_dispatch_row": "Super Dispatch Row Raw",
+    "damage_flag": "Damage / Hit Level Flag",
+    "stun_default_level": "Default Stun Level",
+    "runtime_profile_eligible": "Runtime Stun Profiling",
+    "stun_source": "Stun Source",
+    "recovery_source": "Recovery Source",
+    "hitstun_source": "Hitstun Source",
+    "blockstun_source": "Blockstun Source",
+    "hitstop_source": "Hitstop Source",
+    "normal_confirmed": "Normal Classification",
+    "parent_id": "Parent Action ID",
+    "parent_abs": "Parent Address",
+    "char_id": "Character ID",
+    "discovery_proof": "Discovery Proof",
+    "ownership_proof": "Ownership Proof",
+    "payload_field_summary": "Payload Field Summary",
+    "owned_damage": "Owned Damage Raw",
+    "dmg_write_addr": "Projectile Damage Write Address",
+    "emitter_count": "Emitter Count Raw",
+    "proj_aliases": "Projectile Aliases",
+    "dispatch_index": "Dispatch Index",
+    "dispatch_count": "Dispatch Count",
+    "dispatch_range_start": "Dispatch Range Start",
+    "dispatch_range_end": "Dispatch Range End",
+    "selector_set": "Dispatch Selector Set",
+    "map_move_name": "Mapped Move Name",
+    "super_name": "Resolved Super Name",
+    "owned_damage_addr": "Owned Damage Address",
+    "super_entry_count": "Super Entry Count",
+    "super_entry_addr": "Super Entry Address",
+    "super_entry_post_link": "Super Entry Post Link",
+    "payload_only_summary": "Payload-only Summary",
+    "payload_only_candidates": "Payload-only Candidates Raw",
     **FPI.PROJECTILE_LABELS,
     "abs": "Address",
     **FSI.SUPER_DISPATCH_LABELS,
@@ -460,7 +802,7 @@ def build_top_bar(win) -> None:
     chips.pack(side="right")
     writer_style = "BadgeGood.TLabel" if U.WRITER_AVAILABLE else "BadgeWarn.TLabel"
     ttk.Label(chips, textvariable=win._writer_var, style=writer_style).pack(side="left", padx=(6, 0))
-    ttk.Label(chips, text=f"Normals {normal_count:,}", style="BadgeGood.TLabel").pack(side="left", padx=(6, 0))
+    ttk.Label(chips, text=f"Rows {normal_count:,}", style="BadgeGood.TLabel").pack(side="left", padx=(6, 0))
     ttk.Label(chips, textvariable=win._projectile_status_var, style="Badge.TLabel").pack(side="left", padx=(6, 0))
     ttk.Label(chips, textvariable=win._super_status_var, style="Badge.TLabel").pack(side="left", padx=(6, 0))
 
@@ -483,9 +825,10 @@ def build_top_bar(win) -> None:
     win._filter_panel_btn_var = tk.StringVar(master=win.root, value="Filters")
     nav = ttk.Frame(command, style="CommandBar.TFrame")
     nav.pack(side="left")
-    for label, mode in (("Frame", "frame"), ("Projectiles", "projectile"), ("Supers", "super"), ("All", "all")):
-        ttk.Button(nav, text=label, style="Toolbar.TButton", command=lambda m=mode: win._set_fd_view_mode(m)).pack(side="left", padx=(0 if label == "Frame" else 4, 0))
-    ttk.Button(nav, textvariable=win._filter_panel_btn_var, style="Toolbar.TButton", command=lambda: getattr(win, "_toggle_advanced_filters", lambda: None)()).pack(side="left", padx=(6, 0))
+    # Field-group navigation now lives directly above the table where it
+    # describes what the table is showing.  Keep the global command bar for
+    # global actions only.
+    ttk.Button(nav, textvariable=win._filter_panel_btn_var, style="Toolbar.TButton", command=lambda: getattr(win, "_toggle_advanced_filters", lambda: None)()).pack(side="left")
 
     divider2 = ttk.Separator(command, orient="vertical")
     divider2.pack(side="left", fill="y", padx=10)
@@ -541,6 +884,316 @@ def build_top_bar(win) -> None:
     win._redo_button = redo
     win._undo_button = undo
     ttk.Label(command, textvariable=win._session_summary_var, style="CommandMuted.TLabel").pack(side="right", padx=(0, 8))
+
+
+def _build_inspector_v2(win, parent: ttk.Frame) -> None:
+    """Build the lightweight selected-move inspector.
+
+    The previous inspector materialized hundreds of Label/StringVar widgets and
+    then spent selection time hiding/reordering them.  This version keeps a
+    compact hero plus Treeviews.  Treeviews are cheap with hundreds of values,
+    searchable, and naturally support the exhaustive/raw workflow.
+    """
+    win._inspector_v2 = True
+    win._inspector_value_vars = {"__v2__": tk.StringVar(master=win.root, value="1")}
+    win._inspector_buttons = {}
+    win._inspector_value_widgets = {}
+    win._inspector_editable_cols = {
+        "move", "damage", "meter", "startup", "active", "active2",
+        "hitstun", "blockstun", "hitstop", "hit_spark",
+        "stretch_part", "stretch_len", "stretch_width", "stretch_height",
+        "stretch_time", "post_link", "kb_type", "launch_profile",
+        "kb_unknown", "ground_kb", "ground_kb_y", "kb_x", "air_kb",
+        "hit_reaction", "hit_result_flags", "superbg", "hb_main", "hb",
+        "speed_mod", "attack_property",
+    }
+    win._inspector_sections = []
+
+    parent.rowconfigure(1, weight=1)
+    parent.columnconfigure(0, weight=1)
+
+    hero = ttk.Frame(parent, style="InspectorHero.TFrame", padding=(11, 9))
+    hero.grid(row=0, column=0, sticky="ew", padx=(0, 1), pady=(0, 7))
+    win._inspector_title_var = tk.StringVar(master=win.root, value="Select a move")
+    win._inspector_subtitle_var = tk.StringVar(master=win.root, value="Every cached/native field for the selected row lives here.")
+    win._inspector_hint_var = tk.StringVar(master=win.root, value="Empty fields are hidden by default. Double-click a writable field to edit it.")
+    ttk.Label(hero, textvariable=win._inspector_title_var, style="InspectorHeroTitle.TLabel", wraplength=470).pack(anchor="w")
+    ttk.Label(hero, textvariable=win._inspector_subtitle_var, style="InspectorHeroSub.TLabel", wraplength=470).pack(anchor="w", pady=(2, 6))
+
+    actions = ttk.Frame(hero, style="InspectorHero.TFrame")
+    actions.pack(fill="x")
+    for text, command in (
+        ("Replace anim", lambda: win._edit_selected_column("move")),
+        ("Refresh row", lambda: win._refresh_selected_row()),
+        ("Pin compare", lambda: win._pin_current_move()),
+        ("Copy addr", lambda: win._copy_selected_address()),
+    ):
+        ttk.Button(actions, text=text, style="InspectorAction.TButton", command=command).pack(side="left", padx=(0, 5))
+    ttk.Button(hero, text="Open cancel mapper", style="InspectorAction.TButton", command=lambda: win._open_cancel_mapper()).pack(fill="x", pady=(6, 0))
+    ttk.Label(hero, textvariable=win._inspector_hint_var, style="InspectorHeroSub.TLabel", wraplength=470).pack(anchor="w", pady=(7, 0))
+
+    # Keep the pinned comparison feature, but collapse it to one summary line
+    # instead of a permanent five-chip card.
+    win._compare_title_var = tk.StringVar(master=win.root, value="")
+    win._compare_summary_var = tk.StringVar(master=win.root, value="")
+    win._compare_delta_vars = {k: tk.StringVar(master=win.root, value=" - ") for k in ("damage", "startup", "active", "hitstop", "blockstun")}
+    compare_line = ttk.Label(hero, textvariable=win._compare_summary_var, style="CompareSub.TLabel", wraplength=470)
+    compare_line.pack(anchor="w", pady=(5, 0))
+
+    notebook = ttk.Notebook(parent)
+    notebook.grid(row=1, column=0, sticky="nsew")
+    win._inspector_notebook = notebook
+
+    # ---- Fields tab -----------------------------------------------------
+    fields_tab = ttk.Frame(notebook, style="Inspector.TFrame", padding=(8, 8))
+    notebook.add(fields_tab, text="Fields")
+    fields_tab.rowconfigure(2, weight=1)
+    fields_tab.columnconfigure(0, weight=1)
+
+    filterbar = ttk.Frame(fields_tab, style="Inspector.TFrame")
+    filterbar.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+    ttk.Label(filterbar, text="Find field", style="InspectorField.TLabel").pack(side="left")
+    win._inspector_field_filter_var = tk.StringVar(master=win.root, value="")
+    field_filter = ttk.Entry(filterbar, textvariable=win._inspector_field_filter_var, width=22)
+    field_filter.pack(side="left", fill="x", expand=True, padx=(6, 7))
+    win._inspector_show_empty_var = tk.BooleanVar(master=win.root, value=False)
+    ttk.Checkbutton(filterbar, text="Show empty", variable=win._inspector_show_empty_var).pack(side="left")
+
+    field_actions = ttk.Frame(fields_tab, style="Inspector.TFrame")
+    field_actions.grid(row=1, column=0, sticky="ew", pady=(0, 5))
+    ttk.Button(field_actions, text="Edit selected", style="Small.TButton", command=lambda: win._edit_selected_all_field()).pack(side="left")
+    ttk.Button(field_actions, text="Copy value", style="Small.TButton", command=lambda: win._copy_selected_all_field()).pack(side="left", padx=(5, 0))
+    win._all_fields_status_var = tk.StringVar(master=win.root, value="Select a move.")
+    ttk.Label(field_actions, textvariable=win._all_fields_status_var, style="InspectorHeroSub.TLabel").pack(side="right")
+
+    fields_wrap = ttk.Frame(fields_tab, style="Inspector.TFrame")
+    fields_wrap.grid(row=2, column=0, sticky="nsew")
+    fields_wrap.rowconfigure(0, weight=1)
+    fields_wrap.columnconfigure(0, weight=1)
+    win._all_fields_tree = ttk.Treeview(
+        fields_wrap,
+        columns=("value", "mode"),
+        show="tree headings",
+        selectmode="browse",
+    )
+    win._all_fields_tree.heading("#0", text="Field")
+    win._all_fields_tree.heading("value", text="Value")
+    win._all_fields_tree.heading("mode", text="Access")
+    win._all_fields_tree.column("#0", width=205, minwidth=130, anchor="w", stretch=True)
+    win._all_fields_tree.column("value", width=245, minwidth=120, anchor="w", stretch=True)
+    win._all_fields_tree.column("mode", width=64, minwidth=58, anchor="center", stretch=False)
+    win._all_fields_tree.tag_configure("field_group", background="#1D314D", foreground="#EEF6FF", font=("Segoe UI Semibold", 9))
+    win._all_fields_tree.tag_configure("field_mode_edit", foreground="#9FE4B7")
+    win._all_fields_tree.tag_configure("field_mode_raw", foreground="#FFD58A")
+    win._all_fields_tree.tag_configure("field_mode_read", foreground="#B7C8DD")
+    win._all_fields_tree.tag_configure("field_mode_internal", foreground="#8EA4BE")
+    fields_vsb = ttk.Scrollbar(fields_wrap, orient="vertical", command=win._all_fields_tree.yview, style="Inspector.Vertical.TScrollbar")
+    fields_hsb = ttk.Scrollbar(fields_wrap, orient="horizontal", command=win._all_fields_tree.xview)
+    win._all_fields_tree.configure(yscrollcommand=fields_vsb.set, xscrollcommand=fields_hsb.set)
+    win._all_fields_tree.grid(row=0, column=0, sticky="nsew")
+    fields_vsb.grid(row=0, column=1, sticky="ns")
+    fields_hsb.grid(row=1, column=0, sticky="ew")
+    win._all_fields_iid_map = {}
+    win._all_fields_tree.bind("<Double-Button-1>", lambda _e: win._edit_selected_all_field())
+    win._all_fields_tree.bind("<Return>", lambda _e: win._edit_selected_all_field())
+
+    # ---- Unknown native operands tab ----------------------------------
+    unknown_tab = ttk.Frame(notebook, style="Inspector.TFrame", padding=(8, 8))
+    notebook.add(unknown_tab, text="Unknown / Native")
+    unknown_tab.rowconfigure(2, weight=1)
+    unknown_tab.columnconfigure(0, weight=1)
+    unknown_actions = ttk.Frame(unknown_tab, style="Inspector.TFrame")
+    unknown_actions.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+    ttk.Button(unknown_actions, text="Edit raw", style="Small.TButton", command=lambda: win._edit_selected_unknown_operand()).pack(side="left")
+    ttk.Button(unknown_actions, text="Copy addr", style="Small.TButton", command=lambda: win._copy_selected_unknown_operand_address()).pack(side="left", padx=(5, 0))
+    win._unknown_ops_status_var = tk.StringVar(master=win.root, value="Unknown stays Unknown until testing proves it.")
+    ttk.Label(unknown_tab, textvariable=win._unknown_ops_status_var, style="InspectorHeroSub.TLabel", wraplength=470).grid(row=1, column=0, sticky="ew", pady=(0, 5))
+    unknown_wrap = ttk.Frame(unknown_tab, style="Inspector.TFrame")
+    unknown_wrap.grid(row=2, column=0, sticky="nsew")
+    unknown_wrap.rowconfigure(0, weight=1)
+    unknown_wrap.columnconfigure(0, weight=1)
+    win._unknown_ops_tree = ttk.Treeview(unknown_wrap, columns=("raw", "guess", "addr"), show="tree headings", selectmode="browse")
+    win._unknown_ops_tree.heading("#0", text="Field")
+    win._unknown_ops_tree.heading("raw", text="Raw")
+    win._unknown_ops_tree.heading("guess", text="Best guess")
+    win._unknown_ops_tree.heading("addr", text="Operand addr")
+    win._unknown_ops_tree.column("#0", width=165, minwidth=110, anchor="w")
+    win._unknown_ops_tree.column("raw", width=92, minwidth=82, anchor="w")
+    win._unknown_ops_tree.column("guess", width=210, minwidth=130, anchor="w")
+    win._unknown_ops_tree.column("addr", width=104, minwidth=92, anchor="w")
+    unknown_vsb = ttk.Scrollbar(unknown_wrap, orient="vertical", command=win._unknown_ops_tree.yview, style="Inspector.Vertical.TScrollbar")
+    win._unknown_ops_tree.configure(yscrollcommand=unknown_vsb.set)
+    win._unknown_ops_tree.grid(row=0, column=0, sticky="nsew")
+    unknown_vsb.grid(row=0, column=1, sticky="ns")
+    win._unknown_ops_iid_map = {}
+    win._unknown_ops_tree.bind("<Double-Button-1>", lambda _e: win._edit_selected_unknown_operand())
+    win._unknown_ops_tree.bind("<Return>", lambda _e: win._edit_selected_unknown_operand())
+
+    # ---- Raw text tab --------------------------------------------------
+    raw_tab = ttk.Frame(notebook, style="Inspector.TFrame", padding=(8, 8))
+    notebook.add(raw_tab, text="Raw script")
+    raw_tab.rowconfigure(0, weight=1)
+    raw_tab.columnconfigure(0, weight=1)
+    win._raw_script_text = tk.Text(
+        raw_tab,
+        wrap="none",
+        bg="#0D1522",
+        fg="#D8E7F8",
+        insertbackground="#D8E7F8",
+        relief="flat",
+        font=("Consolas", 9),
+    )
+    raw_vsb = ttk.Scrollbar(raw_tab, orient="vertical", command=win._raw_script_text.yview, style="Inspector.Vertical.TScrollbar")
+    raw_hsb = ttk.Scrollbar(raw_tab, orient="horizontal", command=win._raw_script_text.xview)
+    win._raw_script_text.configure(yscrollcommand=raw_vsb.set, xscrollcommand=raw_hsb.set)
+    win._raw_script_text.grid(row=0, column=0, sticky="nsew")
+    raw_vsb.grid(row=0, column=1, sticky="ns")
+    raw_hsb.grid(row=1, column=0, sticky="ew")
+    win._raw_script_text.configure(state="disabled")
+
+    # Inspector tabs are intentionally lazy. A selected move may carry a very
+    # large native decode; only materialize the tab the user can actually see.
+    win._inspector_v2_item_id = None
+    win._inspector_v2_mv = None
+
+    def _refresh_active_tab(_evt=None):
+        item_id = getattr(win, "_inspector_v2_item_id", None)
+        mv = getattr(win, "_inspector_v2_mv", None)
+        try:
+            tab_index = int(notebook.index(notebook.select()))
+        except Exception:
+            tab_index = 0
+        try:
+            if tab_index == 0:
+                win._refresh_all_fields_table(mv if isinstance(mv, dict) else None)
+            elif tab_index == 1:
+                win._refresh_unknown_operand_table(mv if isinstance(mv, dict) else None)
+            else:
+                _set_raw_script_text(win, mv if isinstance(mv, dict) else None)
+        except Exception as exc:
+            try:
+                win._status_var.set(f"Inspector refresh failed safely: {exc}")
+            except Exception:
+                pass
+
+    win._refresh_active_inspector_tab_v2 = _refresh_active_tab
+    notebook.bind("<<NotebookTabChanged>>", _refresh_active_tab, add=True)
+
+    # Filter changes only redraw the Fields Treeview, and only while that tab
+    # is visible.
+    def _refilter(*_args):
+        try:
+            if not win.tree:
+                return
+            if int(notebook.index(notebook.select())) != 0:
+                return
+            mv = getattr(win, "_inspector_v2_mv", None)
+            if isinstance(mv, dict):
+                win._refresh_all_fields_table(mv)
+        except Exception:
+            pass
+    win._inspector_field_filter_var.trace_add("write", _refilter)
+    try:
+        win._inspector_show_empty_var.trace_add("write", _refilter)
+    except Exception:
+        pass
+
+
+def refresh_inspector_v2(win, item_id: str | None, mv: dict | None) -> None:
+    """Refresh the lightweight inspector from cached row data only."""
+    if not getattr(win, "_inspector_v2", False):
+        return
+    if not item_id or not isinstance(mv, dict) or not getattr(win, "tree", None):
+        try:
+            win._inspector_title_var.set("Select a move")
+            win._inspector_subtitle_var.set("Every cached/native field for the selected row lives here.")
+            win._inspector_hint_var.set("Empty fields are hidden by default. Double-click a writable field to edit it.")
+        except Exception:
+            pass
+        win._inspector_v2_item_id = None
+        win._inspector_v2_mv = None
+        try:
+            refresher = getattr(win, "_refresh_active_inspector_tab_v2", None)
+            if callable(refresher):
+                refresher()
+            else:
+                win._refresh_all_fields_table(None)
+        except Exception:
+            pass
+        return
+
+    try:
+        move_txt = win.tree.set(item_id, "move") or mv.get("pretty_name") or mv.get("move_name") or "Selected move"
+    except Exception:
+        move_txt = mv.get("pretty_name") or mv.get("move_name") or "Selected move"
+    kind = str(mv.get("kind") or "-")
+    parts = [f"Kind: {kind}"]
+    try:
+        if mv.get("id") is not None:
+            parts.append(f"Anim: 0x{int(mv.get('id')):04X}")
+    except Exception:
+        pass
+    try:
+        if mv.get("abs"):
+            parts.append(f"Address: 0x{int(mv.get('abs')):08X}")
+    except Exception:
+        pass
+    try:
+        win._inspector_title_var.set(str(move_txt))
+        win._inspector_subtitle_var.set(" | ".join(parts))
+        win._inspector_hint_var.set("Only fields present on this row are shown. Enable Show empty when scouting missing/unknown fields.")
+    except Exception:
+        pass
+
+    try:
+        win._sync_optional_tree_cells_for_move(mv, item_id)
+    except Exception:
+        pass
+
+    # Keep selection itself tiny. Store the selection and refresh only the
+    # currently visible inspector tab; Unknown/Raw no longer churn invisibly.
+    win._inspector_v2_item_id = item_id
+    win._inspector_v2_mv = mv
+    try:
+        refresher = getattr(win, "_refresh_active_inspector_tab_v2", None)
+        if callable(refresher):
+            refresher()
+        else:
+            win._refresh_all_fields_table(mv)
+    except Exception:
+        pass
+    try:
+        win._refresh_compare_panel(item_id)
+    except Exception:
+        pass
+
+
+def _set_raw_script_text(win, mv: dict | None) -> None:
+    widget = getattr(win, "_raw_script_text", None)
+    if widget is None:
+        return
+    if not isinstance(mv, dict):
+        payload = "Select a move to view its native decode / raw span."
+    else:
+        blocks = []
+        for title, key in (
+            ("COMMAND INVENTORY", "native_command_map"),
+            ("FIELD OPERATIONS", "native_field_op_map"),
+            ("ROOT WORDS", "native_root_word_map"),
+            ("RAW COMMAND BYTES", "native_command_bytes_map"),
+            ("FULL NATIVE SPAN", "native_raw_span_hex"),
+        ):
+            value = mv.get(key)
+            if value not in (None, "", [], {}, ()):
+                blocks.append(f"{title}\n{'=' * len(title)}\n{value}")
+        payload = "\n\n".join(blocks) if blocks else "No raw native decode is cached for this row yet. Use Refresh row to decode the selected move."
+    try:
+        widget.configure(state="normal")
+        widget.delete("1.0", "end")
+        widget.insert("1.0", str(payload))
+        widget.configure(state="disabled")
+    except Exception:
+        pass
 
 
 def _build_inspector(win, parent: ttk.Frame) -> None:
@@ -793,7 +1446,8 @@ def _build_inspector(win, parent: ttk.Frame) -> None:
     def _make_chip(parent_widget, col: str, var: tk.StringVar):
         probe_cols = {"cancel_probe", "armor_probe"}
         copyable_probe = col in probe_cols
-        editable = col not in ({"kind", "hits", "link", "invuln"} | probe_cols)
+        native_read_only = col.startswith("native_") or col in {"hb_x", "hb_y", "ground_kb_mode", "ground_kb_aux", "push_pull_packets", "active_windows", "recovery", "animation_total_frames", "adv_hit_derived", "adv_block_derived", "adv_block_observed", "invuln_kind", "invuln_frames", "invuln_ranges", "invuln_confidence", "invuln_startup_active_limit", "invuln_probe_count", "invuln_probes", "counter", "counter_mask", "counter_source", "guard_point", "guard_point_mask", "guard_point_source", "guard_point_probe_count", "guard_point_probes", "armor", "armor_kind", "armor_mask", "armor_source", "cancel_window_count", "cancel_windows", "property_probe_count", "property_probes", "baroque_research_probe", "damage_flag", "stun_default_level", "runtime_profile_eligible", "stun_source", "hitstun_source", "blockstun_source", "hitstop_source", "recovery_source", "normal_confirmed", "parent_id", "parent_abs", "active_start_addr", "active_end_addr", "active_write_verified", "damage_value_addr", "damage_write_verified", "stun_addr", "stun_source_addr", "stun_write_verified", "hitstun_addr", "blockstun_addr", "hitstop_addr", "invuln_addr", "hit_reaction_addr", "ground_kb_packet_addr", "ground_kb_addr", "ground_kb_y_addr", "generic_write_owner_start", "generic_write_owner_end", "generic_write_verified", "kb0", "kb1", "kb_traj", "move_name_source", "table_rel", "atkprop_addr", "char_id", "discovery_proof", "ownership_proof", "payload_field_summary", "owned_damage", "dmg_write_addr", "emitter_count", "proj_aliases", "dispatch_index", "dispatch_count", "dispatch_range_start", "dispatch_range_end", "selector_set", "map_move_name", "super_name", "owned_damage_addr", "super_entry_count", "super_entry_addr", "super_entry_post_link", "payload_only_summary", "payload_only_candidates", "source", "air_owner_addr", "family_role", "linked_owner_abs", "action_name", "animation_duration_seconds", "animation_char_key", "animation_motion", "animation_clip_offset", "animation_duration_field_offset", "recovery_formula", "runtime_observed_recovery", "attack_property_sig", "combo_kb_sig", "hb_off", "proj_radius_addr", "custom_cancel_window_data", "dispatch_fmt", "dispatch_key", "proj_key", "proj_move", "proj_slice", "proj_slices", "super_dispatch_row"}
+        editable = col not in ({"kind", "hits", "link", "invuln"} | probe_cols) and not native_read_only
         style = "InspectorValue.TLabel" if editable else "InspectorReadOnly.TLabel"
         chip = ttk.Label(
             parent_widget,
@@ -801,7 +1455,7 @@ def _build_inspector(win, parent: ttk.Frame) -> None:
             style=style,
             anchor="w",
             justify="left",
-            wraplength=285 if copyable_probe else 0,
+            wraplength=285 if (copyable_probe or col in {"native_phase_map", "native_operation_map", "native_field_op_map", "native_command_map", "native_command_bytes_map", "native_root_word_map", "native_raw_span_hex", "native_script_head_hex", "push_pull_packets", "cancel_windows", "property_probes", "invuln_ranges", "invuln_probes", "guard_point_probes", "baroque_research_probe", "native_property_a_text", "native_property_b_text"}) else 0,
         )
         chip.pack(side="left", fill="x", expand=True, padx=(4, 0))
         win._inspector_value_widgets[col] = chip
@@ -988,18 +1642,92 @@ def _build_inspector(win, parent: ttk.Frame) -> None:
         ttk.Label(chip, textvariable=_var, style="CompareDeltaNeutral.TLabel").pack(anchor="w", pady=(1, 0))
 
     sections = [
-        ("Move link", ["link"]),
-        ("Impact", ["hits", "damage", "meter", "hitstop"]),
-        ("Timing", ["startup", "active", "active2", "custom_cancel_window", "speed_mod"]),
-        ("Stun and protection", ["hitstun", "invuln", "armor_probe", "blockstun", "attack_property", "hit_reaction", "hit_result_flags"]),
-        ("Cancel windows", ["cancel_probe", "baroque_probe"]),
-        ("Launch and knockback controls", ["kb_type", "launch_profile", "kb_unknown", "kb_x", "air_kb"]),
-        ("Hit FX and reach", ["hit_spark", "stretch_part", "stretch_len", "stretch_width", "stretch_height", "stretch_time"]),
+        # Human-first order.  The same values appear in the move table in the
+        # same general order, so selecting a row never feels like entering a
+        # different tool just to inspect it.
+        ("Core move data", [
+            "hits", "damage", "meter",
+            "startup", "active", "active2", "active_windows", "recovery", "animation_total_frames",
+            "hitstun", "blockstun", "hitstop",
+        ]),
+        ("Protection", [
+            "invuln", "invuln_kind", "invuln_frames", "invuln_ranges", "invuln_confidence", "invuln_startup_active_limit",
+            "counter", "counter_mask", "counter_source",
+            "guard_point", "guard_point_mask", "guard_point_source",
+            "armor", "armor_kind", "armor_mask", "armor_source",
+        ]),
+        ("Cancel and advantage", [
+            "custom_cancel_window", "cancel_probe", "cancel_window_count", "cancel_windows",
+            "baroque_probe", "baroque_research_probe",
+            "adv_hit_derived", "adv_block_derived", "adv_block_observed",
+        ]),
+        ("Attack behavior", [
+            "attack_property", "hit_reaction", "hit_result_flags", "speed_mod", "superbg", "proj_dmg",
+        ]),
+        ("Launch and knockback", [
+            "kb_type", "launch_profile", "kb_unknown", "ground_kb_mode", "ground_kb", "ground_kb_y", "ground_kb_aux",
+            "push_pull_packets", "kb_x", "air_kb", "combo_kb_mod",
+        ]),
+        ("Hitbox, reach and FX", [
+            "hb_main", "hb", "hb_x", "hb_y",
+            "hit_spark", "stretch_part", "stretch_len", "stretch_width", "stretch_height", "stretch_time",
+        ]),
+        ("Research evidence", [
+            "armor_probe", "property_probe_count", "property_probes",
+            "invuln_probe_count", "invuln_probes", "guard_point_probe_count", "guard_point_probes",
+        ]),
+        ("Identity and lookup", [
+            "link", "kind", "abs", "source", "action_name", "move_name_source", "normal_confirmed",
+            "family_role", "linked_owner_abs", "table_rel", "parent_id", "parent_abs", "air_owner_addr",
+        ]),
+        ("Animation / recovery source", [
+            "animation_duration_seconds", "animation_char_key", "animation_motion",
+            "animation_clip_offset", "animation_duration_field_offset", "recovery_formula", "runtime_observed_recovery", "recovery_source",
+        ]),
+        ("Native hit definition", [
+            "native_definition_status", "native_definition_scan_size",
+            "native_property_command_count", "native_property_phase_count",
+            "native_property_a", "native_property_a_text", "native_property_a_addr",
+            "native_property_b", "native_property_b_text", "native_property_b_unknown_mask", "native_property_b_addr",
+            "native_property_a_initial", "native_property_a_final",
+            "native_property_a_initial_unknown_mask", "native_property_a_final_unknown_mask",
+            "native_property_a_all_or_mask", "native_property_a_all_clear_mask",
+            "native_property_a_post_result_or_mask",
+            "native_property_b_initial", "native_property_b_final",
+            "native_property_a_modifier_count", "native_property_b_modifier_count",
+            "native_result_clear_mask", "native_hit_result_raw", "native_hit_result_code", "native_hit_result_addr",
+            "native_phase_map", "native_phases", "native_operation_map", "native_operations",
+        ]),
+        ("Raw / not-yet-named", [
+            "native_command_count", "native_command_map", "native_command_bytes_map",
+            "native_field_op_count", "native_field_op_map",
+            "native_root_word_map", "native_raw_span_size", "native_raw_span_hex", "native_script_head_hex",
+        ]),
+        ("Exact write targets / provenance", [
+            "damage_flag", "damage_value_addr", "damage_write_verified",
+            "active_start_addr", "active_end_addr", "active_write_verified",
+            "stun_addr", "stun_source_addr", "stun_write_verified",
+            "hitstun_addr", "blockstun_addr", "hitstop_addr", "invuln_addr",
+            "hit_reaction_addr", "atkprop_addr",
+            "ground_kb_packet_addr", "ground_kb_addr", "ground_kb_y_addr", "combo_kb_mod_addr",
+            "proj_tpl", "proj_marker",
+            "generic_write_owner_start", "generic_write_owner_end", "generic_write_verified",
+            "kb0", "kb1", "kb_traj",
+            "stun_default_level", "runtime_profile_eligible",
+            "stun_source", "hitstun_source", "blockstun_source", "hitstop_source",
+            "attack_property_sig", "combo_kb_sig", "hb_off", "custom_cancel_window_data",
+            "dispatch_fmt", "dispatch_key", "proj_key", "proj_move", "proj_slice", "proj_slices", "super_dispatch_row",
+        ]),
         ("Dangerous script links", ["post_link"]),
-        ("Flags and lookup", ["superbg", "kind", "abs"]),
-        ("Super dispatch", ["dispatch_group", "dispatch_selector", "dispatch_variant", "dispatch_phase", "dispatch_child_link", "dispatch_child_target"]),
-        ("Projectile emitter", ["proj_emit_count", "damage", "kb_x", "air_kb", "proj_ps_lifetime", "proj_ps_hit_count", "proj_ps_emit_count", "proj_ps_interval", "proj_radius", "proj_speed", "proj_accel", "proj_spawn_origin", "proj_ps_scale", "proj_ps_particle_fx", "proj_ps_projectile_id", "proj_ps_spawn_bone"]),
-        ("Projectile data", ["proj_fmt", "proj_id", "proj_type", "proj_motion_family", "proj_life", "proj_radius", "proj_fixed_scale", "proj_speed", "proj_accel", "proj_kb_y", "proj_hitbox", "proj_arc", "proj_arc2", "proj_fx", "proj_spawn_origin", "proj_mode_a", "proj_mode_b", "proj_linked_resource", "proj_flags_72", "proj_physics_tail_d4", "proj_c042"]),
+        ("Super dispatch", [
+            "dispatch_group", "dispatch_index", "dispatch_count", "dispatch_range_start", "dispatch_range_end", "selector_set",
+            "dispatch_selector", "dispatch_variant", "dispatch_phase", "dispatch_child_link", "dispatch_child_target",
+            "owned_damage", "owned_damage_addr", "payload_field_summary", "payload_only_summary", "payload_only_candidates",
+            "super_name", "map_move_name", "super_entry_count", "super_entry_addr", "super_entry_post_link",
+            "ownership_proof", "discovery_proof", "char_id",
+        ]),
+        ("Projectile emitter", ["proj_emit_count", "emitter_count", "proj_aliases", "dmg_write_addr", "damage", "kb_x", "air_kb", "proj_ps_lifetime", "proj_ps_hit_count", "proj_ps_emit_count", "proj_ps_interval", "proj_radius", "proj_speed", "proj_accel", "proj_spawn_origin", "proj_ps_scale", "proj_ps_particle_fx", "proj_ps_projectile_id", "proj_ps_spawn_bone"]),
+        ("Projectile data", ["proj_radius_addr", "proj_fmt", "proj_id", "proj_type", "proj_motion_family", "proj_life", "proj_radius", "proj_fixed_scale", "proj_speed", "proj_accel", "proj_kb_y", "proj_hitbox", "proj_arc", "proj_arc2", "proj_fx", "proj_spawn_origin", "proj_mode_a", "proj_mode_b", "proj_linked_resource", "proj_flags_72", "proj_physics_tail_d4", "proj_c042"]),
         ("Projectile super", ["proj_ps_card_type", "proj_ps_lifetime", "proj_ps_hit_count", "proj_ps_mode", "proj_ps_emit_count", "proj_ps_interval", "proj_ps_offset_x", "proj_ps_offset_y", "proj_ps_scale", "proj_ps_particle_fx", "proj_ps_projectile_id", "proj_ps_spawn_bone"]),
         ("Super definition", ["damage", "proj_hitbox", "proj_super_lifetime", "proj_super_hit_count", "proj_super_hit_interval", "proj_super_particle_fx", "proj_super_spawn_bone", "proj_super_hit_source"]),
         ("Super beam", ["proj_super_beam_scale", "proj_super_beam_width", "proj_super_beam_speed", "proj_super_beam_force", "proj_super_hit_radius", "proj_super_beam_visual"]),
@@ -1024,7 +1752,7 @@ def _build_inspector(win, parent: ttk.Frame) -> None:
         "armor_probe": "Decoded guard-point heights from +0x58/+0x244. [R] includes exact observed action-frame ranges. Static rows show the setup packet address.",
     }
 
-    for section_title, fields in sections:
+    def _build_inspector_section(section_title, fields):
         card = ttk.Frame(inner, style="InspectorSection.TFrame", padding=(10, 8))
         card.pack(fill="x", pady=(0, 7))
         try:
@@ -1043,8 +1771,14 @@ def _build_inspector(win, parent: ttk.Frame) -> None:
             label = ttk.Label(row, text=FD_LABELS.get(col, col), style=_label_style, width=16, anchor="w")
             label.pack(side="left")
 
-            var = tk.StringVar(master=win.root, value="-")
-            win._inspector_value_vars[col] = var
+            # Context-specific projectile/super cards sometimes repeat a core
+            # field (Damage, KB X, etc.). Reuse one StringVar so every visible
+            # copy stays synchronized instead of the later card stealing the
+            # refresh binding from the earlier one.
+            var = win._inspector_value_vars.get(col)
+            if var is None:
+                var = tk.StringVar(master=win.root, value="-")
+                win._inspector_value_vars[col] = var
             chip = _make_chip(row, col, var)
 
             field_help = get_field_help(col, "")
@@ -1053,12 +1787,128 @@ def _build_inspector(win, parent: ttk.Frame) -> None:
                 tip_bits.append(field_help)
             if col in click_help:
                 tip_bits.append(click_help[col])
+            elif col.startswith("native_") or col in {"hb_x", "hb_y", "ground_kb_mode", "ground_kb_aux", "push_pull_packets", "active_windows", "recovery", "animation_total_frames", "adv_hit_derived", "adv_block_derived", "adv_block_observed", "invuln_kind", "invuln_frames", "invuln_ranges", "invuln_confidence", "invuln_startup_active_limit", "invuln_probe_count", "invuln_probes", "counter", "counter_mask", "counter_source", "guard_point", "guard_point_mask", "guard_point_source", "guard_point_probe_count", "guard_point_probes", "armor", "armor_kind", "armor_mask", "armor_source", "cancel_window_count", "cancel_windows", "property_probe_count", "property_probes", "baroque_research_probe", "damage_flag", "stun_default_level", "runtime_profile_eligible", "stun_source", "hitstun_source", "blockstun_source", "hitstop_source", "recovery_source", "normal_confirmed", "parent_id", "parent_abs", "active_start_addr", "active_end_addr", "active_write_verified", "damage_value_addr", "damage_write_verified", "stun_addr", "stun_source_addr", "stun_write_verified", "hitstun_addr", "blockstun_addr", "hitstop_addr", "invuln_addr", "hit_reaction_addr", "ground_kb_packet_addr", "ground_kb_addr", "ground_kb_y_addr", "generic_write_owner_start", "generic_write_owner_end", "generic_write_verified", "kb0", "kb1", "kb_traj", "move_name_source", "table_rel", "atkprop_addr", "char_id", "discovery_proof", "ownership_proof", "payload_field_summary", "owned_damage", "dmg_write_addr", "emitter_count", "proj_aliases", "dispatch_index", "dispatch_count", "dispatch_range_start", "dispatch_range_end", "selector_set", "map_move_name", "super_name", "owned_damage_addr", "super_entry_count", "super_entry_addr", "super_entry_post_link", "payload_only_summary", "payload_only_candidates", "source", "air_owner_addr", "family_role", "linked_owner_abs", "action_name", "animation_duration_seconds", "animation_char_key", "animation_motion", "animation_clip_offset", "animation_duration_field_offset", "recovery_formula", "runtime_observed_recovery", "attack_property_sig", "combo_kb_sig", "hb_off", "proj_radius_addr", "custom_cancel_window_data", "dispatch_fmt", "dispatch_key", "proj_key", "proj_move", "proj_slice", "proj_slices", "super_dispatch_row"}:
+                tip_bits.append("Read-only native/raw data. Use Refresh selected to decode missing values from the live move script.")
             elif col != "kind":
                 tip_bits.append("Click this value to edit it.")
             tip_text = "\n\n".join(tip_bits)
             if tip_text:
                 Tooltip(label, field_help or tip_text)
                 Tooltip(chip, tip_text)
+
+    # The old workbench synchronously constructed every deep raw, super and
+    # projectile inspector widget before the user could interact with the main
+    # table.  Build the everyday move sections now, then trickle the large
+    # research-only tail in short idle batches.  No data is removed; this only
+    # changes when the widgets are materialized.
+    _CORE_SECTION_COUNT = 9  # through animation / recovery provenance
+    for section_title, fields in sections[:_CORE_SECTION_COUNT]:
+        _build_inspector_section(section_title, fields)
+
+    # Complete cached-field inventory.  This is intentionally a Treeview rather
+    # than another hundred label widgets: every scanner field stays visible,
+    # including future/unknown keys, without making Frame Data slow to open.
+    all_fields_card = ttk.Frame(inner, style="InspectorSection.TFrame", padding=(10, 8))
+    all_fields_card.pack(fill="x", pady=(0, 7))
+    win._inspector_sections.append(("All cached fields", all_fields_card, tuple()))
+    all_fields_head = ttk.Frame(all_fields_card, style="InspectorSection.TFrame")
+    all_fields_head.pack(fill="x")
+    ttk.Label(all_fields_head, text="ALL CACHED FIELDS", style="InspectorSection.TLabel").pack(side="left")
+    ttk.Button(all_fields_head, text="Edit selected", style="Small.TButton", command=lambda: win._edit_selected_all_field()).pack(side="right")
+    ttk.Button(all_fields_head, text="Copy value", style="Small.TButton", command=lambda: win._copy_selected_all_field()).pack(side="right", padx=(0, 5))
+    ttk.Separator(all_fields_card, orient="horizontal").pack(fill="x", pady=(4, 5))
+    win._all_fields_status_var = tk.StringVar(master=win.root, value="Every cached move field appears here. EDIT fields use the normal editor; RAW fields are edited below.")
+    ttk.Label(all_fields_card, textvariable=win._all_fields_status_var, style="InspectorHeroSub.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(0, 5))
+    all_fields_wrap = ttk.Frame(all_fields_card, style="InspectorSection.TFrame")
+    all_fields_wrap.pack(fill="x")
+    win._all_fields_tree = ttk.Treeview(all_fields_wrap, columns=("field", "value", "mode"), show="headings", height=9, selectmode="browse")
+    win._all_fields_tree.heading("field", text="Field")
+    win._all_fields_tree.heading("value", text="Value")
+    win._all_fields_tree.heading("mode", text="Mode")
+    win._all_fields_tree.column("field", width=145, minwidth=90, anchor="w")
+    win._all_fields_tree.column("value", width=210, minwidth=120, anchor="w")
+    win._all_fields_tree.column("mode", width=58, minwidth=48, anchor="center", stretch=False)
+    all_fields_scroll = ttk.Scrollbar(all_fields_wrap, orient="vertical", command=win._all_fields_tree.yview, style="Inspector.Vertical.TScrollbar")
+    win._all_fields_tree.configure(yscrollcommand=all_fields_scroll.set)
+    win._all_fields_tree.pack(side="left", fill="x", expand=True)
+    all_fields_scroll.pack(side="right", fill="y")
+    win._all_fields_iid_map = {}
+    win._all_fields_tree.bind("<Double-Button-1>", lambda _e: win._edit_selected_all_field())
+    win._all_fields_tree.bind("<Return>", lambda _e: win._edit_selected_all_field())
+
+    # Structurally valid native 04/xx/60|67 field operations are the important
+    # experimental escape hatch.  Known targets get a name; everything else is
+    # deliberately labelled Unknown and stays directly editable as the raw u32
+    # operand at packet+0x0C.
+    unknown_card = ttk.Frame(inner, style="InspectorSection.TFrame", padding=(10, 8))
+    unknown_card.pack(fill="x", pady=(0, 7))
+    win._inspector_sections.append(("Unknown raw operands", unknown_card, tuple()))
+    unknown_head = ttk.Frame(unknown_card, style="InspectorSection.TFrame")
+    unknown_head.pack(fill="x")
+    ttk.Label(unknown_head, text="UNKNOWN / RAW NATIVE OPERANDS", style="InspectorSection.TLabel").pack(side="left")
+    ttk.Button(unknown_head, text="Edit raw", style="Small.TButton", command=lambda: win._edit_selected_unknown_operand()).pack(side="right")
+    ttk.Button(unknown_head, text="Copy addr", style="Small.TButton", command=lambda: win._copy_selected_unknown_operand_address()).pack(side="right", padx=(0, 5))
+    ttk.Separator(unknown_card, orient="horizontal").pack(fill="x", pady=(4, 5))
+    win._unknown_ops_status_var = tk.StringVar(master=win.root, value="Unknown means unknown. Double-click Raw to live-test the exact native operand.")
+    ttk.Label(unknown_card, textvariable=win._unknown_ops_status_var, style="InspectorHeroSub.TLabel", wraplength=380, justify="left").pack(anchor="w", pady=(0, 5))
+    unknown_wrap = ttk.Frame(unknown_card, style="InspectorSection.TFrame")
+    unknown_wrap.pack(fill="x")
+    win._unknown_ops_tree = ttk.Treeview(unknown_wrap, columns=("field", "raw", "guess", "addr"), show="headings", height=7, selectmode="browse")
+    for _col, _text in (("field", "Field"), ("raw", "Raw"), ("guess", "Best guess"), ("addr", "Address")):
+        win._unknown_ops_tree.heading(_col, text=_text)
+    win._unknown_ops_tree.column("field", width=118, minwidth=88, anchor="w")
+    win._unknown_ops_tree.column("raw", width=88, minwidth=78, anchor="w")
+    win._unknown_ops_tree.column("guess", width=185, minwidth=120, anchor="w")
+    win._unknown_ops_tree.column("addr", width=92, minwidth=84, anchor="w")
+    unknown_scroll = ttk.Scrollbar(unknown_wrap, orient="vertical", command=win._unknown_ops_tree.yview, style="Inspector.Vertical.TScrollbar")
+    win._unknown_ops_tree.configure(yscrollcommand=unknown_scroll.set)
+    win._unknown_ops_tree.pack(side="left", fill="x", expand=True)
+    unknown_scroll.pack(side="right", fill="y")
+    win._unknown_ops_iid_map = {}
+    win._unknown_ops_tree.bind("<Double-Button-1>", lambda _e: win._edit_selected_unknown_operand())
+    win._unknown_ops_tree.bind("<Return>", lambda _e: win._edit_selected_unknown_operand())
+
+    _deferred_sections = list(sections[_CORE_SECTION_COUNT:])
+
+    def _refresh_deferred_inspector_values():
+        try:
+            if not win.tree:
+                return
+            selected = win.tree.selection()
+            if not selected:
+                return
+            item_id = selected[0]
+            mv = win.move_to_tree_item.get(item_id)
+            if mv:
+                win._refresh_inspector(item_id, mv)
+        except Exception:
+            pass
+
+    def _build_deferred_inspector_batch():
+        if not _deferred_sections:
+            _refresh_deferred_inspector_values()
+            _schedule_scrollregion()
+            return
+        # Two cards per callback keeps Windows/Tk input dispatch responsive even
+        # on builds with the full projectile/super/raw inspector enabled.
+        for _ in range(min(2, len(_deferred_sections))):
+            title, fields = _deferred_sections.pop(0)
+            _build_inspector_section(title, fields)
+        _refresh_deferred_inspector_values()
+        _schedule_scrollregion()
+        try:
+            win.root.after(8, _build_deferred_inspector_batch)
+        except Exception:
+            while _deferred_sections:
+                title, fields = _deferred_sections.pop(0)
+                _build_inspector_section(title, fields)
+            _refresh_deferred_inspector_values()
+
+    if _deferred_sections:
+        try:
+            win.root.after(900, _build_deferred_inspector_batch)
+        except Exception:
+            _build_deferred_inspector_batch()
 
     try:
         # One idle pass catches the first layout; the short delayed pass catches
@@ -1082,7 +1932,7 @@ def build_tree_widget(win) -> ttk.Frame:
     # collapse the right pane on first open, which makes the value chips look
     # broken until the user drags it by hand.
     try:
-        body.paneconfigure(right, minsize=420)
+        body.paneconfigure(right, minsize=500)
     except Exception:
         pass
 
@@ -1095,9 +1945,9 @@ def build_tree_widget(win) -> ttk.Frame:
             saved = (getattr(win, "_ui_prefs", {}) or {}).get("sash_pos")
             if saved is not None:
                 try:
-                    left_w = max(780, min(int(saved), total_w - 420))
+                    left_w = max(780, min(int(saved), total_w - 500))
                 except Exception:
-                    left_w = max(780, total_w - 470)
+                    left_w = max(780, total_w - 560)
             else:
                 left_w = max(780, total_w - 470)
             body.sashpos(0, left_w)
@@ -1106,80 +1956,45 @@ def build_tree_widget(win) -> ttk.Frame:
 
     body.after_idle(_set_initial_sash)
 
-    quick = ttk.Frame(left, style="Card.TFrame", padding=(10, 8))
-    quick.pack(fill="x", pady=(0, 8))
-    win._quick_panel = quick
-    win._quick_title_var = tk.StringVar(master=win.root, value="Selection details")
-    win._quick_subtitle_var = tk.StringVar(master=win.root, value="Select a move, projectile, or super row to see the values that matter here.")
-    top_line = ttk.Frame(quick, style="Card.TFrame")
-    top_line.pack(fill="x")
-    ttk.Label(top_line, textvariable=win._quick_title_var, style="Section.TLabel").pack(side="left", anchor="w")
-    ttk.Label(quick, textvariable=win._quick_subtitle_var, style="CardMuted.TLabel", wraplength=950).pack(anchor="w", pady=(3, 4))
-    win._quick_chips_frame = ttk.Frame(quick, style="Card.TFrame")
-    win._quick_chips_frame.pack(fill="x")
+    # Local field-group navigation.  This replaces the old 30-chip selection
+    # strip and keeps the main grid readable without hiding the exhaustive
+    # selected-move data in the inspector.
+    view_bar = ttk.Frame(left, style="Card.TFrame", padding=(8, 7))
+    view_bar.pack(fill="x", pady=(0, 8))
+    win._fd_view_buttons = {}
 
-    # The selection strip is deliberately a fixed reusable pool.  Recreating
-    # 20-30 chip cards on every TreeviewSelect was more expensive than reading
-    # the saved profile itself.  fd_window only changes these StringVars and
-    # hides unused slots now.
-    win._quick_chip_slots = []
+    _view_row1 = ttk.Frame(view_bar, style="Card.TFrame")
+    _view_row1.pack(fill="x")
+    ttk.Label(_view_row1, text="Fields", style="CommandLabel.TLabel").pack(side="left", padx=(0, 8))
+    for _label, _mode in (
+        ("Core", "core"),
+        ("Defense", "defense"),
+        ("Cancels", "cancel"),
+        ("Launch / KB", "launch"),
+        ("Hitbox / Reach", "hitbox"),
+    ):
+        _btn = ttk.Button(
+            _view_row1, text=_label, style="Toolbar.TButton",
+            command=lambda m=_mode: win._set_fd_view_mode(m),
+        )
+        _btn.pack(side="left", padx=(0, 4))
+        win._fd_view_buttons[_mode] = _btn
 
-    def _quick_slot_click(slot):
-        col = slot.get("col") if isinstance(slot, dict) else None
-        if col and hasattr(win, "_edit_selected_column"):
-            try:
-                win._edit_selected_column(col)
-            except Exception:
-                pass
-
-    for _slot_index in range(30):
-        # A slim color rail makes the strip read as stats rather than a grid of
-        # form fields.  The styles are switched in-place by _refresh_quick_panel
-        # so selection changes stay cache-only and do not rebuild widgets.
-        _cell = ttk.Frame(win._quick_chips_frame, style="QuickTile.TFrame")
-        _cell.grid(row=_slot_index // 4, column=_slot_index % 4, sticky="ew", padx=(0, 10), pady=(0, 7))
-        _rail = tk.Frame(_cell, width=3, background="#4D78A3", highlightthickness=0, bd=0)
-        _rail.pack(side="left", fill="y")
-        _content = ttk.Frame(_cell, style="QuickTile.TFrame", padding=(8, 4, 8, 4))
-        _content.pack(side="left", fill="both", expand=True)
-        _line = ttk.Frame(_content, style="QuickTile.TFrame")
-        _line.pack(fill="x")
-        _label_var = tk.StringVar(master=win.root, value="")
-        _value_var = tk.StringVar(master=win.root, value="")
-        _lab = ttk.Label(_line, textvariable=_label_var, style="QuickTileLabel.TLabel", anchor="w")
-        _lab.pack(side="left")
-        _colon = ttk.Label(_line, text=": ", style="QuickInlineColon.TLabel", anchor="w")
-        _colon.pack(side="left")
-        _val = ttk.Label(_line, textvariable=_value_var, style="QuickTileValue.TLabel", anchor="w")
-        _val.pack(side="left", fill="x", expand=True)
-        _slot = {
-            "cell": _cell,
-            "rail": _rail,
-            "content": _content,
-            "label_var": _label_var,
-            "value_var": _value_var,
-            "label_widget": _lab,
-            "value_widget": _val,
-            "label_value": None,
-            "text_value": None,
-            "style_state": None,
-            "visible": False,
-            "col": None,
-        }
-        _cell.bind("<Button-1>", lambda _e, _slot=_slot: _quick_slot_click(_slot))
-        _rail.bind("<Button-1>", lambda _e, _slot=_slot: _quick_slot_click(_slot))
-        _content.bind("<Button-1>", lambda _e, _slot=_slot: _quick_slot_click(_slot))
-        _lab.bind("<Button-1>", lambda _e, _slot=_slot: _quick_slot_click(_slot))
-        _val.bind("<Button-1>", lambda _e, _slot=_slot: _quick_slot_click(_slot))
-        _cell.grid_remove()
-        win._quick_chip_slots.append(_slot)
-    for _col_index in range(4):
-        win._quick_chips_frame.grid_columnconfigure(_col_index, weight=1)
-    win._quick_empty_label = ttk.Label(
-        win._quick_chips_frame,
-        text="No parsed values for this row yet.",
+    _view_row2 = ttk.Frame(view_bar, style="Card.TFrame")
+    _view_row2.pack(fill="x", pady=(5, 0))
+    ttk.Label(_view_row2, text="", style="CommandLabel.TLabel", width=6).pack(side="left", padx=(0, 8))
+    for _label, _mode in (("Projectiles", "projectile"), ("Supers", "super"), ("Research", "research")):
+        _btn = ttk.Button(
+            _view_row2, text=_label, style="Toolbar.TButton",
+            command=lambda m=_mode: win._set_fd_view_mode(m),
+        )
+        _btn.pack(side="left", padx=(0, 4))
+        win._fd_view_buttons[_mode] = _btn
+    ttk.Label(
+        _view_row2,
+        text="Selected move: every field is in the inspector →",
         style="CardMuted.TLabel",
-    )
+    ).pack(side="right", padx=(10, 2))
 
     frame = ttk.Frame(left, style="FD.TFrame")
     frame.pack(fill="both", expand=True)
@@ -1480,9 +2295,12 @@ def build_tree_widget(win) -> ttk.Frame:
         ("startup", "Start"),
         ("active", "Active"),
         ("active2", "Active 2"),
+        ("recovery", "Recovery"),
+        ("animation_total_frames", "Total Anim Frames"),
         ("hitstun", "HS"),
         ("blockstun", "BS"),
         ("hitstop", "Stop"),
+        ("adv_hit_derived", "Der H"),
         ("adv_block_derived", "Der B"),
         ("adv_block_observed", "Obs B"),
         ("hit_spark", "Hit Spark"),
@@ -1491,10 +2309,15 @@ def build_tree_widget(win) -> ttk.Frame:
         ("stretch_width", "Reach Width"),
         ("stretch_height", "Reach Height"),
         ("stretch_time", "Stretch Timing"),
+        ("hb_main", "Hitbox Radius"),
+        ("hb", "Hitbox Candidates"),
         ("post_link", "Post Link"),
         ("kb_type", "KB Style"),
         ("launch_profile", "Extra Launch"),
         ("kb_unknown", "Launch Adjust"),
+        ("ground_kb_mode", "Push/Pull Mode"),
+        ("ground_kb", "Push/Pull X"),
+        ("ground_kb_y", "Push/Pull Aux"),
         ("kb_x", "KB X"),
         ("air_kb", "Arc"),
         ("speed_mod", "Speed"),
@@ -1579,11 +2402,21 @@ def build_tree_widget(win) -> ttk.Frame:
     win.tree.column("startup", width=70, anchor="center")
     win.tree.column("active", width=88, anchor="center")
     win.tree.column("active2", width=88, anchor="center")
-    win.tree.column("hitstun", width=58, anchor="center")
-    win.tree.column("invuln", width=170, anchor="w")
+    win.tree.column("recovery", width=78, anchor="center")
+    win.tree.column("animation_total_frames", width=100, anchor="center")
+    win.tree.column("hitstun", width=72, anchor="center")
+    win.tree.column("blockstun", width=78, anchor="center")
+    win.tree.column("invuln", width=180, anchor="w")
+    win.tree.column("armor", width=190, anchor="w")
+    win.tree.column("hitstop", width=72, anchor="center")
+    win.tree.column("guard_point", width=210, anchor="w")
+    win.tree.column("counter", width=180, anchor="w")
+    win.tree.column("custom_cancel_window", width=116, anchor="center")
+    win.tree.column("baroque_probe", width=180, anchor="w")
+    win.tree.column("cancel_probe", width=230, anchor="w")
     win.tree.column("armor_probe", width=260, anchor="w")
-    win.tree.column("blockstun", width=58, anchor="center")
-    win.tree.column("hitstop", width=58, anchor="center")
+    win.tree.column("active_windows", width=200, anchor="w")
+    win.tree.column("adv_hit_derived", width=78, anchor="center")
     win.tree.column("adv_block_derived", width=78, anchor="center")
     win.tree.column("adv_block_observed", width=78, anchor="center")
     win.tree.column("hit_spark", width=86, anchor="center")
@@ -1592,16 +2425,23 @@ def build_tree_widget(win) -> ttk.Frame:
     win.tree.column("stretch_width", width=96, anchor="center")
     win.tree.column("stretch_height", width=96, anchor="center")
     win.tree.column("stretch_time", width=100, anchor="center")
+    win.tree.column("hb_main", width=92, anchor="center")
+    win.tree.column("hb", width=220, anchor="w")
     win.tree.column("post_link", width=100, anchor="center")
     win.tree.column("kb_type", width=72, anchor="center")
     win.tree.column("launch_profile", width=82, anchor="center")
     win.tree.column("kb_unknown", width=92, anchor="center")
+    win.tree.column("ground_kb_mode", width=92, anchor="center")
+    win.tree.column("ground_kb", width=92, anchor="center")
+    win.tree.column("ground_kb_y", width=92, anchor="center")
     win.tree.column("kb_x", width=72, anchor="center")
     win.tree.column("air_kb", width=72, anchor="center")
+    win.tree.column("combo_kb_mod", width=104, anchor="center")
     win.tree.column("speed_mod", width=116, anchor="center")
     win.tree.column("attack_property", width=178, anchor="w")
     win.tree.column("hit_reaction", width=260, anchor="w")
     win.tree.column("hit_result_flags", width=128, anchor="w")
+    win.tree.column("proj_dmg", width=118, anchor="center")
     win.tree.column("superbg", width=78, anchor="center")
     win.tree.column("proj_cluster", width=170, anchor="w")
     win.tree.column("proj_fmt", width=110, anchor="w")
@@ -1713,62 +2553,81 @@ def build_tree_widget(win) -> ttk.Frame:
         pass
 
     win._fd_all_columns = tuple(cols)
-    win._fd_core_columns = tuple(FD_CORE_COLUMNS)
-    win._fd_projectile_columns = tuple(c for c in FD_PROJECTILE_COLUMNS_FOCUSED if c in cols)
-    win._fd_super_columns = tuple(c for c in FD_SUPER_COLUMNS_FOCUSED if c in cols)
+    win._fd_core_columns = tuple(c for c in FD_VIEW_GROUPS["core"] if c in cols)
+    win._fd_projectile_columns = tuple(c for c in FD_VIEW_GROUPS["projectile"] if c in cols)
+    win._fd_super_columns = tuple(c for c in FD_VIEW_GROUPS["super"] if c in cols)
     win._fd_view_presets = {
-        "frame": win._fd_core_columns,
-        "projectile": win._fd_projectile_columns,
-        "super": win._fd_super_columns,
-        "all": win._fd_all_columns,
+        key: tuple(c for c in value if c in cols)
+        for key, value in FD_VIEW_GROUPS.items()
     }
-    win._fd_view_mode = "frame"
+    win._fd_view_presets["all"] = tuple(cols)
+    win._fd_view_mode = "core"
 
-    def _set_fd_view_mode(mode="frame"):
-        mode = str(mode or "all").lower()
+    def _set_fd_view_mode(mode="core"):
+        mode = str(mode or "core").lower()
+        # Compatibility with older saved preferences/builds.
+        if mode == "frame":
+            mode = "core"
         if mode not in getattr(win, "_fd_view_presets", {}):
-            mode = "all"
-        columns = tuple(c for c in win._fd_view_presets.get(mode, win._fd_all_columns) if c in cols)
+            mode = "core"
+        columns = tuple(c for c in win._fd_view_presets.get(mode, win._fd_core_columns) if c in cols)
         if not columns:
             columns = win._fd_core_columns
-            mode = "frame"
+            mode = "core"
         win.tree.configure(displaycolumns=columns)
         win._fd_view_mode = mode
         try:
             win._ui_prefs["view_mode"] = mode
         except Exception:
             pass
-        label_map = {
-            "frame": "View: Frame",
-            "projectile": "View: Projectiles",
-            "super": "View: Supers",
-            "all": "View: All",
-        }
+
+        # Keep the active group obvious without building a custom segmented
+        # control.  ttk state is cheap and works across Windows themes.
+        for _key, _button in (getattr(win, "_fd_view_buttons", {}) or {}).items():
+            try:
+                if _key == mode:
+                    _button.state(["pressed"])
+                else:
+                    _button.state(["!pressed"])
+            except Exception:
+                pass
+
+        label = FD_VIEW_LABELS.get(mode, mode.title())
         if getattr(win, "_fd_view_var", None) is not None:
-            win._fd_view_var.set(label_map.get(mode, "View: Frame"))
+            win._fd_view_var.set(f"View: {label}")
         messages = {
-            "frame": "Frame view: normal frame-data columns are prioritized.",
-            "projectile": "Projectile view: projectile damage, ID/type, speed, life, hitbox, and probe fields are moved next to the move name.",
-            "super": "Super view: 00/23 dispatch rows, child links, beam cards, and projectile-super payloads are moved into the readable left side.",
-            "all": "All columns visible for raw scouting data.",
+            "core": "Core: move, damage, timing, stun, hitstop and protection.",
+            "defense": "Defense: stun, invulnerability, guard point, armor, counter and Baroque gates.",
+            "cancel": "Cancels: timing, cancel windows, Baroque and frame advantage.",
+            "launch": "Launch / KB: reactions, result flags, push/pull and knockback.",
+            "hitbox": "Hitbox / Reach: radius, raw hitbox values, sparks and stretch/reach fields.",
+            "projectile": "Projectiles: only projectile-facing columns; use the inspector for the complete selected-row payload.",
+            "super": "Supers: dispatch and super/projectile payload fields.",
+            "research": "Research: identity, addresses, verification and native decode counts.",
+            "all": "All schema columns. This is intentionally the raw spreadsheet view.",
         }
         try:
             win.tree.xview_moveto(0.0)
         except Exception:
             pass
         try:
-            win._status_var.set(messages.get(mode, messages["frame"]))
+            win._status_var.set(messages.get(mode, f"View: {label}"))
+        except Exception:
+            pass
+        # Projectile/Super views are scoped to rows that actually carry those
+        # payloads.  This is the UX fix for the old "everything is blank"
+        # spreadsheet when a normal row was viewed under projectile columns.
+        try:
+            if bool(getattr(win, "_initial_tree_loaded", False)):
+                win._apply_filter()
         except Exception:
             pass
 
-        # Views are display-only. Projectile/special discovery is an explicit
-        # saved profile pass from the Character profile toolbar; do not start a
-        # scanner here just because the user changed columns.
-
     def _toggle_core_columns():
-        # Legacy shortcut kept for old callers: Frame <-> All.
-        if getattr(win, "_fd_view_mode", "frame") == "all":
-            _set_fd_view_mode("frame")
+        # Legacy shortcut kept for callers that still expect a simple core/all
+        # toggle.
+        if getattr(win, "_fd_view_mode", "core") == "all":
+            _set_fd_view_mode("core")
         else:
             _set_fd_view_mode("all")
 
@@ -1812,7 +2671,7 @@ def build_tree_widget(win) -> ttk.Frame:
 
     win._set_table_density = _set_table_density
     _set_table_density((getattr(win, "_ui_prefs", {}) or {}).get("density", "standard"))
-    _set_fd_view_mode((getattr(win, "_ui_prefs", {}) or {}).get("view_mode", "frame"))
+    _set_fd_view_mode((getattr(win, "_ui_prefs", {}) or {}).get("view_mode", "core"))
 
     def _update_hover_help(event):
         try:
@@ -1877,7 +2736,7 @@ def build_tree_widget(win) -> ttk.Frame:
     win.tree.tag_configure("family_linked", foreground="#C9E2FF")
     win.tree.tag_configure("edited_row", background="#2A3E5D")
 
-    _build_inspector(win, right)
+    _build_inspector_v2(win, right)
 
     def _capture_initial_layout_snapshot():
         # Snapshot what *this* instance looked like when it opened, after saved
@@ -1893,7 +2752,7 @@ def build_tree_widget(win) -> ttk.Frame:
         except Exception:
             widths = dict(getattr(win, "_fd_builtin_column_widths", {}) or {})
         win._initial_layout_snapshot = {
-            "view_mode": str(getattr(win, "_fd_view_mode", "frame") or "frame"),
+            "view_mode": str(getattr(win, "_fd_view_mode", "core") or "core"),
             "density": str(getattr(win, "_table_density", "standard") or "standard"),
             "column_widths": widths,
             "sash_pos": sash,
@@ -2087,9 +2946,16 @@ def _populate_tree_sync(win) -> None:
         else:
             active2_txt = _fmt(a2_s or a2_e)
 
+        recovery_txt = _fmt(mv.get("recovery"))
+        animation_total_txt = _fmt(mv.get("animation_total_frames"))
+        adv_hit_derived_txt = _fmt_adv(mv.get("adv_hit_derived") if mv.get("adv_hit_derived") is not None else mv.get("adv_hit"))
+
         kb_type_txt = U.fmt_kb_type_ui(mv)
         launch_profile_txt = U.fmt_launch_profile_ui(mv)
         kb_unknown_txt = U.fmt_kb_unknown_ui(mv)
+        ground_kb_mode_txt = _fmt(mv.get("ground_kb_mode"))
+        ground_kb_txt = U.fmt_ground_kb_ui(mv)
+        ground_kb_y_txt = U.fmt_ground_kb_y_ui(mv)
         kb_x_txt = U.fmt_kb_x_ui(mv)
         air_kb_txt = U.fmt_air_kb_ui(mv)
         hitstop_txt = U.fmt_stun(mv.get("hitstop"))
@@ -2143,6 +3009,11 @@ def _populate_tree_sync(win) -> None:
         stretch_width_txt = U.fmt_stretch_width_ui(mv)
         stretch_height_txt = U.fmt_stretch_height_ui(mv)
         stretch_time_txt = U.fmt_stretch_time_ui(mv)
+        try:
+            hb_main_txt = f"{float(mv.get('hb_r')):.1f}" if mv.get("hb_r") is not None else ""
+        except Exception:
+            hb_main_txt = ""
+        hb_txt = U.format_candidate_list(mv.get("hb_candidates") or []) if mv.get("hb_candidates") is not None else ""
         post_link_txt = U.fmt_post_link_ui(mv)
 
         speed_txt = ""
@@ -2234,61 +3105,76 @@ def _populate_tree_sync(win) -> None:
         elif bucket == 2:
             row_tags.append("super_row")
 
+        # Build by column name instead of tuple position. The workbench now has
+        # several view presets and a much larger research tail, so named values
+        # prevent a future column reorder from silently shifting data into the
+        # wrong heading.
+        row_values = {c: "" for c in FD_COLUMNS}
+        row_values.update({
+            "move": display_pretty,
+            "hits": _hit_count_text(mv),
+            "damage": _fmt(mv.get("damage")),
+            "meter": _fmt(mv.get("meter")),
+            "startup": startup_txt,
+            "active": active_txt,
+            "recovery": recovery_txt,
+            "hitstun": U.fmt_stun(mv.get("hitstun")),
+            "blockstun": U.fmt_stun(mv.get("blockstun")),
+            "invuln": invuln_txt,
+            "armor": _fmt(mv.get("armor")),
+            "hitstop": hitstop_txt,
+            "guard_point": _fmt(mv.get("guard_point")),
+            "counter": _fmt(mv.get("counter")),
+            "custom_cancel_window": _fmt(mv.get("custom_cancel_window")),
+            "baroque_probe": _fmt(
+                mv.get("baroque_probe")
+                if str(mv.get("baroque_source") or "").startswith("runtime_observed")
+                else ""
+            ),
+            "adv_block_observed": adv_block_observed_txt,
+            "adv_block_derived": adv_block_derived_txt,
+            "adv_hit_derived": adv_hit_derived_txt,
+            "attack_property": attack_property_txt,
+            "hit_reaction": hr_txt,
+            "hit_result_flags": hit_result_txt,
+            "kb_type": kb_type_txt,
+            "launch_profile": launch_profile_txt,
+            "kb_unknown": kb_unknown_txt,
+            "ground_kb_mode": ground_kb_mode_txt,
+            "ground_kb": ground_kb_txt,
+            "ground_kb_y": ground_kb_y_txt,
+            "kb_x": kb_x_txt,
+            "air_kb": air_kb_txt,
+            "combo_kb_mod": (f"{int(mv.get('combo_kb_mod')) & 0xFF} (0x{int(mv.get('combo_kb_mod')) & 0xFF:02X})" if mv.get("combo_kb_mod") is not None else ""),
+            "hb_main": hb_main_txt,
+            "hit_spark": hit_spark_txt,
+            "stretch_part": stretch_part_txt,
+            "stretch_len": stretch_len_txt,
+            "stretch_width": stretch_width_txt,
+            "stretch_height": stretch_height_txt,
+            "stretch_time": stretch_time_txt,
+            "speed_mod": speed_txt,
+            "superbg": superbg_txt,
+            "post_link": post_link_txt,
+            "active2": active2_txt,
+            "animation_total_frames": animation_total_txt,
+            "active_windows": _fmt(mv.get("active_windows")),
+            "cancel_probe": _fmt(mv.get("cancel_probe")),
+            "armor_probe": _fmt(mv.get("armor_probe")),
+            "proj_dmg": (str(int(mv.get("proj_dmg"))) if mv.get("proj_dmg") is not None else ""),
+            "hb": hb_txt,
+            "link": _fmt(mv.get("family_link_label") or mv.get("link_label")),
+            "kind": mv.get("kind", ""),
+            "context": _fmt(_compact_row_context(mv, attack_property_txt=attack_property_txt, hr_txt=hr_txt, invuln_txt=invuln_txt)),
+            "abs": f"0x{move_abs:08X}" if move_abs else "",
+        })
+
         item_id = win.tree.insert(
             parent,
             "end",
             text="",
             tags=tuple(row_tags),
-            values=(
-                display_pretty,
-                mv.get("kind", ""),
-                _hit_count_text(mv),
-                _fmt(mv.get("family_link_label") or mv.get("link_label")),
-                _fmt(_compact_row_context(mv, attack_property_txt=attack_property_txt, hr_txt=hr_txt, invuln_txt=invuln_txt)),
-                _fmt(mv.get("damage")),
-                _fmt(mv.get("meter")),
-                startup_txt,
-                active_txt,
-                active2_txt,
-                _fmt(mv.get("custom_cancel_window")),
-                U.fmt_stun(mv.get("hitstun")),
-                invuln_txt,
-                _fmt(mv.get("cancel_probe")),
-                _fmt(
-                    mv.get("baroque_probe")
-                    if str(mv.get("baroque_source") or "").startswith("runtime_observed")
-                    else ""
-                ),
-                _fmt(mv.get("armor_probe")),
-                U.fmt_stun(mv.get("blockstun")),
-                hitstop_txt,
-                adv_block_derived_txt,
-                adv_block_observed_txt,
-                hit_spark_txt,
-                stretch_part_txt,
-                stretch_len_txt,
-                stretch_width_txt,
-                stretch_height_txt,
-                stretch_time_txt,
-                post_link_txt,
-                kb_type_txt,
-                launch_profile_txt,
-                kb_unknown_txt,
-                kb_x_txt,
-                air_kb_txt,
-                speed_txt,
-                attack_property_txt,
-                hr_txt,
-                hit_result_txt,
-                superbg_txt,
-                *("" for _ in FPI.PROJECTILE_COLUMNS),
-                # FD_COLUMNS also contains the super-dispatch block between
-                # projectile fields and abs. Leaving this padding out shifted
-                # every normal row's Address into Dispatch Group, so the actual
-                # Address column appeared empty in the All table view.
-                *("" for _ in FSI.SUPER_DISPATCH_COLUMNS),
-                f"0x{move_abs:08X}" if move_abs else "",
-            ),
+            values=tuple(row_values.get(c, "") for c in FD_COLUMNS),
         )
 
         win.move_to_tree_item[item_id] = mv

@@ -460,6 +460,27 @@ def _layout_command_section(
     return pygame.Rect(pad_x, int(y), section_w, height), rects
 
 
+# Character Select's LAB button is intentionally returned to the outer app as
+# one legacy hit target.  Internally we split it into two visual controls so
+# older launchers do not need a new tuple element: the left side keeps the
+# Extra Characters toggle, while the right side opens Visual Overrides.
+_CHAR_SELECT_VISUALS_RECT = pygame.Rect(-10000, -10000, 0, 0)
+
+
+def character_select_visuals_hit_test(pos: tuple[int, int] | None = None) -> bool:
+    """Return True when the pointer is over the Visuals half of Extra Characters.
+
+    This tiny bridge lets the character-select runtime distinguish the new
+    sub-button even when an older main loop still treats the whole combined
+    rectangle as the existing Extra Characters button.
+    """
+    try:
+        point = pygame.mouse.get_pos() if pos is None else pos
+        return bool(_CHAR_SELECT_VISUALS_RECT.collidepoint(int(point[0]), int(point[1])))
+    except Exception:
+        return False
+
+
 def _command_dock_layout(width: int, tools_open: bool) -> tuple[dict[str, tuple[pygame.Rect, dict[str, pygame.Rect]]], int]:
     width_i = max(320, int(width))
     sections: dict[str, tuple[pygame.Rect, dict[str, pygame.Rect]]] = {}
@@ -517,7 +538,7 @@ def _command_dock_layout(width: int, tools_open: bool) -> tuple[dict[str, tuple[
         lab_specs = [
             ("assist", 106),
             ("stage", 116),
-            ("extra", 172),
+            ("extra", 238),
             ("ko", 122),
             ("dump", 120),
             ("win", 124),
@@ -596,6 +617,7 @@ def draw_top_command_dock(
     t_ms: int = 0,
 ) -> tuple:
     """Draw a responsive command dock using the same glass-card language as the HUD."""
+    global _CHAR_SELECT_VISUALS_RECT
     del megacrash_trainer_chance, megacrash_trainer_mode, megacrash_trainer_delay_frames
     del megacrash_trainer_cooldown_sec, megacrash_trainer_cooldown_remaining
     del ko_control_live_active, solo_team_active
@@ -905,10 +927,33 @@ def draw_top_command_dock(
 
         draw_glass_button(screen, as_btn_rect, "Assist Setup", dockfont, hover=as_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT, align="center")
         draw_glass_button(screen, yami_stage_btn_rect, "Stage Control", dockfont, hover=yami_stage_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT, align="center")
+        # Keep one legacy outer hit target but render two independent actions.
+        # The outer app can continue checking select_probe_btn_rect exactly as
+        # before; runtime.toggle_extra_characters() dispatches the Visuals half.
+        _extra_gap = 4
+        _visual_w = 68
+        _extra_toggle_rect = pygame.Rect(
+            select_probe_btn_rect.x,
+            select_probe_btn_rect.y,
+            max(70, select_probe_btn_rect.width - _visual_w - _extra_gap),
+            select_probe_btn_rect.height,
+        )
+        _visual_rect = pygame.Rect(
+            _extra_toggle_rect.right + _extra_gap,
+            select_probe_btn_rect.y,
+            _visual_w,
+            select_probe_btn_rect.height,
+        )
+        _CHAR_SELECT_VISUALS_RECT = _visual_rect.copy()
         draw_glass_button(
-            screen, select_probe_btn_rect, "Extra Characters: ON" if char_test_active else "Extra Characters: OFF", dockfont,
-            active=bool(char_test_active), hover=select_probe_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT,
+            screen, _extra_toggle_rect, "Extra Characters: ON" if char_test_active else "Extra Characters: OFF", dockfont,
+            active=bool(char_test_active), hover=_extra_toggle_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT,
             fill=(43, 58, 86) if char_test_active else (27, 33, 45), align="center",
+        )
+        draw_glass_button(
+            screen, _visual_rect, "Visuals", dockfont,
+            active=False, hover=_visual_rect.collidepoint(mx, my), accent=GUI_ACCENT_PURPLE,
+            fill=(43, 38, 68), align="center",
         )
         draw_glass_button(
             screen, ko_control_btn_rect, "KO Control: ON" if ko_control_enabled else "KO Control: OFF", dockfont,
@@ -994,6 +1039,7 @@ def draw_top_command_dock(
 
     screen.set_clip(previous_clip)
     if tools_progress < 0.88:
+        _CHAR_SELECT_VISUALS_RECT = off.copy()
         as_btn_rect = off.copy()
         megacrash_btn_rect = off.copy()
         memdump_btn_rect = off.copy()
@@ -1162,6 +1208,7 @@ __all__ = [
     'draw_slot_chip',
     'get_top_dock_height',
     'draw_top_command_dock',
+    'character_select_visuals_hit_test',
     'draw_status_rail',
     'draw_bottom_workspace_tabs'
 ]

@@ -16,7 +16,7 @@ from . import tree as fd_tree
 from . import projectile_integration as FPI
 from . import super_integration as FSI
 from . import ui_prefs as FDUIPrefs
-from .timing_observations import apply_observations_to_scan_data
+from .timing_observations import apply_observations_to_scan_data, observation_stamp
 try:
     import tvcgui.tools.scanners.normal_scanner as FDProfileCache
 except Exception:
@@ -38,6 +38,7 @@ from .patterns import (
     find_hit_spark_addr,
     find_limb_stretch_packet,
     find_post_animation_link_addr,
+    find_combo_kb_mod_addr,
     fmt_attack_property,
     parse_attack_property,
     ATTACK_PROPERTY_VALUES,
@@ -78,9 +79,9 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         self.slot_label = slot_label
         self.target_slot = target_slot or {}
         self._ui_prefs = FDUIPrefs.load()
-        if not bool(self._ui_prefs.get("layout_cleanup_v1")):
-            self._ui_prefs["view_mode"] = "frame"
-            self._ui_prefs["layout_cleanup_v1"] = True
+        if not bool(self._ui_prefs.get("layout_cleanup_v2")):
+            self._ui_prefs["view_mode"] = "core"
+            self._ui_prefs["layout_cleanup_v2"] = True
             FDUIPrefs.save(self._ui_prefs)
         self.root: tk.Toplevel | None = tk.Toplevel(self.master)
         cname = self.target_slot.get("char_name", "-")
@@ -92,6 +93,7 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         self._opening_cancelled = False
         self._opening_after_id = None
         self._timing_observation_after_id = None
+        self._timing_observation_stamp = None
         self._runtime_protection_profile_stamp = None
         self._launch_status_var = tk.StringVar(
             master=self.root,
@@ -382,9 +384,10 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         except Exception:
             pass
 
-        # Raw baseline: all captured/scout fields remain visible.
+        # Clean baseline: the everyday fighting-game fields are visible first;
+        # the exhaustive payload remains in the right inspector.
         try:
-            self._set_fd_view_mode("all")
+            self._set_fd_view_mode("core")
         except Exception:
             pass
         try:
@@ -420,7 +423,7 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
                 if total_w > 1:
                     # Reserve the inspector at a readable width rather than
                     # restoring a stale sash position that can hide it.
-                    pane.sashpos(0, max(780, total_w - 470))
+                    pane.sashpos(0, max(780, total_w - 560))
         except Exception:
             pass
         try:
@@ -834,7 +837,7 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         except Exception:
             pass
         try:
-            data["view_mode"] = str(getattr(self, "_fd_view_mode", "frame") or "frame")
+            data["view_mode"] = str(getattr(self, "_fd_view_mode", "core") or "core")
         except Exception:
             pass
         try:
@@ -926,16 +929,22 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             ("Run projectile profile pass", lambda: self._start_projectile_scan(auto=False)),
             ("Run specials profile pass", lambda: self._start_super_scan(auto=False)),
             ("Refresh visible optional fields", self._refresh_visible),
+            ("View selected raw move data", self._show_selected_raw_data),
             ("Save patch", self._save_fd_patch_config),
             ("Load patch", self._load_fd_patch_config),
             ("Undo last edit", self._undo_last_change),
             ("Redo last edit", self._redo_last_change),
             ("Reset all changed values", self._reset_all_moves),
             ("Show changed rows", self._toggle_changed_rows),
-            ("Frame columns", lambda: self._set_fd_view_mode("frame")),
-            ("Projectile columns", lambda: self._set_fd_view_mode("projectile")),
-            ("Super columns", lambda: self._set_fd_view_mode("super")),
-            ("All columns", lambda: self._set_fd_view_mode("all")),
+            ("Core fields", lambda: self._set_fd_view_mode("core")),
+            ("Defense fields", lambda: self._set_fd_view_mode("defense")),
+            ("Cancel / advantage fields", lambda: self._set_fd_view_mode("cancel")),
+            ("Launch / knockback fields", lambda: self._set_fd_view_mode("launch")),
+            ("Hitbox / reach fields", lambda: self._set_fd_view_mode("hitbox")),
+            ("Projectile fields", lambda: self._set_fd_view_mode("projectile")),
+            ("Super fields", lambda: self._set_fd_view_mode("super")),
+            ("Research fields", lambda: self._set_fd_view_mode("research")),
+            ("All raw columns", lambda: self._set_fd_view_mode("all")),
         ]
         filtered = []
 
@@ -1045,8 +1054,27 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         self._initial_tree_loaded = True
         if self._status_var is not None:
             src = "profile cache" if self._profile_fast_path else "scanner snapshot"
-            self._status_var.set(f"Frame rows loaded from {src}. Building any missing profile passes automatically.")
-        self._queue_auto_profile_build()
+            missing = []
+            if not bool(getattr(self, "_projectile_profiled", False)):
+                missing.append("projectiles/supers")
+            if not bool(getattr(self, "_super_profiled", False)):
+                missing.append("special/action rows")
+            if missing:
+                self._status_var.set(
+                    f"Frame rows loaded from {src}. Optional profile passes are idle; "
+                    f"use Build full character profile when you want {', '.join(missing)}."
+                )
+            else:
+                self._status_var.set(f"Frame rows loaded from {src}. Saved optional profile passes are ready.")
+        # Do NOT automatically launch projectile/special discovery after paint.
+        # A normal Frame Data open is a viewer/editor operation, not a hidden
+        # profiling job.  The command palette / toolbar owns explicit rebuilds.
+        self._refresh_profile_status_labels()
+        try:
+            if str(getattr(self, "_fd_view_mode", "core") or "core") in {"projectile", "super"}:
+                self._apply_filter()
+        except Exception:
+            pass
         self._schedule_live_timing_observation_refresh()
 
     @staticmethod
@@ -1151,13 +1179,21 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
 
         changes: list[dict] = []
         try:
-            changed_count = apply_observations_to_scan_data(
-                [self.target_slot],
-                change_log=changes,
-            )
+            current_stamp = observation_stamp()
         except Exception:
+            current_stamp = None
+        if current_stamp is not None and current_stamp == self._timing_observation_stamp:
             changed_count = 0
-            changes = []
+        else:
+            self._timing_observation_stamp = current_stamp
+            try:
+                changed_count = apply_observations_to_scan_data(
+                    [self.target_slot],
+                    change_log=changes,
+                )
+            except Exception:
+                changed_count = 0
+                changes = []
 
         if changed_count and self.tree:
             touched_items: set[str] = set()
@@ -1214,23 +1250,14 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         self._schedule_live_timing_observation_refresh()
 
     def _queue_auto_profile_build(self):
-        """Build missing projectile/special passes once, after the window paints."""
-        if getattr(self, "_auto_profile_scheduled", False):
-            return
-        if bool(getattr(self, "_projectile_profiled", False)) and bool(getattr(self, "_super_profiled", False)):
-            return
-        self._auto_profile_scheduled = True
-        try:
-            self.root.after(250, self._run_auto_profile_build)
-        except Exception:
-            self._run_auto_profile_build()
+        """Compatibility no-op. Optional profile discovery is explicit now."""
+        self._auto_profile_scheduled = False
+        return
 
     def _run_auto_profile_build(self):
+        """Compatibility no-op for callbacks queued by older window state."""
         self._auto_profile_scheduled = False
-        if not self.root or getattr(self, "_opening_cancelled", False):
-            return
-        if not bool(getattr(self, "_projectile_profiled", False)) or not bool(getattr(self, "_super_profiled", False)):
-            self._build_full_profile()
+        return
 
     def _initial_populate_tree(self):
         if self._initial_load_running or self._initial_tree_loaded:
@@ -1331,7 +1358,7 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             return
         self._profile_building = True
         if self._status_var is not None:
-            self._status_var.set("Auto-building missing character profile passes...")
+            self._status_var.set("Building missing character profile passes...")
 
         def _finish_after_projectiles(projectile_ok: bool):
             if need_supers:
@@ -2226,7 +2253,8 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         return any(mv.get(k) is None for k in (
             "hit_spark_addr", "stretch_packet_addr", "post_link_addr",
             "speed_mod_addr", "attack_property_addr", "superbg_addr",
-            "hit_result_addr",
+            "hit_result_addr", "combo_kb_mod_addr", "proj_tpl",
+            "native_definition_status", "native_command_count", "native_raw_span_size",
         ))
 
     def _sync_optional_tree_cells_for_move(self, mv: dict | None, item_id: str | None = None, *, force: bool = False) -> None:
@@ -2254,6 +2282,18 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             self._set_tree_value_if_present(item_id, "superbg", U.fmt_superbg(mv.get("superbg_val")))
         if mv.get("hit_result_addr"):
             self._set_tree_value_if_present(item_id, "hit_result_flags", U.fmt_hit_result_flags_ui(mv))
+        if mv.get("combo_kb_mod_addr") is not None and mv.get("combo_kb_mod") is not None:
+            val = int(mv.get("combo_kb_mod") or 0) & 0xFF
+            self._set_tree_value_if_present(item_id, "combo_kb_mod", f"{val} (0x{val:02X})")
+        if mv.get("proj_tpl") is not None and mv.get("proj_dmg") is not None:
+            self._set_tree_value_if_present(item_id, "proj_dmg", str(int(mv.get("proj_dmg") or 0)))
+        if mv.get("hb_r") is not None:
+            try:
+                self._set_tree_value_if_present(item_id, "hb_main", f"{float(mv.get('hb_r')):.1f}")
+            except Exception:
+                pass
+        if mv.get("hb_candidates") is not None:
+            self._set_tree_value_if_present(item_id, "hb", U.format_candidate_list(mv.get("hb_candidates") or []))
         if mv.get("proj_radius") is not None:
             try:
                 radius_txt = f"{float(mv.get('proj_radius')):.2f}" if mv.get("proj_radius") else ""
@@ -2390,6 +2430,35 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             updates["_optional_probe_attack_property_error"] = repr(e)
 
         try:
+            if force or mv_snapshot.get("combo_kb_mod_addr") is None:
+                ck_addr, ck_val, ck_sig = find_combo_kb_mod_addr(move_abs, _cached_rbytes)
+                if ck_addr is not None:
+                    updates.update({
+                        "combo_kb_mod_addr": ck_addr,
+                        "combo_kb_mod": ck_val,
+                        "combo_kb_mod_sig": ck_sig,
+                    })
+        except Exception as e:
+            updates["_optional_probe_combo_kb_error"] = repr(e)
+
+        # Legacy linked-projectile template damage is still useful for actions
+        # whose projectile definition has not been promoted into the newer
+        # projectile records. Resolve it only for the explicitly refreshed row.
+        try:
+            if force or mv_snapshot.get("proj_tpl") is None:
+                proj_probe = dict(mv_snapshot)
+                if U.resolve_projectile_fields_for_move(
+                    proj_probe, region_abs=move_abs, region_size=0x1400, rbytes_func=_cached_rbytes
+                ):
+                    updates.update({
+                        "proj_dmg": proj_probe.get("proj_dmg"),
+                        "proj_tpl": proj_probe.get("proj_tpl"),
+                        "proj_marker": proj_probe.get("proj_marker"),
+                    })
+        except Exception as e:
+            updates["_optional_probe_proj_dmg_error"] = repr(e)
+
+        try:
             if force or mv_snapshot.get("superbg_addr") is None:
                 saddr, sval = find_superbg_addr(move_abs, _cached_rbytes, _cached_rd8)
                 if saddr:
@@ -2417,6 +2486,254 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
                     })
         except Exception as e:
             updates["_optional_probe_hit_result_error"] = repr(e)
+
+        # Legacy hitbox-radius tools used one Dolphin float read every four
+        # bytes across 0x600 bytes. That is painfully expensive. Refresh one
+        # row with a single block read and do the exact same candidate scan in
+        # Python instead. Nothing here runs during first-open.
+        try:
+            if force or mv_snapshot.get("hb_candidates") is None:
+                hb_blob = _cached_rbytes(move_abs, int(getattr(U, "HB_SCAN_MAX", 0x600) or 0x600))
+                hb_candidates = []
+                for off in range(0, len(hb_blob) - 3, 4):
+                    try:
+                        value = struct.unpack(">f", hb_blob[off:off + 4])[0]
+                    except Exception:
+                        continue
+                    if not isinstance(value, float) or not (float("-inf") < value < float("inf")):
+                        continue
+                    if abs(value) < 1e-6:
+                        continue
+                    hb_candidates.append((off, float(value)))
+                hb_off, hb_r = U.select_primary_hitbox(hb_candidates)
+                updates["hb_candidates"] = hb_candidates
+                updates["hb_off"] = hb_off
+                updates["hb_r"] = hb_r
+                updates["hb_main"] = hb_r
+        except Exception as e:
+            updates["_optional_probe_hitbox_error"] = repr(e)
+
+        # Expose the native Property A / Property B mutation chain without
+        # turning first-open into another whole-character scan. A full profile
+        # rebuild attaches the same information from bytes it already owns; an
+        # older cached profile gets it lazily when the user explicitly refreshes
+        # this row. Unknown bits are intentionally left raw.
+        try:
+            need_native = force or mv_snapshot.get("native_definition_status") is None
+            if need_native:
+                from .attack_property_runtime import parse_attack_definition_blob
+
+                try:
+                    next_abs = int((self.next_abs_map or {}).get(move_abs) or 0)
+                except Exception:
+                    next_abs = 0
+                if next_abs > move_abs:
+                    scan_size = max(0x80, min(0x4000, next_abs - move_abs))
+                else:
+                    scan_size = 0x1000
+                blob = _cached_rbytes(move_abs, scan_size)
+                parsed = parse_attack_definition_blob(blob, move_abs, scan_size=len(blob))
+
+                phases = list(parsed.get("phases") or [])
+                operations = list(parsed.get("operations") or [])
+
+                phase_parts = []
+                for phase in phases:
+                    try:
+                        idx = int(phase.get("phase_index") or 0)
+                        a0 = int(phase.get("property_a_initial") or 0) & 0xFFFFFFFF
+                        af = int(phase.get("property_a_final") or 0) & 0xFFFFFFFF
+                        b0 = int(phase.get("property_b_initial") or 0) & 0xFFFFFFFF
+                        bf = int(phase.get("property_b_final") or 0) & 0xFFFFFFFF
+                        rr = phase.get("hit_result_raw")
+                        result = "none" if rr is None else f"0x{int(rr) & 0xFFFFFFFF:08X}"
+                        phase_parts.append(
+                            f"P{idx}: A 0x{a0:08X}->0x{af:08X}, "
+                            f"B 0x{b0:08X}->0x{bf:08X}, result {result}"
+                        )
+                    except Exception:
+                        continue
+
+                op_parts = []
+                for row in operations:
+                    try:
+                        op_name = str(row.get("operation_name") or f"op{int(row.get('operation') or 0):02X}")
+                        field_id = int(row.get("field_id") or 0)
+                        value = int(row.get("value") or 0) & 0xFFFFFFFF
+                        addr = int(row.get("address") or 0)
+                        op_parts.append(f"{op_name} +0x{field_id:X}=0x{value:08X} @0x{addr:08X}")
+                    except Exception:
+                        continue
+
+                updates.update({
+                    "native_definition_status": str(parsed.get("status") or ""),
+                    "native_definition_scan_size": int(parsed.get("scan_size") or len(blob)),
+                    "native_property_command_count": int(parsed.get("command_count") or 0),
+                    "native_property_phase_count": int(parsed.get("phase_count") or 0),
+                    "native_phases": phases,
+                    "native_operations": operations,
+                    "native_phase_map": " | ".join(phase_parts),
+                    "native_operation_map": " | ".join(op_parts),
+                })
+                if str(parsed.get("status") or "") == "OK" and phases:
+                    first = phases[0]
+                    updates.update({
+                        "native_property_a": parsed.get("property_a"),
+                        "native_property_b": parsed.get("property_b"),
+                        "native_property_a_addr": parsed.get("property_a_addr"),
+                        "native_property_b_addr": parsed.get("property_b_addr"),
+                        "native_property_a_initial": first.get("property_a_initial"),
+                        "native_property_a_initial_unknown_mask": first.get("property_a_initial_unknown_mask"),
+                        "native_property_a_final": first.get("property_a_final"),
+                        "native_property_a_final_unknown_mask": first.get("property_a_final_unknown_mask"),
+                        "native_property_a_all_or_mask": first.get("property_a_all_or_mask"),
+                        "native_property_a_all_clear_mask": first.get("property_a_all_clear_mask"),
+                        "native_property_a_post_result_or_mask": first.get("property_a_post_result_or_mask"),
+                        "native_property_b_initial": first.get("property_b_initial"),
+                        "native_property_b_final": first.get("property_b_final"),
+                        "native_property_a_modifier_count": first.get("property_a_modifier_count"),
+                        "native_property_b_modifier_count": first.get("property_b_modifier_count"),
+                        "native_result_clear_mask": first.get("result_clear_mask"),
+                        "native_hit_result_raw": first.get("hit_result_raw"),
+                        "native_hit_result_code": first.get("a_result_code"),
+                        "native_hit_result_addr": first.get("hit_result_addr") or None,
+                    })
+                    # Friendly decode is additive only. Keep the raw words and
+                    # unknown masks visible so a label never hides evidence.
+                    try:
+                        from tvcgui.features.training.attack_property_profiler import decode_property_a, decode_property_b
+                        prop_a = parsed.get("property_a")
+                        prop_b = parsed.get("property_b")
+                        if prop_a is not None:
+                            decoded_a = decode_property_a(prop_a)
+                            updates["native_property_a_text"] = str(decoded_a.get("text") or "")
+                        if prop_b is not None:
+                            decoded_b = decode_property_b(prop_b)
+                            updates["native_property_b_text"] = str(decoded_b.get("text") or "")
+                            updates["native_property_b_unknown_mask"] = int(decoded_b.get("unknown_mask") or 0)
+                    except Exception:
+                        pass
+        except Exception as e:
+            updates["_optional_probe_native_definition_error"] = repr(e)
+
+        # Last-resort exposure layer: inventory every structurally valid
+        # fighter-relative field-op packet even when we do not know its gameplay
+        # name yet. The inspector exposes the exact packet+0x0C operand for
+        # explicit live experiments while preserving packet address, command
+        # form, target offset, raw type/value and context bytes.
+        try:
+            if force or mv_snapshot.get("native_field_op_count") is None:
+                from .unknowns import extract_unmapped_field_ops
+                occurrences = extract_unmapped_field_ops(
+                    mv_snapshot,
+                    _cached_rbytes,
+                    next_abs_map=self.next_abs_map,
+                )
+                op_dicts = []
+                op_text = []
+                for occ in occurrences:
+                    sig = occ.signature
+                    raw_value = int(sig.value_raw) & 0xFFFFFFFF
+                    signed_value = raw_value if raw_value < 0x80000000 else raw_value - 0x100000000
+                    float_value = None
+                    try:
+                        f_candidate = struct.unpack(">f", raw_value.to_bytes(4, "big"))[0]
+                        if f_candidate == f_candidate and f_candidate not in (float("inf"), float("-inf")) and abs(f_candidate) <= 1000000:
+                            float_value = float(f_candidate)
+                    except Exception:
+                        pass
+                    row = {
+                        "packet_abs": int(occ.packet_abs),
+                        "target_offset": int(sig.target_offset),
+                        "subop": int(sig.subop),
+                        "marker": int(sig.marker),
+                        "value_type": int(sig.value_type),
+                        "value_raw": raw_value,
+                        "value_signed": signed_value,
+                        "value_float": float_value,
+                        "context_hex": bytes(occ.context or b"").hex(" ").upper(),
+                    }
+                    op_dicts.append(row)
+                    interpretations = [f"u32 0x{raw_value:08X}", f"s32 {signed_value}"]
+                    if float_value is not None:
+                        interpretations.append(f"f32 {float_value:g}")
+                    op_text.append(
+                        f"+0x{row['target_offset']:03X} | "
+                        f"04/{row['subop']:02X}/{row['marker']:02X} | "
+                        f"type 0x{row['value_type']:08X} | {' / '.join(interpretations)} "
+                        f"@0x{row['packet_abs']:08X}"
+                    )
+                updates["native_field_op_count"] = len(op_dicts)
+                updates["native_field_ops"] = op_dicts
+                updates["native_field_op_map"] = " | ".join(op_text)
+        except Exception as e:
+            updates["_optional_probe_native_field_ops_error"] = repr(e)
+
+        # Show every command family we currently recognize in this move's raw
+        # script, including families that still have no semantic editor. This
+        # is intentionally an inventory, not a claim that every packet is fully
+        # understood.
+        try:
+            if force or mv_snapshot.get("native_command_count") is None:
+                try:
+                    next_abs = int((self.next_abs_map or {}).get(move_abs) or 0)
+                except Exception:
+                    next_abs = 0
+                if next_abs > move_abs:
+                    inv_size = max(0x80, min(0x1800, next_abs - move_abs))
+                else:
+                    inv_size = 0x800
+                inv_blob = _cached_rbytes(move_abs, inv_size)
+                command_names = getattr(char_dumper, "COMMAND_NAMES", {}) if char_dumper is not None else {}
+                packets = []
+                parts = []
+                limit = max(0, len(inv_blob) - 1)
+                for off in range(limit):
+                    key = (inv_blob[off], inv_blob[off + 1])
+                    label = command_names.get(key)
+                    if not label:
+                        continue
+                    packet_abs = move_abs + off
+                    raw = bytes(inv_blob[off:min(len(inv_blob), off + 24)])
+                    row = {
+                        "offset": off,
+                        "packet_abs": packet_abs,
+                        "cmd": f"{key[0]:02X}/{key[1]:02X}",
+                        "label": str(label),
+                        "bytes_hex": raw.hex(" ").upper(),
+                    }
+                    packets.append(row)
+                    parts.append(f"{row['cmd']} {row['label']} @0x{packet_abs:08X}")
+                updates["native_command_count"] = len(packets)
+                updates["native_command_packets"] = packets
+                updates["native_command_map"] = " | ".join(parts)
+                updates["native_command_bytes_map"] = " | ".join(
+                    f"{row['cmd']} @+0x{int(row['offset']):03X}: {row['bytes_hex']}"
+                    for row in packets
+                )
+                updates["native_raw_span_size"] = len(inv_blob)
+                updates["native_raw_span_hex"] = bytes(inv_blob).hex(" ").upper()
+                updates["native_script_head_hex"] = bytes(inv_blob[:0x100]).hex(" ").upper()
+
+                # Nothing in the move root is allowed to vanish simply because
+                # it has no gameplay name yet.  Show every 32-bit word in the
+                # first 0x80 bytes as raw hex, plus a finite float interpretation
+                # when that interpretation is numerically sane.
+                root_parts = []
+                root_limit = min(len(inv_blob), 0x80)
+                for root_off in range(0, root_limit - 3, 4):
+                    raw_u32 = int.from_bytes(inv_blob[root_off:root_off + 4], "big", signed=False)
+                    float_text = ""
+                    try:
+                        raw_f32 = struct.unpack(">f", inv_blob[root_off:root_off + 4])[0]
+                        if raw_f32 == raw_f32 and raw_f32 not in (float("inf"), float("-inf")) and abs(raw_f32) <= 1000000:
+                            float_text = f" / f32 {raw_f32:g}"
+                    except Exception:
+                        pass
+                    root_parts.append(f"+0x{root_off:02X}=0x{raw_u32:08X}{float_text}")
+                updates["native_root_word_map"] = " | ".join(root_parts)
+        except Exception as e:
+            updates["_optional_probe_native_command_error"] = repr(e)
 
         return updates
 
@@ -2669,14 +2986,499 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         # probes now run on the background worker via _queue_lazy_link_probe().
         self._queue_lazy_link_probe()
 
-    def _refresh_inspector(self, item_id: str | None = None, mv: dict | None = None):
-        """Render cached selected-row values with minimal Tcl churn.
+    @staticmethod
+    def _native_operand_identity(target_offset: int) -> tuple[str, str]:
+        """Return (label, conservative guess) for a fighter-relative raw op.
 
-        This is deliberately a pure profile-view operation.  It does *not*
-        kick off an optional Dolphin scan just because the user clicked a row;
-        the Refresh button and a direct edit remain the explicit ways to probe
-        missing loose script fields.
+        A label is only promoted out of ``Unknown`` when the current scanner or
+        recomp evidence has a specific meaning for the offset.  The guess text
+        is intentionally looser and is there to guide experiments, not to turn
+        hypotheses into documentation.
         """
+        off = int(target_offset or 0)
+        known = {
+            0x0058: ("State/protection flags +0x0058", "guard-point/protection state bits"),
+            0x01E8: ("Action state +0x01E8", "action handoff / action-state field"),
+            0x0244: ("Guard height mask +0x0244", "Mid/High/Low guard-point acceptance mask"),
+            0x1218: ("Phase timer +0x1218", "phase timer; protected phases also use it"),
+            0x13CC: ("Input held +0x13CC", "held-input state"),
+            0x13D0: ("Input pressed +0x13D0", "pressed-input state"),
+            0x13D4: ("Input released +0x13D4", "released-input state"),
+            0x13D8: ("Input buffered +0x13D8", "buffered-input state"),
+            0x13DC: ("Input edge +0x13DC", "input edge / transition state"),
+            0x444C: ("Baroque lockout +0x444C", "Baroque eligibility lockout, not the cancel window"),
+            0x44A4: ("Combat/proration state +0x44A4", "combat-role / alternate proration lane; Baroque-related evidence"),
+        }
+        if off in known:
+            return known[off]
+        protection_neighbors = {0x005C, 0x0060, 0x0064, 0x006C, 0x0074, 0x4438, 0x4440, 0x4444, 0x4450, 0x4454, 0x4548}
+        if off in protection_neighbors:
+            return (f"Unknown +0x{off:04X}", "protection/combat-state candidate")
+        return (f"Unknown +0x{off:04X}", "unknown fighter-relative field")
+
+    @staticmethod
+    def _preview_field_value(value, limit: int = 220) -> str:
+        """Cheap, bounded preview for inspector cells.
+
+        Never serialize an entire native decode just to truncate it afterward.
+        Real cached rows can contain hundreds of phase/operation dictionaries;
+        turning those into one giant JSON Tcl string on every row click was both
+        wasteful and, on Windows Tk, capable of making the workbench fall over.
+        The full value is still available through Copy value / Raw script.
+        """
+        try:
+            if isinstance(value, bool):
+                text = "True" if value else "False"
+            elif isinstance(value, int):
+                text = str(value)
+            elif isinstance(value, float):
+                text = f"{value:g}"
+            elif isinstance(value, (bytes, bytearray, memoryview)):
+                blob = bytes(value)
+                head = blob[:32].hex(" ").upper()
+                text = f"<{len(blob)} bytes> {head}" + (" …" if len(blob) > 32 else "")
+            elif isinstance(value, dict):
+                n = len(value)
+                if n > 12:
+                    sample = list(value.items())[:6]
+                    sample_txt = ", ".join(f"{k}={v!r}" for k, v in sample)
+                    text = f"<{n} keys> {sample_txt}"
+                else:
+                    text = json.dumps(value, separators=(",", ":"), ensure_ascii=False, default=str)
+            elif isinstance(value, (list, tuple, set)):
+                n = len(value)
+                seq = list(value)
+                if n > 12:
+                    sample_txt = ", ".join(repr(v) for v in seq[:6])
+                    text = f"<{n} items> {sample_txt}"
+                else:
+                    text = json.dumps(seq, separators=(",", ":"), ensure_ascii=False, default=str)
+            else:
+                text = str(value)
+        except Exception:
+            try:
+                text = repr(value)
+            except Exception:
+                text = "<unprintable>"
+        text = text.replace("\r", " ").replace("\n", " ")
+        if len(text) > limit:
+            return text[: max(0, limit - 1)] + "…"
+        return text
+
+    def _all_field_mode(self, mv: dict, key: str) -> str:
+        if key == "native_field_ops":
+            return "RAW"
+        if key in getattr(self, "_inspector_editable_cols", set()):
+            if key in {"damage", "startup", "active", "hitstun", "blockstun", "hitstop"}:
+                try:
+                    if not self._generic_field_is_verified(mv, key):
+                        return "READ"
+                except Exception:
+                    pass
+            return "EDIT"
+        if FPI.is_projectile_row(mv) and FPI.projectile_editable(key):
+            return "EDIT"
+        if FSI.is_super_row(mv) and FSI.super_editable(key):
+            return "EDIT"
+        if key in {"native_property_a", "native_property_b", "native_hit_result_raw"}:
+            addr_key = {
+                "native_property_a": "native_property_a_addr",
+                "native_property_b": "native_property_b_addr",
+                "native_hit_result_raw": "native_hit_result_addr",
+            }[key]
+            if mv.get(addr_key):
+                return "RAW"
+        if str(key).startswith("_"):
+            return "INTERNAL"
+        return "READ"
+
+    def _refresh_all_fields_table(self, mv: dict | None):
+        tree = getattr(self, "_all_fields_tree", None)
+        if tree is None:
+            return
+        if getattr(self, "_inspector_v2", False):
+            # Preserve section expansion while switching moves.  Rebuilding a
+            # Treeview is substantially cheaper than the hundreds of widgets
+            # used by the old inspector, and keeping expansion state makes the
+            # new inspector feel stable while browsing.
+            open_groups = set()
+            try:
+                for iid in tree.get_children(""):
+                    if bool(tree.item(iid, "open")):
+                        open_groups.add(str(tree.item(iid, "text") or ""))
+                tree.delete(*tree.get_children(""))
+            except Exception:
+                return
+            self._all_fields_iid_map = {}
+            if not mv:
+                if getattr(self, "_all_fields_status_var", None) is not None:
+                    self._all_fields_status_var.set("Select a move")
+                return
+
+            show_empty = False
+            try:
+                show_empty = bool(self._inspector_show_empty_var.get())
+            except Exception:
+                pass
+            query = ""
+            try:
+                query = str(self._inspector_field_filter_var.get() or "").strip().lower()
+            except Exception:
+                pass
+
+            known_order = []
+            known_seen = set()
+            for _title, _fields in getattr(fd_tree, "FD_INSPECTOR_GROUPS", ()):
+                for _key in _fields:
+                    _key = str(_key)
+                    if _key not in known_seen:
+                        known_seen.add(_key)
+                        known_order.append(_key)
+            # Every cached field still appears, even if the UI does not yet
+            # have a named group for it.
+            keys = list(known_order) if show_empty else []
+            for _key in mv.keys():
+                _key = str(_key)
+                if _key not in keys:
+                    keys.append(_key)
+
+            def _is_empty(value):
+                if value is None:
+                    return True
+                if isinstance(value, str):
+                    return value.strip().lower() in {"", "-", "not found", "n/a", "none"}
+                if isinstance(value, (list, tuple, dict, set)):
+                    return len(value) == 0
+                return False
+
+            def _display_value(key, value):
+                if _is_empty(value):
+                    return "not found"
+                if isinstance(value, int) and (
+                    key.endswith("_addr") or key in {"abs", "parent_abs", "linked_owner_abs", "generic_write_owner_start", "generic_write_owner_end"}
+                ):
+                    return f"0x{int(value) & 0xFFFFFFFF:08X}"
+                if key == "table_rel" and isinstance(value, int):
+                    return f"+0x{int(value) & 0xFFFFFFFF:X}"
+                return self._preview_field_value(value, limit=360)
+
+            grouped: dict[str, list[tuple[str, str, str, str]]] = {}
+            shown = 0
+            for key in keys:
+                present = key in mv
+                value = mv.get(key) if present else None
+                if not show_empty and _is_empty(value):
+                    continue
+                label = fd_tree.FD_LABELS.get(key, key)
+                value_txt = _display_value(key, value)
+                mode = self._all_field_mode(mv, key) if present else "-"
+                hay = f"{label} {key} {value_txt} {mode}".lower()
+                if query and query not in hay:
+                    continue
+                group = fd_tree.inspector_group_for_key(key)
+                grouped.setdefault(group, []).append((key, label, value_txt, mode))
+                shown += 1
+
+            group_order = [title for title, _fields in getattr(fd_tree, "FD_INSPECTOR_GROUPS", ())]
+            group_order += ["Other / cached", "Internal / scanner"]
+            # Search results should be expanded.  Otherwise keep the everyday
+            # gameplay groups open and the large research/raw buckets closed.
+            default_open = {"Core", "Defense", "Cancels / advantage", "Attack behavior", "Launch / knockback", "Hitbox / reach / FX"}
+            if FPI.is_projectile_row(mv):
+                default_open.add("Projectile")
+            if FSI.is_super_row(mv):
+                default_open.add("Super / dispatch")
+
+            group_idx = 0
+            for group in group_order:
+                rows = grouped.get(group) or []
+                if not rows:
+                    continue
+                group_idx += 1
+                gid = f"fg_{group_idx}"
+                try:
+                    tree.insert(
+                        "", "end", iid=gid, text=f"{group}  ({len(rows)})", values=("", ""),
+                        tags=("field_group",),
+                        open=bool(query or group in open_groups or group in default_open),
+                    )
+                except Exception:
+                    continue
+                for row_idx, (key, label, value_txt, mode) in enumerate(rows):
+                    iid = f"af_{group_idx}_{row_idx}"
+                    display_label = label if label == key else f"{label}  [{key}]"
+                    try:
+                        tree.insert(gid, "end", iid=iid, text=display_label, values=(value_txt, mode), tags=(f"field_mode_{str(mode).lower()}",))
+                        self._all_fields_iid_map[iid] = key
+                    except Exception:
+                        pass
+            if getattr(self, "_all_fields_status_var", None) is not None:
+                suffix = " + empty" if show_empty else " non-empty"
+                self._all_fields_status_var.set(f"{shown} fields{suffix}")
+            return
+        try:
+            tree.delete(*tree.get_children(""))
+        except Exception:
+            return
+        self._all_fields_iid_map = {}
+        if not mv:
+            if getattr(self, "_all_fields_status_var", None) is not None:
+                self._all_fields_status_var.set("Select a move to expose every cached field.")
+            return
+
+        first = ["move_name", "pretty_name", "id", "kind", "abs"] + list(fd_tree.FD_COLUMNS)
+        rank = {name: i for i, name in enumerate(first)}
+        keys = list(mv.keys())
+        keys.sort(key=lambda k: (rank.get(k, 100000), 1 if str(k).startswith("_") else 0, str(k).lower()))
+        for index, key in enumerate(keys):
+            value = mv.get(key)
+            mode = self._all_field_mode(mv, str(key))
+            label = fd_tree.FD_LABELS.get(str(key), str(key))
+            # Keep both the friendly label and raw cache key visible when they
+            # differ.  The raw key is what a researcher needs when reporting a
+            # field back for promotion/naming.
+            field_text = label if label == str(key) else f"{label} [{key}]"
+            iid = f"af_{index}"
+            try:
+                tree.insert("", "end", iid=iid, values=(field_text, self._preview_field_value(value), mode))
+                self._all_fields_iid_map[iid] = str(key)
+            except Exception:
+                pass
+        if getattr(self, "_all_fields_status_var", None) is not None:
+            self._all_fields_status_var.set(
+                f"{len(keys)} cached fields. EDIT uses the named editor. RAW is a direct native operand. READ/INTERNAL are metadata or derived values."
+            )
+
+    def _selected_all_field_key(self) -> str | None:
+        tree = getattr(self, "_all_fields_tree", None)
+        if tree is None:
+            return None
+        try:
+            sel = tree.selection()
+            if not sel:
+                return None
+            return (getattr(self, "_all_fields_iid_map", {}) or {}).get(sel[0])
+        except Exception:
+            return None
+
+    def _copy_selected_all_field(self):
+        key = self._selected_all_field_key()
+        if not key:
+            if self._status_var is not None:
+                self._status_var.set("Select a field in ALL CACHED FIELDS first.")
+            return
+        sel = self.tree.selection() if self.tree else ()
+        mv = self.move_to_tree_item.get(sel[0]) if sel else None
+        if not mv:
+            return
+        value = mv.get(key)
+        try:
+            if isinstance(value, (dict, list, tuple)):
+                payload = json.dumps(value, indent=2, ensure_ascii=False, default=str)
+            else:
+                payload = str(value)
+            self.root.clipboard_clear()
+            self.root.clipboard_append(payload)
+            self._status_var.set(f"Copied full value for {key}")
+        except Exception:
+            pass
+
+    def _edit_selected_all_field(self):
+        key = self._selected_all_field_key()
+        if not key:
+            if self._status_var is not None:
+                self._status_var.set("Select a field in ALL CACHED FIELDS first.")
+            return
+        sel = self.tree.selection() if self.tree else ()
+        mv = self.move_to_tree_item.get(sel[0]) if sel else None
+        if not mv:
+            return
+        mode = self._all_field_mode(mv, key)
+        if mode == "EDIT":
+            self._edit_selected_column(key)
+            return
+        if mode == "RAW" and key in {"native_property_a", "native_property_b", "native_hit_result_raw"}:
+            self._edit_direct_native_cached_u32(key, mv)
+            return
+        if mode == "RAW" and key == "native_field_ops":
+            if self._status_var is not None:
+                self._status_var.set("Use UNKNOWN / RAW NATIVE OPERANDS below to edit each native field operand independently.")
+            return
+        if self._status_var is not None:
+            self._status_var.set(
+                f"{key} is readable but has no single verified writable value. If it comes from a native 04 field operation, edit that operand in UNKNOWN / RAW NATIVE OPERANDS."
+            )
+
+    def _edit_direct_native_cached_u32(self, key: str, mv: dict):
+        addr_key = {
+            "native_property_a": "native_property_a_addr",
+            "native_property_b": "native_property_b_addr",
+            "native_hit_result_raw": "native_hit_result_addr",
+        }.get(key)
+        if not addr_key or not mv.get(addr_key):
+            self._status_var.set(f"No exact write address is available for {key}.")
+            return
+        old = int(mv.get(key) or 0) & 0xFFFFFFFF
+        text = simpledialog.askstring(
+            "Edit raw native value",
+            f"{key}\nAddress: 0x{int(mv[addr_key]):08X}\n\nEnter u32 as decimal or 0xHEX:",
+            initialvalue=f"0x{old:08X}",
+            parent=self.root,
+        )
+        if text is None:
+            return
+        try:
+            value = int(str(text).strip(), 0) & 0xFFFFFFFF
+        except Exception:
+            messagebox.showerror("Invalid value", "Use a decimal integer or 0x-prefixed hexadecimal value.", parent=self.root)
+            return
+        if not write_u32_field_inline(mv, addr_key, key, value):
+            messagebox.showerror("Write failed", "Could not write the native u32 value.", parent=self.root)
+            return
+        self._status_var.set(f"Wrote {key} = 0x{value:08X} @ 0x{int(mv[addr_key]):08X}")
+        self._refresh_all_fields_table(mv)
+        self._refresh_unknown_operand_table(mv)
+
+    def _refresh_unknown_operand_table(self, mv: dict | None):
+        tree = getattr(self, "_unknown_ops_tree", None)
+        if tree is None:
+            return
+        try:
+            tree.delete(*tree.get_children(""))
+        except Exception:
+            return
+        self._unknown_ops_iid_map = {}
+        ops = list((mv or {}).get("native_field_ops") or [])
+        for index, op in enumerate(ops):
+            if not isinstance(op, dict):
+                continue
+            try:
+                off = int(op.get("target_offset") or 0)
+                raw = int(op.get("value_raw") or 0) & 0xFFFFFFFF
+                packet = int(op.get("packet_abs") or 0)
+                addr = packet + 12 if packet else 0
+                label, guess = self._native_operand_identity(off)
+                iid = f"uo_{index}"
+                if getattr(self, "_inspector_v2", False):
+                    tree.insert(
+                        "", "end", iid=iid, text=label,
+                        values=(f"0x{raw:08X}", guess, (f"0x{addr:08X}" if addr else "-")),
+                    )
+                else:
+                    tree.insert(
+                        "", "end", iid=iid,
+                        values=(label, f"0x{raw:08X}", guess, (f"0x{addr:08X}" if addr else "-")),
+                    )
+                self._unknown_ops_iid_map[iid] = index
+            except Exception:
+                continue
+        if getattr(self, "_unknown_ops_status_var", None) is not None:
+            if ops:
+                self._unknown_ops_status_var.set(
+                    f"{len(ops)} native field operands. Unknown stays Unknown until testing proves it. Raw writes are live and immediate."
+                )
+            else:
+                self._unknown_ops_status_var.set("No native field operands are cached for this row yet. Use Refresh row to decode the live move script.")
+
+    def _selected_unknown_operand(self):
+        tree = getattr(self, "_unknown_ops_tree", None)
+        if tree is None:
+            return (None, None, None)
+        try:
+            sel = tree.selection()
+            if not sel:
+                return (None, None, None)
+            index = (getattr(self, "_unknown_ops_iid_map", {}) or {}).get(sel[0])
+        except Exception:
+            return (None, None, None)
+        main_sel = self.tree.selection() if self.tree else ()
+        mv = self.move_to_tree_item.get(main_sel[0]) if main_sel else None
+        ops = list((mv or {}).get("native_field_ops") or [])
+        if index is None or index < 0 or index >= len(ops):
+            return (mv, None, None)
+        return (mv, index, ops[index])
+
+    def _copy_selected_unknown_operand_address(self):
+        _mv, _index, op = self._selected_unknown_operand()
+        if not isinstance(op, dict):
+            self._status_var.set("Select a raw native operand first.")
+            return
+        try:
+            addr = int(op.get("packet_abs") or 0) + 12
+            if addr <= 12:
+                raise ValueError
+            self._copy_address(addr)
+            self._status_var.set(f"Copied raw operand address 0x{addr:08X}")
+        except Exception:
+            self._status_var.set("That raw operand has no exact packet address.")
+
+    def _edit_selected_unknown_operand(self):
+        mv, index, op = self._selected_unknown_operand()
+        if not isinstance(mv, dict) or not isinstance(op, dict) or index is None:
+            self._status_var.set("Select a raw native operand first.")
+            return
+        try:
+            packet = int(op.get("packet_abs") or 0)
+            addr = packet + 12
+            off = int(op.get("target_offset") or 0)
+            old = int(op.get("value_raw") or 0) & 0xFFFFFFFF
+        except Exception:
+            self._status_var.set("The selected operand is missing its native packet address.")
+            return
+        label, guess = self._native_operand_identity(off)
+        text = simpledialog.askstring(
+            "Edit native operand",
+            f"{label}\nBest guess: {guess}\nOperand address: 0x{addr:08X}\n\n"
+            "Enter 0xHEX or decimal. Prefix a float with f: (example f:1.25).\n"
+            "Prefix a signed integer with s: (example s:-1).",
+            initialvalue=f"0x{old:08X}",
+            parent=self.root,
+        )
+        if text is None:
+            return
+        try:
+            token = str(text).strip()
+            if token.lower().startswith("f:"):
+                raw = struct.unpack(">I", struct.pack(">f", float(token[2:].strip())))[0]
+            elif token.lower().startswith("s:"):
+                raw = int(token[2:].strip(), 0) & 0xFFFFFFFF
+            else:
+                raw = int(token, 0) & 0xFFFFFFFF
+        except Exception:
+            messagebox.showerror("Invalid value", "Use 0xHEX, decimal, f:<float>, or s:<signed integer>.", parent=self.root)
+            return
+
+        # Packet operands are exact raw u32 values at packet+0x0C.  Unlike the
+        # decoded/provenance fields above, this is a real native write target and
+        # is intentionally exposed for experimentation.
+        temp = {"operand_addr": addr, "operand_value": old}
+        if not write_u32_field_inline(temp, "operand_addr", "operand_value", raw):
+            messagebox.showerror("Write failed", "Could not write the native operand to Dolphin.", parent=self.root)
+            return
+        op["original_value_raw"] = op.get("original_value_raw", old)
+        op["value_raw"] = raw
+        op["value_signed"] = raw if raw < 0x80000000 else raw - 0x100000000
+        try:
+            fv = struct.unpack(">f", struct.pack(">I", raw))[0]
+            op["value_float"] = fv if abs(fv) < 1.0e12 else None
+        except Exception:
+            op["value_float"] = None
+        mv["native_field_ops"][index] = op
+        try:
+            mv["native_field_op_map"] = " | ".join(
+                f"+0x{int(row.get('target_offset') or 0):04X}=0x{int(row.get('value_raw') or 0) & 0xFFFFFFFF:08X} @0x{int(row.get('packet_abs') or 0):08X}"
+                for row in (mv.get("native_field_ops") or []) if isinstance(row, dict)
+            )
+        except Exception:
+            pass
+        self._status_var.set(f"RAW write: {label} = 0x{raw:08X} @ 0x{addr:08X}")
+        self._refresh_unknown_operand_table(mv)
+        self._refresh_all_fields_table(mv)
+
+    def _refresh_inspector(self, item_id: str | None = None, mv: dict | None = None):
+        """Render cached selected-row values without triggering a scan."""
+        if getattr(self, "_inspector_v2", False):
+            return fd_tree.refresh_inspector_v2(self, item_id, mv)
         if not getattr(self, "_inspector_value_vars", None):
             return
 
@@ -2709,6 +3511,8 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
                         pass
                     self._inspector_button_state_cache[col] = "disabled"
             self._refresh_quick_panel(None, None)
+            self._refresh_all_fields_table(None)
+            self._refresh_unknown_operand_table(None)
             return
 
         move_txt = self.tree.set(item_id, "move") or "Selected move"
@@ -2766,6 +3570,53 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
                     value = str(mv.get("kind") or "")
                 elif col in all_cols:
                     value = self.tree.set(source_item, col)
+                elif col in mv:
+                    raw_value = mv.get(col)
+                    if raw_value is None:
+                        value = ""
+                    elif col in {"hb_x", "hb_y"}:
+                        value = f"{float(raw_value):g}"
+                    elif col == "active_windows" and isinstance(raw_value, list):
+                        value = " | ".join(
+                            f"{row[0]}-{row[1]}" if isinstance(row, (list, tuple)) and len(row) >= 2 else str(row)
+                            for row in raw_value
+                        )
+                    elif col == "push_pull_packets" and isinstance(raw_value, list):
+                        bits = []
+                        for row in raw_value:
+                            if not isinstance(row, dict):
+                                continue
+                            addr = row.get("packet_addr") or row.get("addr")
+                            mode = row.get("mode")
+                            x = row.get("x")
+                            aux = row.get("aux")
+                            addr_txt = f" @0x{int(addr):08X}" if addr else ""
+                            bits.append(f"mode {mode} | X {x} | aux {aux}{addr_txt}")
+                        value = " | ".join(bits)
+                    elif (
+                        col.endswith("_addr")
+                        or col in {"parent_abs", "generic_write_owner_start", "generic_write_owner_end"}
+                    ) and isinstance(raw_value, int):
+                        value = f"0x{int(raw_value) & 0xFFFFFFFF:08X}"
+                    elif col == "table_rel" and isinstance(raw_value, int):
+                        value = f"+0x{int(raw_value) & 0xFFFFFFFF:X}"
+                    elif col in {
+                        "counter_mask", "guard_point_mask", "armor_mask", "damage_flag",
+                    } and isinstance(raw_value, int):
+                        value = f"0x{int(raw_value) & 0xFFFFFFFF:08X}"
+                    elif col in {
+                        "native_definition_scan_size",
+                        "native_property_command_count", "native_property_phase_count",
+                        "native_property_a_modifier_count", "native_property_b_modifier_count",
+                        "native_field_op_count", "native_command_count", "native_raw_span_size",
+                    }:
+                        value = str(int(raw_value))
+                    elif col.startswith("native_") and isinstance(raw_value, int):
+                        value = f"0x{int(raw_value) & 0xFFFFFFFF:08X}"
+                    elif isinstance(raw_value, (list, tuple, dict)):
+                        value = json.dumps(raw_value, separators=(",", ":"), ensure_ascii=False)
+                    else:
+                        value = str(raw_value)
             except Exception:
                 value = ""
             if value is None or str(value).strip() == "":
@@ -2792,7 +3643,8 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         # cache the actual style state instead.
         for col, widget in getattr(self, "_inspector_value_widgets", {}).items():
             static = (
-                col in {"kind", "hits", "link", "invuln"}
+                col in {"kind", "hits", "link", "invuln", "hb_x", "hb_y", "ground_kb_mode", "push_pull_packets", "active_windows", "recovery", "animation_total_frames", "adv_hit_derived", "adv_block_derived", "adv_block_observed"}
+                or col.startswith("native_")
                 or col in FPI.PROJECTILE_STATIC_COLUMNS
                 or (col.startswith("proj_") and FPI.is_projectile_row(mv) and not FPI.projectile_editable(col))
                 or (col.startswith("proj_") and not FPI.is_projectile_row(mv))
@@ -2822,6 +3674,8 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         self._refresh_protection_summary(item_id, mv)
         self._refresh_frame_timeline(item_id, mv)
         self._refresh_compare_summary(item_id, mv)
+        self._refresh_all_fields_table(mv)
+        self._refresh_unknown_operand_table(mv)
         self._apply_inspector_context_layout(mv)
 
     def _refresh_inspector_headline(self, item_id: str | None, mv: dict | None):
@@ -3403,10 +4257,14 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
 
         by_title = {title: (card, tuple(fields or ())) for title, card, fields in sections}
         default_order = [
-            "Move link", "Impact", "Timing", "Stun and pressure",
-            "Experimental properties", "Launch and knockback controls", "Hit FX and reach",
-            "Dangerous script links", "Flags and lookup",
-            "Super dispatch", "Projectile emitter", "Projectile super", "Projectile data", "Super definition", "Super beam", "Final hit", "Projectile super probes",
+            "Core move data", "Protection", "Cancel and advantage", "Attack behavior",
+            "Launch and knockback", "Hitbox, reach and FX", "Research evidence",
+            "Identity and lookup", "Animation / recovery source",
+            "All cached fields", "Unknown raw operands",
+            "Native hit definition", "Raw / not-yet-named", "Exact write targets / provenance",
+            "Dangerous script links",
+            "Super dispatch", "Projectile emitter", "Projectile super", "Projectile data",
+            "Super definition", "Super beam", "Final hit", "Projectile super probes",
         ]
 
         def _field_has_value(col: str) -> bool:
@@ -3423,7 +4281,7 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             return any(_field_has_value(c) for c in fields if c not in skip)
 
         if FSI.is_super_row(mv):
-            order = ["Move link", "Super dispatch", "Dangerous script links", "Flags and lookup"]
+            order = ["Identity and lookup", "Super dispatch", "All cached fields", "Unknown raw operands", "Exact write targets / provenance", "Dangerous script links"]
         elif FPI.is_projectile_row(mv):
             emitter_has = _section_has("Projectile emitter")
             ps_has = _section_has("Projectile super")
@@ -3433,7 +4291,7 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             final_has = _section_has("Final hit")
             probe_has = _section_has("Projectile super probes")
             is_super_definition = bool((mv or {}).get("_is_super_definition"))
-            order = ["Move link"]
+            order = ["Identity and lookup", "Core move data"]
             if is_super_definition and super_definition_has:
                 order.append("Super definition")
             if emitter_has and FPI.is_projectile_emitter_row(mv):
@@ -3448,7 +4306,7 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
                 order.append("Projectile data")
             if probe_has:
                 order.append("Projectile super probes")
-            order.extend(["Impact", "Launch and knockback controls", "Hit FX and reach", "Dangerous script links", "Flags and lookup"])
+            order.extend(["Launch and knockback", "Hitbox, reach and FX", "All cached fields", "Unknown raw operands", "Exact write targets / provenance", "Dangerous script links"])
         else:
             order = list(default_order)
             # Non-projectile rows should not waste vertical space on empty
@@ -3923,6 +4781,20 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         if col_name == "abs":
             self._copy_selected_address()
             return
+        if col_name in {
+            "active_windows", "recovery", "animation_total_frames", "adv_hit_derived", "adv_block_derived", "adv_block_observed",
+            "ground_kb_mode", "push_pull_packets",
+            "invuln_kind", "invuln_frames", "invuln_ranges", "invuln_confidence", "invuln_startup_active_limit",
+            "invuln_probe_count", "invuln_probes", "counter", "counter_mask", "counter_source",
+            "guard_point", "guard_point_mask", "guard_point_source", "guard_point_probe_count", "guard_point_probes",
+            "armor", "armor_kind", "armor_mask", "armor_source",
+            "cancel_window_count", "cancel_windows", "property_probe_count", "property_probes", "baroque_research_probe",
+            "damage_flag", "stun_default_level", "runtime_profile_eligible", "stun_source", "hitstun_source",
+            "blockstun_source", "hitstop_source", "recovery_source", "normal_confirmed", "parent_id", "parent_abs",
+        } or str(col_name).startswith("native_"):
+            if self._status_var is not None:
+                self._status_var.set("This field is exposed read-only; it is derived, observational, or not yet backed by a verified safe write target.")
+            return
         if col_name.startswith("dispatch_") and not FSI.is_super_row(mv):
             self._status_var.set("Dispatch fields are only editable on super dispatch rows.")
             return
@@ -4085,12 +4957,12 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         if abs_addr:
             s.append(f"Abs=0x{abs_addr:08X}")
         try:
-            current_view = str(getattr(self, "_fd_view_mode", "frame") or "frame")
-            if FSI.is_super_row(mv) and current_view == "frame":
+            current_view = str(getattr(self, "_fd_view_mode", "core") or "core")
+            if FSI.is_super_row(mv) and current_view == "core":
                 s.append("Tip: Supers view moves dispatch fields next to the move name")
-            if FPI.is_projectile_row(mv) and current_view == "frame":
+            if FPI.is_projectile_row(mv) and current_view == "core":
                 s.append("Tip: Projectiles view moves projectile fields next to the move name")
-            elif current_view == "frame" and (kind in {"super", "hyper"} or str(move_txt or "").lower().find("super") >= 0):
+            elif current_view == "core" and (kind in {"super", "hyper"} or str(move_txt or "").lower().find("super") >= 0):
                 s.append("Tip: Supers view moves super/probe fields next to the move name")
         except Exception:
             pass
@@ -4196,11 +5068,14 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         except Exception as exc:
             if self._status_var is not None:
                 self._status_var.set(f"Projectile live fields failed: {exc}")
-        # Keep active motion/collision values current, but only while this exact
-        # projectile row remains selected.
+        # Keep active motion/collision values current, but do not spawn a new
+        # collection thread every rendered frame.  The old 60 ms loop could
+        # keep the Frame Data window permanently busy while a projectile row
+        # was selected.  ~8 Hz is ample for an inspector while leaving Tk and
+        # Dolphin breathing room.
         try:
             self._projectile_live_after_id = self.root.after(
-                60,
+                120,
                 lambda g=generation, iid=item_id, selected_mv=mv:
                     self._start_projectile_live_refresh(iid, selected_mv, g),
             )
@@ -4209,77 +5084,84 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
 
     def _render_selected_row_after_idle(self, generation: int, item_id: str):
         self._selection_render_after_id = None
-        if generation != int(getattr(self, "_selection_render_generation", 0) or 0):
-            return
-        if not self.tree or not self.root:
-            return
         try:
+            if generation != int(getattr(self, "_selection_render_generation", 0) or 0):
+                return
+            if not self.tree or not self.root:
+                return
             sel = self.tree.selection()
-        except Exception:
-            return
-        if not sel or sel[0] != item_id:
-            return
-        binding = getattr(self, "_field_binding_by_item", {}).get(item_id)
-        mv = (binding or {}).get("mv") or self.move_to_tree_item.get(item_id)
-        render_item = (binding or {}).get("parent_item") or item_id
-        if not isinstance(mv, dict):
-            projectile_item, projectile_mv = self._projectile_ancestor_for_item(item_id)
-            if isinstance(projectile_mv, dict):
-                mv = projectile_mv
-                render_item = projectile_item or render_item
-        if not isinstance(mv, dict):
-            self._refresh_inspector(None, None)
-            return
-        self._refresh_inspector(render_item, mv)
+            if not sel or sel[0] != item_id:
+                return
+            binding = getattr(self, "_field_binding_by_item", {}).get(item_id)
+            mv = (binding or {}).get("mv") or self.move_to_tree_item.get(item_id)
+            render_item = (binding or {}).get("parent_item") or item_id
+            if not isinstance(mv, dict):
+                projectile_item, projectile_mv = self._projectile_ancestor_for_item(item_id)
+                if isinstance(projectile_mv, dict):
+                    mv = projectile_mv
+                    render_item = projectile_item or render_item
+            if not isinstance(mv, dict):
+                self._refresh_inspector(None, None)
+                return
+            self._refresh_inspector(render_item, mv)
+        except Exception as exc:
+            try:
+                self._status_var.set(f"Inspector failed safely: {type(exc).__name__}: {exc}")
+            except Exception:
+                pass
 
     def _on_select(self, _evt=None):
-        """Keep the Treeview click path tiny and render details after paint."""
-        sel = self.tree.selection()
-        if not sel:
-            self._stop_projectile_live_refresh()
-            self._last_selected_item_id = None
-            self._status_var.set("Ready")
-            self._refresh_inspector(None, None)
-            return
-        item = sel[0]
-        if _evt is not None and getattr(self, "_last_selected_item_id", None) == item:
-            return
-        self._last_selected_item_id = item
-        binding = getattr(self, "_field_binding_by_item", {}).get(item)
-        mv = (binding or {}).get("mv") or self.move_to_tree_item.get(item)
-        status_item = (binding or {}).get("parent_item") or item
-        projectile_item, projectile_mv = self._projectile_ancestor_for_item(item)
-        if not mv and projectile_mv is None:
-            self._stop_projectile_live_refresh()
-            self._status_var.set("Ready")
-            self._refresh_inspector(None, None)
-            return
-        if projectile_mv is not None:
-            self._select_projectile_live_row(projectile_item, projectile_mv)
-        else:
-            self._stop_projectile_live_refresh()
-        status_mv = mv if isinstance(mv, dict) else projectile_mv
-        status_item = projectile_item or status_item
-        self._set_status_for_item(status_item, status_mv)
+        """Keep selection cache-only and fail closed instead of taking Tk down."""
+        try:
+            sel = self.tree.selection()
+            if not sel:
+                self._stop_projectile_live_refresh()
+                self._last_selected_item_id = None
+                self._status_var.set("Ready")
+                self._refresh_inspector(None, None)
+                return
+            item = sel[0]
+            if _evt is not None and getattr(self, "_last_selected_item_id", None) == item:
+                return
+            self._last_selected_item_id = item
+            binding = getattr(self, "_field_binding_by_item", {}).get(item)
+            mv = (binding or {}).get("mv") or self.move_to_tree_item.get(item)
+            status_item = (binding or {}).get("parent_item") or item
+            projectile_item, projectile_mv = self._projectile_ancestor_for_item(item)
+            if not mv and projectile_mv is None:
+                self._stop_projectile_live_refresh()
+                self._status_var.set("Ready")
+                self._refresh_inspector(None, None)
+                return
 
-        # Let Tk paint the selection highlight immediately.  Rapid keyboard or
-        # mouse navigation cancels stale detail renders rather than making the
-        # sidebar chase every intermediate row.
-        self._selection_render_generation = int(getattr(self, "_selection_render_generation", 0) or 0) + 1
-        generation = self._selection_render_generation
-        try:
-            if self._selection_render_after_id is not None:
-                self.root.after_cancel(self._selection_render_after_id)
-        except Exception:
-            pass
-        try:
+            # V2 is deliberately cache-first. The old selection path could start
+            # a Dolphin polling worker simply because a projectile row was
+            # clicked. Live memory work now belongs to Refresh row / explicit
+            # profiling actions, never to ordinary navigation.
+            self._stop_projectile_live_refresh()
+            status_mv = mv if isinstance(mv, dict) else projectile_mv
+            status_item = projectile_item or status_item
+            self._set_status_for_item(status_item, status_mv)
+
+            self._selection_render_generation = int(getattr(self, "_selection_render_generation", 0) or 0) + 1
+            generation = self._selection_render_generation
+            try:
+                if self._selection_render_after_id is not None:
+                    self.root.after_cancel(self._selection_render_after_id)
+            except Exception:
+                pass
             self._selection_render_after_id = self.root.after_idle(
                 lambda g=generation, iid=item: self._render_selected_row_after_idle(g, iid)
             )
-        except Exception:
-            fallback_mv = mv if isinstance(mv, dict) else projectile_mv
-            fallback_item = projectile_item or item
-            self._refresh_inspector(fallback_item, fallback_mv)
+        except Exception as exc:
+            try:
+                self._stop_projectile_live_refresh()
+            except Exception:
+                pass
+            try:
+                self._status_var.set(f"Selection failed safely: {type(exc).__name__}: {exc}")
+            except Exception:
+                pass
 
     # ---------- Expand/collapse/filter ----------
 
@@ -4534,8 +5416,10 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
 
         self._reattach_all()
         changed_only = bool(getattr(self, "_changed_only", False))
+        view_mode = str(getattr(self, "_fd_view_mode", "core") or "core").lower()
+        row_scope = view_mode if view_mode in {"projectile", "super"} else ""
 
-        if not global_q and not col_filters and not changed_only:
+        if not global_q and not col_filters and not changed_only and not row_scope:
             self._status_var.set("Filter cleared")
             return
 
@@ -4557,6 +5441,25 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
         for item_id in self._all_item_ids:
             if changed_only and item_id not in changed_keep:
                 continue
+
+            if row_scope:
+                mv = self.move_to_tree_item.get(item_id)
+                try:
+                    tags = set(self.tree.item(item_id, "tags") or ())
+                except Exception:
+                    tags = set()
+                if row_scope == "projectile":
+                    scoped = bool(
+                        (isinstance(mv, dict) and FPI.is_projectile_row(mv))
+                        or tags.intersection({"projectile_header", "super_definition_header", "projectile_row", "super_definition_row"})
+                    )
+                else:
+                    scoped = bool(
+                        (isinstance(mv, dict) and (FSI.is_super_row(mv) or bool(mv.get("_is_super_definition"))))
+                        or tags.intersection({"super_header", "super_definition_header", "super_row", "super_definition_row"})
+                    )
+                if not scoped:
+                    continue
             # 1) Global filter check
             if global_q:
                 hay_parts = []
@@ -4601,6 +5504,8 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             parts.append("cols=" + ", ".join(f"{k}:{v}" for k, v in col_filters.items()))
         if changed_only:
             parts.append("changed only")
+        if row_scope:
+            parts.append(f"{row_scope} rows")
         self._status_var.set(f"Filter applied ({' | '.join(parts)}), hidden {detached}")
 
     # ---------- Speed modifier resolve + edit ----------
@@ -6589,6 +7494,10 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             self._edit_launch_profile(item, mv, current_val)
         elif col_name == "kb_unknown":
             self._edit_kb_unknown(item, mv, current_val)
+        elif col_name == "ground_kb":
+            self._edit_ground_kb(item, mv, current_val)
+        elif col_name == "ground_kb_y":
+            self._edit_ground_kb_y(item, mv, current_val)
         elif col_name == "kb_x":
             self._edit_kb_x(item, mv, current_val)
         elif col_name == "air_kb":
@@ -6599,6 +7508,10 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
             self._edit_hit_result_flags(item, mv, current_val)
         elif col_name == "superbg":
             self._toggle_superbg(item, mv)
+        elif col_name == "hb_main":
+            self._edit_hitbox_main(item, mv, current_val)
+        elif col_name == "hb":
+            self._edit_hitbox(item, mv, current_val)
 
     # ---------- Right-click tools ----------
 
@@ -6843,28 +7756,120 @@ class EditableFrameDataWindow(FDCellEditorsMixin):
 
         txt.config(state="disabled")
 
+    def _show_selected_raw_data(self):
+        if not self.tree:
+            return
+        try:
+            selected = self.tree.selection()
+        except Exception:
+            selected = ()
+        if not selected:
+            if self._status_var is not None:
+                self._status_var.set("Select a move before opening Raw Move Data.")
+            return
+        mv = self.move_to_tree_item.get(selected[0])
+        if isinstance(mv, dict):
+            self._show_raw_data(mv)
+
     def _show_raw_data(self, mv: dict):
+        """Open the selected row as both decoded fields and exact native bytes.
+
+        This is intentionally lazy.  The full byte span is read only when the
+        operator asks for Raw Move Data, never during workbench startup.
+        """
         dlg = tk.Toplevel(self.root)
         apply_titlebar_icon(dlg, self.root)
         dlg.title("Raw Move Data")
-        dlg.geometry("680x560")
+        dlg.geometry("860x680")
 
-        frame = tk.Frame(dlg, bg="#101214")
-        frame.pack(fill="both", expand=True, padx=8, pady=8)
+        notebook = ttk.Notebook(dlg)
+        notebook.pack(fill="both", expand=True, padx=8, pady=8)
 
-        txt = tk.Text(frame, wrap="word", font=("Consolas", 10), bg="#0f1113", fg="#e8e8e8", insertbackground="#e8e8e8")
-        vsb = tk.Scrollbar(frame, orient="vertical", command=txt.yview)
-        txt.configure(yscrollcommand=vsb.set)
-        txt.pack(side="left", fill="both", expand=True)
-        vsb.pack(side="right", fill="y")
+        fields_frame = ttk.Frame(notebook)
+        bytes_frame = ttk.Frame(notebook)
+        packets_frame = ttk.Frame(notebook)
+        notebook.add(fields_frame, text="Decoded / cached fields")
+        notebook.add(bytes_frame, text="Exact native bytes")
+        notebook.add(packets_frame, text="Native packet inventory")
 
+        def _text_panel(parent):
+            frame = tk.Frame(parent, bg="#101214")
+            frame.pack(fill="both", expand=True)
+            txt = tk.Text(frame, wrap="none", font=("Consolas", 10), bg="#0f1113", fg="#e8e8e8", insertbackground="#e8e8e8")
+            vsb = tk.Scrollbar(frame, orient="vertical", command=txt.yview)
+            hsb = tk.Scrollbar(frame, orient="horizontal", command=txt.xview)
+            txt.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+            txt.grid(row=0, column=0, sticky="nsew")
+            vsb.grid(row=0, column=1, sticky="ns")
+            hsb.grid(row=1, column=0, sticky="ew")
+            frame.rowconfigure(0, weight=1)
+            frame.columnconfigure(0, weight=1)
+            return txt
+
+        fields_txt = _text_panel(fields_frame)
         for k, v in sorted(mv.items()):
             if k.endswith("_addr") and v:
-                txt.insert("end", f"{k}: 0x{v:08X}\n")
-            else:
-                txt.insert("end", f"{k}: {v}\n")
+                try:
+                    fields_txt.insert("end", f"{k}: 0x{int(v):08X}\n")
+                    continue
+                except Exception:
+                    pass
+            fields_txt.insert("end", f"{k}: {v}\n")
+        fields_txt.config(state="disabled")
 
-        txt.config(state="disabled")
+        bytes_txt = _text_panel(bytes_frame)
+        packets_txt = _text_panel(packets_frame)
+        try:
+            move_abs = int(mv.get("abs") or 0)
+        except Exception:
+            move_abs = 0
+        try:
+            next_abs = int((self.next_abs_map or {}).get(move_abs) or 0)
+        except Exception:
+            next_abs = 0
+        if move_abs:
+            if next_abs > move_abs:
+                span = max(0x80, min(0x4000, next_abs - move_abs))
+            else:
+                span = 0x1800
+            try:
+                from tvcgui.platform.dolphin import rbytes as _raw_rbytes
+                raw = bytes(_raw_rbytes(move_abs, span) or b"")
+            except Exception as exc:
+                raw = b""
+                bytes_txt.insert("end", f"Could not read native bytes: {exc}\n")
+            if raw:
+                bytes_txt.insert("end", f"Move base: 0x{move_abs:08X}\nRead span: 0x{len(raw):X} ({len(raw)} bytes)\n\n")
+                for off in range(0, len(raw), 16):
+                    chunk = raw[off:off + 16]
+                    hex_part = " ".join(f"{b:02X}" for b in chunk)
+                    ascii_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+                    bytes_txt.insert("end", f"0x{move_abs + off:08X}  +0x{off:04X}  {hex_part:<47}  {ascii_part}\n")
+
+                command_names = getattr(char_dumper, "COMMAND_NAMES", {}) if char_dumper is not None else {}
+                known_count = 0
+                for off in range(max(0, len(raw) - 1)):
+                    key = (raw[off], raw[off + 1])
+                    label = command_names.get(key)
+                    if not label:
+                        continue
+                    known_count += 1
+                    packet = raw[off:min(len(raw), off + 32)]
+                    packets_txt.insert(
+                        "end",
+                        f"{key[0]:02X}/{key[1]:02X}  {label}\n"
+                        f"  abs 0x{move_abs + off:08X}  rel +0x{off:04X}\n"
+                        f"  raw {packet.hex(' ').upper()}\n\n",
+                    )
+                packets_txt.insert("1.0", f"Recognized command-family occurrences: {known_count}\n\n")
+            else:
+                bytes_txt.insert("end", "No bytes returned for this move.\n")
+                packets_txt.insert("end", "No native packet inventory available because the move bytes could not be read.\n")
+        else:
+            bytes_txt.insert("end", "This row has no native move address.\n")
+            packets_txt.insert("end", "This row has no native move address.\n")
+        bytes_txt.config(state="disabled")
+        packets_txt.config(state="disabled")
 
     # ---------- Host integration ----------
 

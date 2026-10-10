@@ -158,10 +158,10 @@ def _show_char_test_window(master: tk.Misc | None = None) -> None:
 
     win = tk.Toplevel(master) if master is not None else tk.Toplevel()
     _WIN = win
-    win.title("Char test - Yami visual table")
-    win.geometry("900x720")
+    win.title("Character Select - Visual Overrides")
+    win.geometry("1040x820")
     win.configure(bg=_BG)
-    win.minsize(720, 520)
+    win.minsize(820, 600)
 
     def _on_close() -> None:
         global _WIN
@@ -179,8 +179,8 @@ def _show_char_test_window(master: tk.Misc | None = None) -> None:
 
     header = tk.Frame(body, bg=_BG)
     header.pack(fill="x", pady=(0, 10))
-    tk.Label(header, text="Char test", bg=_BG, fg=_TEXT, font=("Segoe UI", 15, "bold")).pack(side="left")
-    tk.Label(header, text="Yami visual table probe", bg=_BG, fg=_ACCENT, font=("Segoe UI", 10, "bold")).pack(side="left", padx=(10, 0))
+    tk.Label(header, text="Character Select", bg=_BG, fg=_TEXT, font=("Segoe UI", 15, "bold")).pack(side="left")
+    tk.Label(header, text="Visual override lab", bg=_BG, fg=_ACCENT, font=("Segoe UI", 10, "bold")).pack(side="left", padx=(10, 0))
 
     status_var = tk.StringVar(value="Ready.")
     clone_choices = _get_clone_choices()
@@ -191,9 +191,168 @@ def _show_char_test_window(master: tk.Misc | None = None) -> None:
     _label(main_card, "Goal", bold=True).pack(fill="x", padx=12, pady=(12, 4))
     _label(
         main_card,
-        "Yami 1/2/3 already exist logically. This tests the separate static visual table that appears to decide which face/icon rows exist. The Frank visual append keeps Yami char IDs but uses Frank visual indices for the new visual rows.",
+        "Yami 1/2/3 keep their real fighter IDs. The controls below force presentation only: large face/card/background donor, cursor/wheel icon donor, and the readable custom name label. Ryu icon is the default for all three.",
         muted=True,
     ).pack(fill="x", padx=12, pady=(0, 10))
+
+    try:
+        initial_visual_state = runtime.get_yami_visual_override_state()
+        donor_choices = runtime.get_yami_visual_donor_choices()
+    except Exception:
+        initial_visual_state = {}
+        donor_choices = [{"id": None, "label": "Native", "short": "Native"}]
+
+    visual_target_var = tk.IntVar(value=0x17)
+    visual_summary_var = tk.StringVar(value="")
+    name_vars: dict[int, tk.StringVar] = {}
+    for _yid in (0x17, 0x18, 0x19):
+        _row = initial_visual_state.get(f"0x{_yid:02X}", {}) if isinstance(initial_visual_state, dict) else {}
+        name_vars[_yid] = tk.StringVar(value=str(_row.get("name") or f"YAMI {_yid - 0x16}"))
+
+    visual_card = _card(body)
+    visual_card.pack(fill="x", pady=(0, 10))
+    _label(visual_card, "Visual overrides", bold=True).pack(fill="x", padx=12, pady=(12, 4))
+    _label(
+        visual_card,
+        "Panel donor uses the recomp-confirmed Character Select presentation-tag tables. Icon donor uses only the live thumbnail material ID. They are independent, so a Yami can keep a Ryu icon while borrowing a different large panel/background.",
+        muted=True,
+    ).pack(fill="x", padx=12, pady=(0, 8))
+
+    target_row = tk.Frame(visual_card, bg=_CARD)
+    target_row.pack(fill="x", padx=12, pady=(0, 8))
+    _label(target_row, "Edit", bold=True).pack(side="left", padx=(0, 8))
+    for _yid in (0x17, 0x18, 0x19):
+        rb = tk.Radiobutton(
+            target_row,
+            text=f"Yami {_yid - 0x16}",
+            variable=visual_target_var,
+            value=_yid,
+            indicatoron=False,
+            bg="#2b3142",
+            fg=_TEXT,
+            selectcolor="#394058",
+            activebackground="#394058",
+            activeforeground=_TEXT,
+            relief="flat",
+            padx=12,
+            pady=6,
+            font=("Segoe UI", 10, "bold"),
+        )
+        rb.pack(side="left", padx=3)
+    tk.Label(target_row, textvariable=visual_summary_var, bg=_CARD, fg=_ACCENT, font=("Segoe UI", 9, "bold"), anchor="w").pack(side="left", padx=(12, 0))
+
+    quick_row = tk.Frame(visual_card, bg=_CARD)
+    quick_row.pack(fill="x", padx=12, pady=(0, 8))
+
+    def _force_all_icons_ryu() -> None:
+        for _yid in (0x17, 0x18, 0x19):
+            runtime.queue_yami_icon_donor(_yid, 0x0C)
+        _set_status("Ryu icon force queued for Yami 1/2/3.")
+
+    def _force_all_panels_native() -> None:
+        for _yid in (0x17, 0x18, 0x19):
+            runtime.queue_yami_panel_donor(_yid, None)
+        _set_status("Native panel restore queued for Yami 1/2/3.")
+
+    def _force_all_panels_ryu() -> None:
+        for _yid in (0x17, 0x18, 0x19):
+            runtime.queue_yami_panel_donor(_yid, 0x0C)
+        _set_status("Ryu large-panel force queued for Yami 1/2/3.")
+
+    _button(quick_row, "Ryu icons x3", _force_all_icons_ryu).pack(side="left", padx=(0, 6))
+    _button(quick_row, "Native panels x3", _force_all_panels_native).pack(side="left", padx=6)
+    _button(quick_row, "Ryu panels x3", _force_all_panels_ryu).pack(side="left", padx=6)
+
+    def _force_panel_donor(donor_id: Any) -> None:
+        yid = int(visual_target_var.get())
+        result = runtime.queue_yami_panel_donor(yid, donor_id)
+        _set_status(
+            f"Yami {yid - 0x16} panel -> {result.get('donor', donor_id)}."
+            if result.get("ok") else str(result.get("error") or "Panel force failed.")
+        )
+
+    def _force_icon_donor(donor_id: Any) -> None:
+        yid = int(visual_target_var.get())
+        result = runtime.queue_yami_icon_donor(yid, donor_id)
+        _set_status(
+            f"Yami {yid - 0x16} icon -> {result.get('donor', donor_id)}."
+            if result.get("ok") else str(result.get("error") or "Icon force failed.")
+        )
+
+    panel_wrap = tk.Frame(visual_card, bg=_CARD)
+    panel_wrap.pack(fill="x", padx=12, pady=(0, 8))
+    _label(panel_wrap, "Large panel / background donor", bold=True).pack(fill="x", pady=(0, 4))
+    panel_grid = tk.Frame(panel_wrap, bg=_CARD)
+    panel_grid.pack(fill="x")
+    for i, donor in enumerate(donor_choices):
+        donor_id = donor.get("id")
+        label = str(donor.get("short") or donor.get("label") or donor_id)
+        tk.Button(
+            panel_grid,
+            text=label,
+            command=lambda d=donor_id: _force_panel_donor(d),
+            bg="#2b3142",
+            fg=_TEXT,
+            activebackground="#394058",
+            activeforeground=_TEXT,
+            relief="flat",
+            padx=6,
+            pady=5,
+            font=("Segoe UI", 9, "bold"),
+        ).grid(row=i // 7, column=i % 7, sticky="ew", padx=2, pady=2)
+    for c in range(7):
+        panel_grid.columnconfigure(c, weight=1)
+
+    icon_wrap = tk.Frame(visual_card, bg=_CARD)
+    icon_wrap.pack(fill="x", padx=12, pady=(0, 8))
+    _label(icon_wrap, "Cursor / wheel icon donor", bold=True).pack(fill="x", pady=(0, 4))
+    icon_grid = tk.Frame(icon_wrap, bg=_CARD)
+    icon_grid.pack(fill="x")
+    for i, donor in enumerate(donor_choices):
+        donor_id = donor.get("id")
+        label = str(donor.get("short") or donor.get("label") or donor_id)
+        tk.Button(
+            icon_grid,
+            text=label,
+            command=lambda d=donor_id: _force_icon_donor(d),
+            bg="#2b3142",
+            fg=_TEXT,
+            activebackground="#394058",
+            activeforeground=_TEXT,
+            relief="flat",
+            padx=6,
+            pady=5,
+            font=("Segoe UI", 9, "bold"),
+        ).grid(row=i // 7, column=i % 7, sticky="ew", padx=2, pady=2)
+    for c in range(7):
+        icon_grid.columnconfigure(c, weight=1)
+
+    name_wrap = tk.Frame(visual_card, bg=_CARD)
+    name_wrap.pack(fill="x", padx=12, pady=(0, 12))
+    _label(name_wrap, "Custom visible label", bold=True).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 4))
+    for row_index, yid in enumerate((0x17, 0x18, 0x19), start=1):
+        _label(name_wrap, f"Yami {yid - 0x16}").grid(row=row_index, column=0, sticky="w", padx=(0, 8), pady=3)
+        ent = tk.Entry(
+            name_wrap,
+            textvariable=name_vars[yid],
+            bg="#11151e",
+            fg=_TEXT,
+            insertbackground=_TEXT,
+            relief="flat",
+            font=("Segoe UI", 10, "bold"),
+        )
+        ent.grid(row=row_index, column=1, sticky="ew", padx=(0, 6), pady=3)
+
+        def _apply_name(target_id: int = yid) -> None:
+            result = runtime.queue_yami_custom_label(target_id, name_vars[target_id].get())
+            _set_status(
+                f"Yami {target_id - 0x16} label -> {result.get('text', '')}."
+                if result.get("ok") else str(result.get("error") or "Name update failed.")
+            )
+
+        _button(name_wrap, "Set", _apply_name).grid(row=row_index, column=2, sticky="ew", pady=3)
+        ent.bind("<Return>", lambda _event, target_id=yid: runtime.queue_yami_custom_label(target_id, name_vars[target_id].get()))
+    name_wrap.columnconfigure(1, weight=1)
 
     setup_grid = tk.Frame(main_card, bg=_CARD)
     setup_grid.pack(fill="x", padx=12, pady=(0, 10))
@@ -234,6 +393,10 @@ def _show_char_test_window(master: tk.Misc | None = None) -> None:
         runtime.queue_yami_force_hover(slot=slot, target=target)
         _set_status(f"Force target queued for slot 0x{slot:02X}.")
 
+    def _native_name_test() -> None:
+        runtime.queue_yami_native_name_test(5.0)
+        _set_status("Native name-pointer rescan queued. Overlay will hide for 5 seconds.")
+
     button_card = _card(body)
     button_card.pack(fill="x", pady=(0, 10))
     _label(button_card, "Actions", bold=True).pack(fill="x", padx=12, pady=(12, 4))
@@ -246,6 +409,7 @@ def _show_char_test_window(master: tk.Misc | None = None) -> None:
         ("Frank visual rows", _frank_append),
         ("Native Yami rows", _native_append),
         ("Force target", _force_yami),
+        ("Test native name (5s)", _native_name_test),
         ("Restore", _restore),
     ]
     for i, (text, cmd) in enumerate(buttons):
@@ -268,6 +432,31 @@ def _show_char_test_window(master: tk.Misc | None = None) -> None:
             lines.append(f"last error: {state.get('last_error', '')}")
             lines.append(f"patches: {state.get('patches', 0)}  failed: {state.get('failed', 0)}  queued: {state.get('queued', 0)}")
             lines.append(f"visual table mode: {state.get('visual_table_patch_mode', '')}")
+            overrides = state.get("yami_visual_overrides") or {}
+            active_yid = int(visual_target_var.get())
+            active_override = overrides.get(f"0x{active_yid:02X}", {}) if isinstance(overrides, dict) else {}
+            visual_summary_var.set(
+                f"Panel: {active_override.get('panel_label', 'Native')}   Icon: {active_override.get('icon_label', 'Ryu')}"
+            )
+            lines.append(f"panel force: {state.get('yami_visual_panel_detail', '') or 'idle'}")
+            lines.append(f"icon force: {state.get('yami_visual_icon_detail', '') or 'idle'}")
+            lines.append(f"Yami overlay name: {state.get('yami_custom_name_text', '') or 'idle'}")
+            lines.append(f"Yami overlay detail: {state.get('yami_custom_name_detail', '')}")
+            lines.append(f"Native name: {state.get('yami_native_name_pointer_text', '') or 'not bound'}")
+            lines.append(f"Native name detail: {state.get('yami_native_name_pointer_detail', '')}")
+            native = state.get("yami_native_name_session") or {}
+            if native:
+                lines.append(
+                    "Native evidence: "
+                    f"source={native.get('source_texture_addr', '') or '-'} "
+                    f"scratch={native.get('scratch_addr', '') or '-'} "
+                    f"verified={len(native.get('verified_candidates') or [])} "
+                    f"raw_refs={len(native.get('raw_texture_refs') or [])} "
+                    f"tpl_refs={len(native.get('tpl_refs') or [])} "
+                    f"header_refs={len(native.get('header_refs') or [])}"
+                )
+                if native.get("verified_candidates"):
+                    lines.append("Verified pointer fields: " + ", ".join(native.get("verified_candidates")[:8]))
             lines.append("")
             lines.append("selector:")
             lines.append(_format_snapshot(state.get("last_snapshot") or {}))

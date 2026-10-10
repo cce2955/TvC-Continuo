@@ -9,6 +9,7 @@ from __future__ import annotations
 import time
 
 from tvcgui.platform.dolphin import rd32, wd32
+import tvcgui.platform.patch_manager as runtime_pm
 
 def _ko_wd32(addr: int, value: int) -> bool:
     """Write a KO control word even while the select-write barrier is active."""
@@ -150,6 +151,126 @@ KO_REWIND_OFFSETS_U32 = (
     0x278, 0x27C, 0x280, 0x284, 0x288, 0x28C, 0x290, 0x294, 0x298, 0x29C, 0x2A0,
 )
 KO_REWIND_BAD_ACTIONS = {0x0000002A, 0x0000009A}
+
+
+
+def _ko_code_wd32(addr: int, value: int) -> bool:
+    """Write one PPC instruction through the JIT-safe code lane."""
+    try:
+        addr_i = int(addr) & 0xFFFFFFFF
+        value_i = int(value) & 0xFFFFFFFF
+        return bool(runtime_pm.write_code_u32(
+            addr_i,
+            value_i,
+            key=f"ko:code:0x{addr_i:08X}",
+            force=True,
+        ))
+    except Exception:
+        return False
+
+
+def _write_code_u32_count(
+    addr: int,
+    value: int,
+    *,
+    verify: bool = False,
+) -> tuple[int, int, list]:
+    """JIT-safe counterpart to _write_u32_count for PPC code."""
+    addr_i = int(addr) & 0xFFFFFFFF
+    value_i = int(value) & 0xFFFFFFFF
+
+    try:
+        ok = _ko_code_wd32(addr_i, value_i)
+    except Exception:
+        ok = False
+
+    if not ok:
+        return 0, 0, [(addr_i, None, value_i)]
+
+    if not verify:
+        return 1, 0, []
+
+    try:
+        rb = rd32(addr_i)
+    except Exception:
+        rb = None
+
+    if rb is not None and (int(rb) & 0xFFFFFFFF) == value_i:
+        return 1, 1, []
+
+    return 1, 0, [(addr_i, rb, value_i)]
+
+
+
+
+def _write_code_packet_count(
+    pairs,
+    *,
+    verify: bool = False,
+    key: str = "ko:code:batch",
+) -> tuple[int, int, list, int]:
+    """Apply a complete PPC instruction packet with one JIT reset."""
+
+    final = {}
+
+    try:
+        for addr, value in pairs:
+            addr_i = int(addr) & 0xFFFFFFFF
+            value_i = int(value) & 0xFFFFFFFF
+            final[addr_i] = value_i.to_bytes(4, "big")
+    except Exception:
+        return 0, 0, [], 0
+
+    total = len(final)
+
+    if not total:
+        return 0, 0, [], 0
+
+    try:
+        ok = bool(
+            runtime_pm.write_code_many(
+                final,
+                key=key,
+                priority=98,
+                force=True,
+            )
+        )
+    except Exception:
+        ok = False
+
+    if not ok:
+        failed = [
+            (
+                addr,
+                None,
+                int.from_bytes(payload, "big"),
+            )
+            for addr, payload in final.items()
+        ]
+        return 0, 0, failed, total
+
+    wrote = total
+
+    if not verify:
+        return wrote, 0, [], total
+
+    verified = 0
+    failed = []
+
+    for addr, payload in final.items():
+        expected = int.from_bytes(payload, "big")
+
+        try:
+            rb = rd32(addr)
+        except Exception:
+            rb = None
+
+        if rb is not None and (int(rb) & 0xFFFFFFFF) == expected:
+            verified += 1
+        else:
+            failed.append((addr, rb, expected))
+
+    return wrote, verified, failed, total
 
 
 def _write_u32_count(addr: int, value: int, *, verify: bool = False) -> tuple[int, int, list]:
@@ -978,19 +1099,16 @@ def apply_ko_dol_result_patch(test_index: int, *, verify: bool = True) -> dict:
     wrote = verified = total = 0
     failed = []
 
-    for addr, value in KO_DOL_ORIGINALS_U32:
-        total += 1
-        w, v, f = _write_u32_count(addr, value, verify=verify)
-        wrote += w
-        verified += v
-        failed.extend(f)
+    packet = (
+        tuple(KO_DOL_ORIGINALS_U32)
+        + tuple(test.get("writes", ()))
+    )
 
-    for addr, value in test.get("writes", ()):
-        total += 1
-        w, v, f = _write_u32_count(addr, value, verify=verify)
-        wrote += w
-        verified += v
-        failed.extend(f)
+    wrote, verified, failed, total = _write_code_packet_count(
+        packet,
+        verify=verify,
+        key=f"ko:test:{idx}",
+    )
 
     return {
         "ok": wrote == total and (not verify or verified == total),
@@ -1023,25 +1141,19 @@ def apply_ko_control_auto_mode(mode: str, *, verify: bool = True) -> dict:
     wrote = verified = total = 0
     failed = []
 
-    for addr, value in KO_DOL_ORIGINALS_U32:
-        total += 1
-        w, v, f = _write_u32_count(addr, value, verify=verify)
-        wrote += w
-        verified += v
-        failed.extend(f)
-
     payload = ()
     if mode == "safe":
         payload = KO_CONTROL_SAFE_PACKET
     elif mode == "full":
         payload = KO_CONTROL_FULL_PACKET
 
-    for addr, value in payload:
-        total += 1
-        w, v, f = _write_u32_count(addr, value, verify=verify)
-        wrote += w
-        verified += v
-        failed.extend(f)
+    packet = tuple(KO_DOL_ORIGINALS_U32) + tuple(payload)
+
+    wrote, verified, failed, total = _write_code_packet_count(
+        packet,
+        verify=verify,
+        key=f"ko:auto:{mode}",
+    )
 
     critical_expected = dict(payload)
     critical_reads = {}
@@ -1089,20 +1201,16 @@ def apply_ko_control_full_toggle(enabled: bool, *, verify: bool = True) -> dict:
     wrote = verified = total = 0
     failed = []
 
-    for addr, value in KO_DOL_ORIGINALS_U32:
-        total += 1
-        w, v, f = _write_u32_count(addr, value, verify=verify)
-        wrote += w
-        verified += v
-        failed.extend(f)
+    packet = tuple(KO_DOL_ORIGINALS_U32)
 
     if enabled:
-        for addr, value in KO_CONTROL_FULL_PACKET:
-            total += 1
-            w, v, f = _write_u32_count(addr, value, verify=verify)
-            wrote += w
-            verified += v
-            failed.extend(f)
+        packet += tuple(KO_CONTROL_FULL_PACKET)
+
+    wrote, verified, failed, total = _write_code_packet_count(
+        packet,
+        verify=verify,
+        key="ko:full:on" if enabled else "ko:full:off",
+    )
 
     name = "KO Control+Full ON" if enabled else "KO Control+Full OFF"
     return {
@@ -1152,7 +1260,7 @@ def ensure_ko_control_full_patch(enabled: bool, *, verify: bool = False) -> dict
             continue
 
         try:
-            ok = _ko_wd32(addr, value)
+            ok = _ko_code_wd32(addr, value)
         except Exception:
             ok = False
         if not ok:

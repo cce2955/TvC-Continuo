@@ -237,6 +237,7 @@ def load_frame_data_profile(
     key: Any,
     *,
     expected_version: Optional[int] = None,
+    copy_result: bool = True,
     bundled_directory: Optional[str] = None,
     writable_directory: Optional[str] = None,
     bundled_legacy_file: Optional[str] = None,
@@ -280,7 +281,14 @@ def load_frame_data_profile(
                         candidate = profile
             if isinstance(candidate, dict):
                 selected = candidate
-    return copy.deepcopy(selected) if isinstance(selected, dict) else None
+    if not isinstance(selected, dict):
+        return None
+    # Most callers historically received an isolated deep copy. Keep that
+    # behavior by default, but let the Frame Data profile cache retain the
+    # freshly-loaded JSON object directly. Its rebase path creates fresh
+    # dict/list structures, so another whole-profile deepcopy just adds
+    # startup cost without protecting anything.
+    return copy.deepcopy(selected) if copy_result else selected
 
 
 def _atomic_write_json(path: str, payload: Dict[str, Any]) -> bool:

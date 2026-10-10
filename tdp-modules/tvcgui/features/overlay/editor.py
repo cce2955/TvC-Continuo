@@ -142,9 +142,9 @@ VS_WIN_PLURAL_S_ENABLES: dict[str, int] = {
     "P2": 0x80BECE9B,  # vs_2_s
 }
 
-# Upstream arcade/versus win counters. These are not the HUD, but they are
-# useful for auto-incrementing a persistent visual streak after the game resets
-# one side to NEW HERO. Use max mirror value for stability.
+# Raw Versus win counters (two known mirrors per player). Monitor the
+# maximum so later updates to the second mirror do not count the same win twice.
+# The persisted HUD total is independent of both counters and their resets.
 RAW_WIN_COUNTERS: dict[str, tuple[int, ...]] = {
     "P1": (0x803EB9FC, 0x803EBA08),
     "P2": (0x803EBA00, 0x803EBA04),
@@ -161,7 +161,7 @@ _HUD_EDITOR_RUNTIME_STATE: dict[str, Any] = {
     "use_svm": False,
     "last_tick_time": 0.0,
     "last_force_time": 0.0,
-    "status": "Default Win Score hold is ON at 0; zero shows NEW HERO.",
+    "status": "Raw-counter auto tracking armed; zero shows NEW HERO.",
     "holds": {
         "P1": {"enabled": True, "auto": True, "value": 0, "last_raw": None},
         "P2": {"enabled": True, "auto": True, "value": 0, "last_raw": None},
@@ -596,59 +596,97 @@ def reset_hud_editor_runtime_state(*, apply_zero: bool = False) -> dict[str, Any
     _HUD_EDITOR_RUNTIME_STATE["status"] = "HUD Editor runtime state reset by Overseer."
     return {"before": before, "after": {"P1": dict(_runtime_hold("P1")), "P2": dict(_runtime_hold("P2"))}}
 
-def tick_hud_editor_state(*, now: float | None = None, force: bool = False) -> None:
-    """Keep active HUD Editor holds alive during an active match."""
-    if not is_win_counter_runtime_active():
-        _HUD_EDITOR_RUNTIME_STATE["status"] = win_counter_block_message()
-        return
+def tick_hud_editor_state(
+    *, now: float | None = None, force: bool = False,
+    snaps: dict | None = None, character_select: bool = False, unsafe: bool = False,
+) -> None:
+    """Count increases in each game's raw win counter; hold the totals all session.
+
+    Read P1/P2 even when the fighter snapshots disappear during NEW HERO, and
+    before checking the texture-write gate.  KO, win pose, screen phase and
+    character-select detection do not determine the score.
+
+    Display writes are still protected by the existing match/Yami gate.
+    """
     try:
         now_f = float(time.monotonic() if now is None else now)
     except Exception:
         now_f = time.monotonic()
-    if not force:
-        last_tick = float(_HUD_EDITOR_RUNTIME_STATE.get("last_tick_time", 0.0) or 0.0)
-        # 15Hz is plenty for visual HUD ownership.  Dirty writes below still
-        # update immediately when the game has actually changed a pane.
-        if now_f - last_tick < 0.066:
-            return
-    _HUD_EDITOR_RUNTIME_STATE["last_tick_time"] = now_f
-
-    use_hud = bool(_HUD_EDITOR_RUNTIME_STATE.get("use_hud", True))
-    use_svm = bool(_HUD_EDITOR_RUNTIME_STATE.get("use_svm", False))
-    force_zero = bool(_HUD_EDITOR_RUNTIME_STATE.get("force_zero_as_win", False))
 
     for player in ("P1", "P2"):
         hold = _runtime_hold(player)
-        if not bool(hold.get("enabled", False)):
+        current = read_raw_win_count(player)
+        previous = hold.get("last_raw")
+        if current is None:
+            # A failed memory read isn't a reset.  Do not corrupt the baseline.
             continue
+        current = int(current)
+        hold["last_raw"] = current
+        if previous is None:
+            # Attach-time sample is a baseline, never an artificial victory.
+            print(f"[win score] {player}: raw counter baseline {current}; held {hold['value']}", flush=True)
+            continue
+        previous = int(previous)
+        if current == previous:
+            continue
+        if current > previous:
+            delta = current - previous
+            if bool(hold.get("enabled", False)) and bool(hold.get("auto", True)):
+                hold["value"] = _clamp_int(int(hold.get("value", 0)) + delta, 0, 999)
+                _HUD_EDITOR_RUNTIME_STATE["status"] = (
+                    f"{player} raw wins {previous}->{current}; held {hold['value']} (+{delta})."
+                )
+                print(f"[win score] {player} raw {previous}->{current}: +{delta}; held {hold['value']}", flush=True)
+                force = True
+            else:
+                print(f"[win score] {player} raw {previous}->{current}: auto hold disabled", flush=True)
+        else:
+            # NEW HERO/rematches may reset the game's counter; our score won't.
+            print(f"[win score] {player} raw reset {previous}->{current}; held {hold['value']}", flush=True)
 
-        stored = _clamp_int(hold.get("value", 0), 0, 999)
-        current_raw = read_raw_win_count(player)
-        previous_raw = hold.get("last_raw")
+    _HUD_EDITOR_RUNTIME_STATE["raw_counters"] = {
+        p: _runtime_hold(p).get("last_raw") for p in ("P1", "P2")
+    }
+    _HUD_EDITOR_RUNTIME_STATE["held_counters"] = {
+        p: _clamp_int(_runtime_hold(p).get("value", 0), 0, 999) for p in ("P1", "P2")
+    }
 
-        if bool(hold.get("auto", True)) and current_raw is not None and previous_raw is not None:
-            try:
-                previous_i = int(previous_raw)
-            except Exception:
-                previous_i = current_raw
-            if current_raw > previous_i:
-                stored = max(0, min(999, stored + (current_raw - previous_i)))
-                hold["value"] = stored
-                _HUD_EDITOR_RUNTIME_STATE["status"] = f"{player} held wins auto-added raw {previous_i}->{current_raw}; now {stored}."
-            # Resets/new-hero transitions are accepted as the new baseline but
-            # do not decrement the held display value.
-            hold["last_raw"] = current_raw
-        elif current_raw is not None:
-            hold["last_raw"] = current_raw
+    if not is_win_counter_runtime_active():
+        _HUD_EDITOR_RUNTIME_STATE["last_runtime_active"] = False
+        # Observing the counters never requires permission to write HUD memory.
+        return
+    if not _HUD_EDITOR_RUNTIME_STATE.get("last_runtime_active", False):
+        force = True
+    _HUD_EDITOR_RUNTIME_STATE["last_runtime_active"] = True
 
-        apply_win_count(
-            player,
-            stored,
-            use_vs=True,
-            use_hud=use_hud,
-            use_svm=use_svm,
-            force_zero_as_win=force_zero,
-        )
+    if not force:
+        # The game can hide our held digits under NEW HERO on any rematch.
+        # Immediately restore the win-mode flag if a nonzero total is hidden.
+        for player in ("P1", "P2"):
+            hold = _runtime_hold(player)
+            if not bool(hold.get("enabled", False)) or not int(hold.get("value", 0)):
+                continue
+            mode = VS_WIN_MODE_ENABLES.get(player) or {}
+            if _read_u8(mode.get("NEWHERO", 0)) == 1 or _read_u8(mode.get("WIN", 0)) == 0:
+                force = True
+                break
+        if not force:
+            last_tick = float(_HUD_EDITOR_RUNTIME_STATE.get("last_tick_time", 0.0) or 0.0)
+            if now_f - last_tick < 0.066:
+                return
+
+    _HUD_EDITOR_RUNTIME_STATE["last_tick_time"] = now_f
+    use_hud = bool(_HUD_EDITOR_RUNTIME_STATE.get("use_hud", True))
+    use_svm = bool(_HUD_EDITOR_RUNTIME_STATE.get("use_svm", False))
+    force_zero = bool(_HUD_EDITOR_RUNTIME_STATE.get("force_zero_as_win", False))
+    for player in ("P1", "P2"):
+        hold = _runtime_hold(player)
+        if bool(hold.get("enabled", False)):
+            apply_win_count(
+                player, _clamp_int(hold.get("value", 0), 0, 999),
+                use_vs=True, use_hud=use_hud, use_svm=use_svm,
+                force_zero_as_win=force_zero,
+            )
 
 
 def apply_score_display(player: str, score_text: Any) -> bool:
@@ -1001,6 +1039,11 @@ def open_hud_editor_window() -> None:
 
         def write_win(player: str, value: Any, *, announce: bool = True) -> None:
             value_i = _clamp_int(value, 0, 999)
+            # The default-on persistent hold must not undo manual Apply.
+            hold = _runtime_hold(player)
+            if bool(hold.get("enabled", False)):
+                hold["value"] = value_i
+                (p1_streak_var if player == "P1" else p2_streak_var).set(str(value_i))
             ok = apply_win_count(player, value_i, use_vs=bool(vs_var.get()), use_hud=bool(hud_var.get()), use_svm=bool(svm_var.get()), force_zero_as_win=bool(zero_wins_as_text_var.get()))
             last_applied[f"{player}_WIN"] = value_i
             freeze_kinds.add(f"{player}_WIN")
@@ -1054,15 +1097,20 @@ def open_hud_editor_window() -> None:
         def _sync_hold_control_to_runtime(player: str) -> None:
             player = str(player or "P1").upper()
             var, enabled_var, auto_var = _streak_controls_for(player)
-            sync_hud_editor_hold_from_controls(
-                player,
-                var.get(),
-                enabled=bool(enabled_var.get()),
-                auto=bool(auto_var.get()),
+            sync_hud_editor_runtime_options(
                 force_zero_as_win=bool(zero_wins_as_text_var.get()),
                 use_hud=bool(hud_var.get()),
                 use_svm=bool(svm_var.get()),
             )
+            hold = _runtime_hold(player)
+            enabled = bool(enabled_var.get())
+            auto = bool(auto_var.get())
+            if enabled != bool(hold.get("enabled", False)):
+                # Import a typed value only on a genuine enable/disable action.
+                # Importing it on every 150ms refresh erased automatic wins.
+                sync_hud_editor_hold_from_controls(player, var.get(), enabled=enabled, auto=auto)
+            else:
+                hold["auto"] = auto
 
         def capture_streak_from_vs(player: str) -> None:
             player = str(player or "P1").upper()
@@ -1209,7 +1257,6 @@ def open_hud_editor_window() -> None:
             try:
                 _sync_hold_control_to_runtime("P1")
                 _sync_hold_control_to_runtime("P2")
-                tick_hud_editor_state(force=True)
                 for player, var in (("P1", p1_streak_var), ("P2", p2_streak_var)):
                     hold = _runtime_hold(player)
                     if bool(hold.get("enabled", False)):

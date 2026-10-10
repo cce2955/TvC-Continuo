@@ -2791,7 +2791,7 @@
       "vertical_geometry_source": "full_active_envelope"
     },
     "12:266": {
-      "advance_at_tip": 0.0,
+      "advance_at_tip": -0.1076207160949707,
       "anchor": "fighter_root",
       "calibration": {
         "false_negative_hits": 0,
@@ -2801,6 +2801,53 @@
       },
       "char_id": 12,
       "display_mode": "ground_ruler",
+      "dynamic_sweep": {
+        "frame_count": 1,
+        "frames": [
+          {
+            "frame": 9,
+            "root": [
+              -0.1076207160949707,
+              -1.146728515625,
+              0.0
+            ],
+            "shapes": [
+              [
+                0.48892903327941895,
+                0.9906222820281982,
+                0.0,
+                0.19999998807907104
+              ],
+              [
+                0.28348278999328613,
+                1.2624781131744385,
+                0.0,
+                0.14999999105930328
+              ],
+              [
+                0.28348278999328613,
+                1.2624781131744385,
+                0.0,
+                0.2199999988079071
+              ]
+            ]
+          }
+        ],
+        "shape_count": 3,
+        "version": 2
+      },
+      "horizontal_envelope": {
+        "active_frame": 9,
+        "advance_at_tip": -0.1076207160949707,
+        "reach_from_start": 0.5813083052635193,
+        "shape_index": 0,
+        "tip_center_from_active_root": 0.48892903327941895,
+        "tip_center_from_start": 0.38130831718444824,
+        "tip_radius": 0.19999998807907104,
+        "tip_y_from_start": -0.15610623359680176,
+        "tip_z_from_start": 0.0,
+        "version": 1
+      },
       "last_sample": {
         "active_root": [
           5.409902572631836,
@@ -2820,14 +2867,31 @@
       "move_kind": "air_normal",
       "move_name": "j.B",
       "profile_schema": 5,
-      "reach_from_start": 0.7304331660270691,
+      "reach_from_start": 0.5813083052635193,
+      "ruler_geometry_source": "max_horizontal_active_envelope",
       "samples": 1,
-      "tip_center_from_active_root": 0.530433177947998,
-      "tip_center_from_start": 0.530433177947998,
+      "tip_center_from_active_root": 0.48892903327941895,
+      "tip_center_from_start": 0.38130831718444824,
       "tip_radius": 0.19999998807907104,
-      "tip_y_from_start": 1.0980439186096191,
+      "tip_y_from_start": -0.15610623359680176,
       "tip_z_from_start": 0.0,
-      "updated_ms": 129263
+      "updated_ms": 3518303,
+      "vertical_envelope": {
+        "lower_active_frame": 9,
+        "lower_forward_from_start": 0.38130831718444824,
+        "lower_radius": 0.19999998807907104,
+        "lower_shape_index": 0,
+        "lower_y_from_start": -0.3561062216758728,
+        "lower_z_from_start": 0.0,
+        "upper_active_frame": 9,
+        "upper_forward_from_start": 0.17586207389831543,
+        "upper_radius": 0.2199999988079071,
+        "upper_shape_index": 2,
+        "upper_y_from_start": 0.3357495963573456,
+        "upper_z_from_start": 0.0,
+        "version": 1
+      },
+      "vertical_geometry_source": "full_active_envelope"
     },
     "12:267": {
       "advance_at_tip": 0.8701171875,
@@ -5560,6 +5624,109 @@
         "upper_shape_index": 1,
         "upper_y_from_start": 2.4417011737823486,
         "upper_z_from_start": 2.4795530407573096e-05,
+        "version": 1
+      },
+      "vertical_geometry_source": "full_active_envelope"
+    },
+    "13:426": {
+      "advance_at_tip": 0.3999999761581421,
+      "anchor": "fighter_root",
+      "calibration": {
+        "false_negative_hits": 0,
+        "false_positive_adjustments": 0,
+        "false_positive_streak": 0,
+        "pips": 0
+      },
+      "char_id": 13,
+      "display_mode": "ground_ruler",
+      "dynamic_sweep": {
+        "frame_count": 1,
+        "frames": [
+          {
+            "frame": 1,
+            "root": [
+              2.7600001096725464,
+              -0.18342381715774536,
+              0.0
+            ],
+            "shapes": [
+              [
+                0.5734179019927979,
+                1.938923954963684,
+                -0.4000000059604645,
+                0.2199999988079071
+              ],
+              [
+                0.4094366580247879,
+                1.5450400114059448,
+                -0.4000000059604645,
+                0.29999998211860657
+              ],
+              [
+                0.24545565247535706,
+                1.1511558294296265,
+                -0.4000000059604645,
+                0.3499999940395355
+              ]
+            ]
+          }
+        ],
+        "shape_count": 3,
+        "version": 2
+      },
+      "horizontal_envelope": {
+        "active_frame": 2,
+        "advance_at_tip": 0.3999999761581421,
+        "reach_from_start": 1.0888716280460358,
+        "shape_index": 0,
+        "tip_center_from_active_root": 0.4688716530799866,
+        "tip_center_from_start": 0.8688716292381287,
+        "tip_radius": 0.2199999988079071,
+        "tip_y_from_start": 2.245474398136139,
+        "tip_z_from_start": -0.4000000059604645,
+        "version": 1
+      },
+      "last_sample": {
+        "active_root": [
+          0.17200106382369995,
+          0.7850000858306885,
+          0.4000000059604645
+        ],
+        "advance_at_tip": 0.3999999761581421,
+        "reach_from_start": 1.0888716280460358,
+        "start_root": [
+          -0.22799891233444214,
+          0.5510000586509705,
+          0.4000000059604645
+        ],
+        "tip_center_from_active_root": 0.4688716530799866
+      },
+      "move_id": 426,
+      "move_kind": "ground_special",
+      "move_name": "assist attack",
+      "profile_schema": 5,
+      "reach_from_start": 1.0888716280460358,
+      "ruler_geometry_source": "max_horizontal_active_envelope",
+      "samples": 1,
+      "tip_center_from_active_root": 0.4688716530799866,
+      "tip_center_from_start": 0.8688716292381287,
+      "tip_radius": 0.2199999988079071,
+      "tip_y_from_start": 2.245474398136139,
+      "tip_z_from_start": -0.4000000059604645,
+      "updated_ms": 12575,
+      "vertical_envelope": {
+        "lower_active_frame": 1,
+        "lower_forward_from_start": 0.3254557102918625,
+        "lower_radius": 0.3499999940395355,
+        "lower_shape_index": 2,
+        "lower_y_from_start": 0.8461558520793915,
+        "lower_z_from_start": -0.4000000059604645,
+        "upper_active_frame": 2,
+        "upper_forward_from_start": 0.8688716292381287,
+        "upper_radius": 0.2199999988079071,
+        "upper_shape_index": 0,
+        "upper_y_from_start": 2.465474396944046,
+        "upper_z_from_start": -0.4000000059604645,
         "version": 1
       },
       "vertical_geometry_source": "full_active_envelope"
@@ -27753,7 +27920,7 @@
       "vertical_geometry_source": "full_active_envelope"
     },
     "6:256": {
-      "advance_at_tip": 0.0,
+      "advance_at_tip": 0.022076129913330078,
       "anchor": "fighter_root",
       "calibration": {
         "false_negative_hits": 0,
@@ -27762,6 +27929,97 @@
         "pips": 0
       },
       "char_id": 6,
+      "contact_audit": {
+        "confirmed_events": 1,
+        "last_mismatch": false,
+        "last_signal": "damage",
+        "last_update_ms": 10351888,
+        "latest": {
+          "action_frame": 5,
+          "hitbox_index": 0,
+          "hurtbox_index": 12,
+          "predicted_touch": true,
+          "samples": 1,
+          "signal": "damage",
+          "surface_gap": 0.0,
+          "target_char_id": 20,
+          "truth": false,
+          "updated_ms": 10351888
+        },
+        "ruler_mismatches": 0,
+        "truth_events": 1,
+        "unresolved_events": 0,
+        "version": 2,
+        "witnesses": [
+          {
+            "action_frame": 5,
+            "confidence": "geometry_overlap",
+            "hitbox_index": 0,
+            "hurtbox_index": 12,
+            "last_seen_ms": 10351888,
+            "local_x": 0.8834381103515625,
+            "local_y": 1.3228648900985718,
+            "local_z": 0.0,
+            "mismatch_count": 0,
+            "overlap": 0.2988141380538651,
+            "predicted_touch_last": true,
+            "radius": 0.22999998927116394,
+            "samples": 1,
+            "signal": "damage",
+            "surface_gap": 0.0,
+            "target_char_id": 20,
+            "truth": false
+          }
+        ]
+      },
+      "display_mode": "ground_ruler",
+      "dynamic_sweep": {
+        "frame_count": 1,
+        "frames": [
+          {
+            "frame": 5,
+            "root": [
+              0.022076129913330078,
+              0.0,
+              0.0
+            ],
+            "shapes": [
+              [
+                0.8613619804382324,
+                1.3228648900985718,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                0.4646468162536621,
+                1.346855640411377,
+                0.0,
+                0.2199999988079071
+              ],
+              [
+                0.09525394439697266,
+                0.46942368149757385,
+                0.0,
+                0.19999998807907104
+              ]
+            ]
+          }
+        ],
+        "shape_count": 3,
+        "version": 2
+      },
+      "horizontal_envelope": {
+        "active_frame": 5,
+        "advance_at_tip": 0.022076129913330078,
+        "reach_from_start": 1.1134380996227264,
+        "shape_index": 0,
+        "tip_center_from_active_root": 0.8613619804382324,
+        "tip_center_from_start": 0.8834381103515625,
+        "tip_radius": 0.22999998927116394,
+        "tip_y_from_start": 1.3228648900985718,
+        "tip_z_from_start": 0.0,
+        "version": 1
+      },
       "last_sample": {
         "active_root": [
           3.5366127490997314,
@@ -27778,19 +28036,37 @@
         "tip_center_from_active_root": 0.7689244747161865
       },
       "move_id": 256,
+      "move_kind": "ground_normal",
       "move_name": "5A",
       "profile_schema": 5,
-      "reach_from_start": 0.9989247024059296,
+      "reach_from_start": 1.1134380996227264,
+      "ruler_geometry_source": "max_horizontal_active_envelope",
       "samples": 183,
-      "tip_center_from_active_root": 0.7689247131347656,
-      "tip_center_from_start": 0.7689247131347656,
+      "tip_center_from_active_root": 0.8613619804382324,
+      "tip_center_from_start": 0.8834381103515625,
       "tip_radius": 0.22999998927116394,
       "tip_y_from_start": 1.3228648900985718,
       "tip_z_from_start": 0.0,
-      "updated_ms": 861548
+      "updated_ms": 10352067,
+      "vertical_envelope": {
+        "lower_active_frame": 5,
+        "lower_forward_from_start": 0.11733007431030273,
+        "lower_radius": 0.19999998807907104,
+        "lower_shape_index": 2,
+        "lower_y_from_start": 0.2694236934185028,
+        "lower_z_from_start": 0.0,
+        "upper_active_frame": 5,
+        "upper_forward_from_start": 0.4867229461669922,
+        "upper_radius": 0.2199999988079071,
+        "upper_shape_index": 1,
+        "upper_y_from_start": 1.566855639219284,
+        "upper_z_from_start": 0.0,
+        "version": 1
+      },
+      "vertical_geometry_source": "full_active_envelope"
     },
     "6:257": {
-      "advance_at_tip": 0.160400390625,
+      "advance_at_tip": 0.07338857650756836,
       "anchor": "fighter_root",
       "calibration": {
         "false_negative_hits": 0,
@@ -27800,6 +28076,54 @@
         "updated_ms": 832616
       },
       "char_id": 6,
+      "display_mode": "ground_ruler",
+      "dynamic_sweep": {
+        "frame_count": 1,
+        "frames": [
+          {
+            "frame": 8,
+            "root": [
+              0.07338857650756836,
+              0.0,
+              0.0
+            ],
+            "shapes": [
+              [
+                0.43907928466796875,
+                1.2215867042541504,
+                0.0,
+                0.2199999988079071
+              ],
+              [
+                0.8044147491455078,
+                1.2505823373794556,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                0.07324886322021484,
+                0.4505898654460907,
+                0.0,
+                0.19999998807907104
+              ]
+            ]
+          }
+        ],
+        "shape_count": 3,
+        "version": 2
+      },
+      "horizontal_envelope": {
+        "active_frame": 8,
+        "advance_at_tip": 0.07338857650756836,
+        "reach_from_start": 1.1078033149242401,
+        "shape_index": 1,
+        "tip_center_from_active_root": 0.8044147491455078,
+        "tip_center_from_start": 0.8778033256530762,
+        "tip_radius": 0.22999998927116394,
+        "tip_y_from_start": 1.2505823373794556,
+        "tip_z_from_start": 0.0,
+        "version": 1
+      },
       "last_sample": {
         "active_root": [
           3.2686383724212646,
@@ -27816,16 +28140,34 @@
         "tip_center_from_active_root": 0.6762888431549072
       },
       "move_id": 257,
+      "move_kind": "ground_normal",
       "move_name": "5B",
       "profile_schema": 5,
       "reach_from_start": 1.1078033149242401,
+      "ruler_geometry_source": "max_horizontal_active_envelope",
       "samples": 37,
-      "tip_center_from_active_root": 0.7174029350280762,
+      "tip_center_from_active_root": 0.8044147491455078,
       "tip_center_from_start": 0.8778033256530762,
       "tip_radius": 0.22999998927116394,
       "tip_y_from_start": 1.2505823373794556,
       "tip_z_from_start": 0.0,
-      "updated_ms": 835944
+      "updated_ms": 10353834,
+      "vertical_envelope": {
+        "lower_active_frame": 8,
+        "lower_forward_from_start": 0.1466374397277832,
+        "lower_radius": 0.19999998807907104,
+        "lower_shape_index": 2,
+        "lower_y_from_start": 0.25058987736701965,
+        "lower_z_from_start": 0.0,
+        "upper_active_frame": 8,
+        "upper_forward_from_start": 0.8778033256530762,
+        "upper_radius": 0.22999998927116394,
+        "upper_shape_index": 1,
+        "upper_y_from_start": 1.4805823266506195,
+        "upper_z_from_start": 0.0,
+        "version": 1
+      },
+      "vertical_geometry_source": "full_active_envelope"
     },
     "6:258": {
       "advance_at_tip": 0.818359375,
@@ -27837,6 +28179,7 @@
         "pips": 0
       },
       "char_id": 6,
+      "display_mode": "ground_ruler",
       "last_sample": {
         "active_root": [
           3.5590150356292725,
@@ -27853,6 +28196,7 @@
         "tip_center_from_active_root": 0.9566342830657959
       },
       "move_id": 258,
+      "move_kind": "ground_normal",
       "move_name": "5C",
       "profile_schema": 5,
       "reach_from_start": 2.025206059217453,
@@ -27903,7 +28247,7 @@
       "updated_ms": 860532
     },
     "6:260": {
-      "advance_at_tip": 0.373291015625,
+      "advance_at_tip": -0.18049860000610352,
       "anchor": "fighter_root",
       "calibration": {
         "false_negative_hits": 0,
@@ -27912,6 +28256,144 @@
         "pips": 0
       },
       "char_id": 6,
+      "contact_audit": {
+        "confirmed_events": 2,
+        "last_mismatch": false,
+        "last_signal": "damage",
+        "last_update_ms": 10353981,
+        "latest": {
+          "action_frame": 9,
+          "hitbox_index": 0,
+          "hurtbox_index": 8,
+          "predicted_touch": true,
+          "samples": 1,
+          "signal": "damage",
+          "surface_gap": 0.0,
+          "target_char_id": 20,
+          "truth": false,
+          "updated_ms": 10353981
+        },
+        "ruler_mismatches": 0,
+        "truth_events": 2,
+        "unresolved_events": 0,
+        "version": 2,
+        "witnesses": [
+          {
+            "action_frame": 9,
+            "confidence": "geometry_overlap",
+            "hitbox_index": 0,
+            "hurtbox_index": 8,
+            "last_seen_ms": 10353981,
+            "local_x": 0.9494967460632324,
+            "local_y": 0.44923537969589233,
+            "local_z": 0.0,
+            "mismatch_count": 0,
+            "overlap": 0.38915924229859156,
+            "predicted_touch_last": true,
+            "radius": 0.22999998927116394,
+            "samples": 1,
+            "signal": "damage",
+            "surface_gap": 0.0,
+            "target_char_id": 20,
+            "truth": false
+          },
+          {
+            "action_frame": 9,
+            "confidence": "geometry_overlap",
+            "hitbox_index": 0,
+            "hurtbox_index": 8,
+            "last_seen_ms": 10352468,
+            "local_x": 1.034855842590332,
+            "local_y": 0.44923537969589233,
+            "local_z": 0.0,
+            "mismatch_count": 0,
+            "overlap": 0.4024405216714971,
+            "predicted_touch_last": true,
+            "radius": 0.22999998927116394,
+            "samples": 1,
+            "signal": "damage",
+            "surface_gap": 0.0,
+            "target_char_id": 20,
+            "truth": false
+          }
+        ]
+      },
+      "display_mode": "ground_ruler",
+      "dynamic_sweep": {
+        "frame_count": 2,
+        "frames": [
+          {
+            "frame": 9,
+            "root": [
+              -0.18049860000610352,
+              0.0,
+              0.0
+            ],
+            "shapes": [
+              [
+                0.9887213706970215,
+                0.44923537969589233,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                0.5485520362854004,
+                0.33252182602882385,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                0.6682982444763184,
+                0.1589692234992981,
+                0.0,
+                0.19999998807907104
+              ]
+            ]
+          },
+          {
+            "frame": 11,
+            "root": [
+              -0.39604806900024414,
+              0.0,
+              0.0
+            ],
+            "shapes": [
+              [
+                1.0539288520812988,
+                0.4581030011177063,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                0.6109700202941895,
+                0.3485350012779236,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                0.7287392616271973,
+                0.17772023379802704,
+                0.0,
+                0.19999998807907104
+              ]
+            ]
+          }
+        ],
+        "shape_count": 6,
+        "version": 2
+      },
+      "horizontal_envelope": {
+        "active_frame": 9,
+        "advance_at_tip": -0.18049860000610352,
+        "reach_from_start": 1.038222759962082,
+        "shape_index": 0,
+        "tip_center_from_active_root": 0.9887213706970215,
+        "tip_center_from_start": 0.808222770690918,
+        "tip_radius": 0.22999998927116394,
+        "tip_y_from_start": 0.44923537969589233,
+        "tip_z_from_start": 0.0,
+        "version": 1
+      },
       "last_sample": {
         "active_root": [
           0.7948222160339355,
@@ -27928,16 +28410,34 @@
         "tip_center_from_active_root": 0.9804679155349731
       },
       "move_id": 260,
+      "move_kind": "ground_normal",
       "move_name": "2B",
       "profile_schema": 5,
-      "reach_from_start": 1.58464977145195,
+      "reach_from_start": 1.038222759962082,
+      "ruler_geometry_source": "max_horizontal_active_envelope",
       "samples": 17,
-      "tip_center_from_active_root": 0.9813587665557861,
-      "tip_center_from_start": 1.3546497821807861,
+      "tip_center_from_active_root": 0.9887213706970215,
+      "tip_center_from_start": 0.808222770690918,
       "tip_radius": 0.22999998927116394,
-      "tip_y_from_start": 0.45487767457962036,
+      "tip_y_from_start": 0.44923537969589233,
       "tip_z_from_start": 0.0,
-      "updated_ms": 788034
+      "updated_ms": 10353981,
+      "vertical_envelope": {
+        "lower_active_frame": 9,
+        "lower_forward_from_start": 0.48779964447021484,
+        "lower_radius": 0.19999998807907104,
+        "lower_shape_index": 2,
+        "lower_y_from_start": -0.04103076457977295,
+        "lower_z_from_start": 0.0,
+        "upper_active_frame": 11,
+        "upper_forward_from_start": 0.6578807830810547,
+        "upper_radius": 0.22999998927116394,
+        "upper_shape_index": 0,
+        "upper_y_from_start": 0.6881029903888702,
+        "upper_z_from_start": 0.0,
+        "version": 1
+      },
+      "vertical_geometry_source": "full_active_envelope"
     },
     "6:261": {
       "advance_at_tip": 0.0,
@@ -27949,6 +28449,97 @@
         "pips": 0
       },
       "char_id": 6,
+      "contact_audit": {
+        "confirmed_events": 1,
+        "last_mismatch": true,
+        "last_signal": "damage",
+        "last_update_ms": 10354505,
+        "latest": {
+          "action_frame": 14,
+          "hitbox_index": 0,
+          "hurtbox_index": 11,
+          "predicted_touch": false,
+          "samples": 1,
+          "signal": "damage",
+          "surface_gap": 0.0,
+          "target_char_id": 20,
+          "truth": false,
+          "updated_ms": 10354505
+        },
+        "ruler_mismatches": 1,
+        "truth_events": 1,
+        "unresolved_events": 0,
+        "version": 2,
+        "witnesses": [
+          {
+            "action_frame": 14,
+            "confidence": "geometry_overlap",
+            "hitbox_index": 0,
+            "hurtbox_index": 11,
+            "last_seen_ms": 10354505,
+            "local_x": 0.8579216003417969,
+            "local_y": 0.2539432942867279,
+            "local_z": 0.0,
+            "mismatch_count": 1,
+            "overlap": 0.35865817534731836,
+            "predicted_touch_last": false,
+            "radius": 0.25,
+            "samples": 1,
+            "signal": "damage",
+            "surface_gap": 0.0,
+            "target_char_id": 20,
+            "truth": false
+          }
+        ]
+      },
+      "display_mode": "ground_ruler",
+      "dynamic_sweep": {
+        "frame_count": 1,
+        "frames": [
+          {
+            "frame": 16,
+            "root": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shapes": [
+              [
+                0.8871374130249023,
+                1.7343262434005737,
+                0.0,
+                0.25
+              ],
+              [
+                0.5855355262756348,
+                1.2816630601882935,
+                0.0,
+                0.25
+              ],
+              [
+                0.3877115249633789,
+                0.4931219220161438,
+                0.0,
+                0.19999998807907104
+              ]
+            ]
+          }
+        ],
+        "shape_count": 3,
+        "version": 2
+      },
+      "horizontal_envelope": {
+        "active_frame": 16,
+        "advance_at_tip": 0.0,
+        "reach_from_start": 1.1371374130249023,
+        "shape_index": 0,
+        "tip_center_from_active_root": 0.8871374130249023,
+        "tip_center_from_start": 0.8871374130249023,
+        "tip_radius": 0.25,
+        "tip_y_from_start": 1.7343262434005737,
+        "tip_z_from_start": 0.0,
+        "version": 1
+      },
       "last_sample": {
         "active_root": [
           3.135172128677368,
@@ -27965,16 +28556,34 @@
         "tip_center_from_active_root": 0.4072377681732178
       },
       "move_id": 261,
+      "move_kind": "ground_normal",
       "move_name": "2C",
       "profile_schema": 5,
-      "reach_from_start": 1.5422158241271973,
+      "reach_from_start": 1.1371374130249023,
+      "ruler_geometry_source": "max_horizontal_active_envelope",
       "samples": 15,
-      "tip_center_from_active_root": 1.2922158241271973,
-      "tip_center_from_start": 1.2922158241271973,
+      "tip_center_from_active_root": 0.8871374130249023,
+      "tip_center_from_start": 0.8871374130249023,
       "tip_radius": 0.25,
-      "tip_y_from_start": 1.2223222255706787,
+      "tip_y_from_start": 1.7343262434005737,
       "tip_z_from_start": 0.0,
-      "updated_ms": 841583
+      "updated_ms": 10354505,
+      "vertical_envelope": {
+        "lower_active_frame": 16,
+        "lower_forward_from_start": 0.3877115249633789,
+        "lower_radius": 0.19999998807907104,
+        "lower_shape_index": 2,
+        "lower_y_from_start": 0.29312193393707275,
+        "lower_z_from_start": 0.0,
+        "upper_active_frame": 16,
+        "upper_forward_from_start": 0.8871374130249023,
+        "upper_radius": 0.25,
+        "upper_shape_index": 0,
+        "upper_y_from_start": 1.9843262434005737,
+        "upper_z_from_start": 0.0,
+        "version": 1
+      },
+      "vertical_geometry_source": "full_active_envelope"
     },
     "6:264": {
       "advance_at_tip": 0.29879236221313477,
@@ -28015,7 +28624,7 @@
       "updated_ms": 876261
     },
     "6:266": {
-      "advance_at_tip": 0.847000241279602,
+      "advance_at_tip": 0.3357853889465332,
       "anchor": "fighter_root",
       "calibration": {
         "false_negative_hits": 0,
@@ -28024,6 +28633,97 @@
         "pips": 0
       },
       "char_id": 6,
+      "contact_audit": {
+        "confirmed_events": 1,
+        "last_mismatch": true,
+        "last_signal": "damage",
+        "last_update_ms": 10358159,
+        "latest": {
+          "action_frame": 11,
+          "hitbox_index": 2,
+          "hurtbox_index": 3,
+          "predicted_touch": false,
+          "samples": 1,
+          "signal": "damage",
+          "surface_gap": 0.024930235728062966,
+          "target_char_id": 20,
+          "truth": false,
+          "updated_ms": 10358159
+        },
+        "ruler_mismatches": 1,
+        "truth_events": 1,
+        "unresolved_events": 0,
+        "version": 2,
+        "witnesses": [
+          {
+            "action_frame": 11,
+            "confidence": "geometry_overlap",
+            "hitbox_index": 2,
+            "hurtbox_index": 3,
+            "last_seen_ms": 10358159,
+            "local_x": 0.5785493850708008,
+            "local_y": 0.39356517791748047,
+            "local_z": 0.0,
+            "mismatch_count": 1,
+            "overlap": 0.0,
+            "predicted_touch_last": false,
+            "radius": 0.19999998807907104,
+            "samples": 1,
+            "signal": "damage",
+            "surface_gap": 0.024930235728062966,
+            "target_char_id": 20,
+            "truth": false
+          }
+        ]
+      },
+      "display_mode": "ground_ruler",
+      "dynamic_sweep": {
+        "frame_count": 1,
+        "frames": [
+          {
+            "frame": 11,
+            "root": [
+              0.3357853889465332,
+              -0.4541015625,
+              0.0
+            ],
+            "shapes": [
+              [
+                0.6205582618713379,
+                1.238426685333252,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                1.035956859588623,
+                1.4175233840942383,
+                0.0,
+                0.22999998927116394
+              ],
+              [
+                0.24276399612426758,
+                0.8476667404174805,
+                0.0,
+                0.19999998807907104
+              ]
+            ]
+          }
+        ],
+        "shape_count": 3,
+        "version": 2
+      },
+      "horizontal_envelope": {
+        "active_frame": 11,
+        "advance_at_tip": 0.3357853889465332,
+        "reach_from_start": 1.6017422378063202,
+        "shape_index": 1,
+        "tip_center_from_active_root": 1.035956859588623,
+        "tip_center_from_start": 1.3717422485351562,
+        "tip_radius": 0.22999998927116394,
+        "tip_y_from_start": 0.9634218215942383,
+        "tip_z_from_start": 0.0,
+        "version": 1
+      },
       "last_sample": {
         "active_root": [
           3.7346115112304688,
@@ -28040,16 +28740,34 @@
         "tip_center_from_active_root": 0.8850445747375488
       },
       "move_id": 266,
+      "move_kind": "air_normal",
       "move_name": "j.B",
       "profile_schema": 5,
-      "reach_from_start": 1.87643913179636,
+      "reach_from_start": 1.6017422378063202,
+      "ruler_geometry_source": "max_horizontal_active_envelope",
       "samples": 7,
-      "tip_center_from_active_root": 0.799438901245594,
-      "tip_center_from_start": 1.646439142525196,
+      "tip_center_from_active_root": 1.035956859588623,
+      "tip_center_from_start": 1.3717422485351562,
       "tip_radius": 0.22999998927116394,
-      "tip_y_from_start": 0.8231158256530762,
+      "tip_y_from_start": 0.9634218215942383,
       "tip_z_from_start": 0.0,
-      "updated_ms": 858356
+      "updated_ms": 10358305,
+      "vertical_envelope": {
+        "lower_active_frame": 11,
+        "lower_forward_from_start": 0.5785493850708008,
+        "lower_radius": 0.19999998807907104,
+        "lower_shape_index": 2,
+        "lower_y_from_start": 0.19356518983840942,
+        "lower_z_from_start": 0.0,
+        "upper_active_frame": 11,
+        "upper_forward_from_start": 1.3717422485351562,
+        "upper_radius": 0.22999998927116394,
+        "upper_shape_index": 1,
+        "upper_y_from_start": 1.1934218108654022,
+        "upper_z_from_start": 0.0,
+        "version": 1
+      },
+      "vertical_geometry_source": "full_active_envelope"
     },
     "6:267": {
       "advance_at_tip": 1.805025339126587,

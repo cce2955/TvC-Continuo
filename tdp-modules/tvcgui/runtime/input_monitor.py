@@ -281,6 +281,37 @@ def read_overlay_input_packet(
     }
 
 
+
+def read_realtime_action_edge(fighter_base: int) -> dict[str, int]:
+    """Read the native action ID + action frame in one process-memory read.
+
+    Move history must not miss a one-frame cancel state because three separate
+    ReadProcessMemory calls and a heavy listener happened to straddle it.  The
+    two fields we need are only 0x10 bytes apart, so read the 0x14-byte window
+    once and decode both values from that same snapshot.  Character identity is
+    supplied by the regular realtime packet cache when an edge is emitted.
+    """
+    base = int(fighter_base or 0) & 0xFFFFFFFF
+    if not addr_in_ram(base):
+        return {"base": 0, "char_id": 0, "action_id": 0, "action_frame": 0}
+    span = (ACTION_OFF - ACTION_FRAME_OFF) + 4
+    blob = rbytes(base + ACTION_FRAME_OFF, span)
+    if not blob or len(blob) < span:
+        return {"base": base, "char_id": 0, "action_id": 0, "action_frame": 0}
+    action_frame_raw = struct.unpack_from(">I", blob, 0)[0]
+    action_id = struct.unpack_from(">I", blob, ACTION_OFF - ACTION_FRAME_OFF)[0] & 0x7FFF
+    try:
+        action_frame_float = struct.unpack(">f", struct.pack(">I", action_frame_raw & 0xFFFFFFFF))[0]
+        action_frame = int(action_frame_float) if 0.0 <= action_frame_float < 100000.0 else 0
+    except Exception:
+        action_frame = 0
+    return {
+        "base": base,
+        "char_id": 0,
+        "action_id": action_id,
+        "action_frame": action_frame,
+    }
+
 def direction_name(direction_bits: int, *, unrestricted_zero: bool = False) -> str:
     direction = int(direction_bits) & DIRECTION_MASK
     if direction == 0 and unrestricted_zero:

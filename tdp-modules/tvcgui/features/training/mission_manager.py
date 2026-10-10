@@ -29,6 +29,13 @@ from typing import Any
 
 from tvcgui.platform.dolphin import wd8
 from tvcgui.runtime import input_monitor
+from tvcgui.runtime.mission_reaction_policy import (
+    MISSION_CROUCH_REACTION_STATES,
+    MISSION_REACTION_STATES,
+    MISSION_MEGACRASH_STATES,
+    MISSION_COMBO_KEEPALIVE_STATES,
+    MISSION_BLOCKSTUN_STATES,
+)
 from tvcgui.runtime.mission_events import (
     EVENT_ACTION,
     EVENT_COMBO_BEGIN,
@@ -71,37 +78,13 @@ MISSION_COMMAND_POLL_INTERVAL = 0.10
 # Sets / constants (same values as in the old main)
 # ---------------------------------------------------------------------------
 
-# Verified crouch-hit reaction state IDs. They still help on frames where the
-# reaction animation is visible, while the global counter remains the long-lived
-# combo authority. 67 is confirmed crouching hitstun (Hit Low) and must be
-# treated as valid hitstun rather than a reset/neutral state.
-MISSION_CROUCH_REACTION_STATES = {51, 67}
+# Mission reaction/keep-alive IDs live in mission_reaction_policy.py.  The
+# manager, realtime sampler, and V2 evaluator must all share that one table.
 
-# Verified global in-game combo counter. It rises for every confirmed hit and
-# returns to 0 when that combo ends, including crouching, airborne, relaunch,
-# and character-specific reaction animations. Treat this as the sustained
-# combo-liveness authority; state IDs and HP drops are only confirmation aids.
+# Verified global in-game combo counter. It remains telemetry/evidence only;
+# native mission reaction state owns reset continuity.
 MISSION_GLOBAL_COMBO_COUNTER_ADDR = 0x809BDDB3
 
-MISSION_REACTION_STATES = {
-    # 448 is Megacrash/burst. Mission routes classify the forced burst as a
-    # defender reaction so the next counter step remains valid.
-    48, 49, 50, 52, 53, 60, 61, 62, 64, 65, 66, 73, 74, 75, 76, 79, 80,
-    81, 82, 83, 88, 89, 90, 91, 92, 94, 95, 96, 97, 98, 101, 102, 105,
-    106, 142, 448, 449,
-    4608, 4609, 4610, 4611, 4613, 4614, 4615, 4616, 4617, 4618, 4619,
-    4620, 4621, 4622, 4623, 4625,
-    4562, 4565, 4568, 4571, 4573, 4631,
-} | MISSION_CROUCH_REACTION_STATES
-MISSION_MEGACRASH_STATES = {448}
-
-# Mission-only combo keep-alive. Do not add Megacrash to the normal
-# trainer/victim reaction states, because that can make both point chars
-# eligible to burst. For missions, Megacrash only means the scripted route
-# should not reset while the forced burst/counter interaction is happening.
-MISSION_COMBO_KEEPALIVE_STATES = set(MISSION_REACTION_STATES) | set(MISSION_MEGACRASH_STATES)
-
-MISSION_BLOCKSTUN_STATES = {48, 49, 50, 51, 52, 53}
 MISSION_IGNORE_LABELS = {"", "idle", "crouched", "crouching"}
 MISSION_ASSIST_OFF_STATES = {420, 424, 425, 426, 427, 428, 430, 431, 432, 433, 0x01A1, 0x01A8, 0x01AE}
 MISSION_AIRBORNE_LABEL_TOKENS = (
@@ -515,8 +498,8 @@ class MissionManager:
         # Realtime mission evaluation must not wait for the main GUI frame. The
         # sampler already produces immutable events off-thread, so this worker
         # only drains the in-memory ring and advances MissionRuntimeV2. It does
-        # no Dolphin reads and no scanner work. Progress edges are published
-        # directly to the mission overlay file from this lane.
+        # no Dolphin reads, scanner work, JSON serialization, or disk I/O.
+        # Changed results are handed to the dedicated overlay writer thread.
         self._mission_realtime_lock = threading.RLock()
         self._mission_realtime_context: dict[str, Any] = {}
         self._mission_realtime_context_generation: int = 0
@@ -577,12 +560,29 @@ class MissionManager:
                 startup = _int_field("active_start", "startup")
                 active_end = _int_field("active_end")
                 hitstun = _int_field("hitstun")
+                recovery = _int_field("runtime_observed_recovery", "recovery")
+                animation_total = _int_field("animation_total_frames", "total_animation_frames")
                 active = max(
                     1,
                     active_end - startup + 1
                     if startup > 0 and active_end >= startup
                     else MISSION_PREDICTION_FALLBACK_ACTIVE,
                 )
+
+                def _boolish(value) -> bool:
+                    if isinstance(value, bool):
+                        return value
+                    if isinstance(value, (int, float)):
+                        return value != 0
+                    text = str(value or "").strip().lower()
+                    if text in {"", "0", "false", "no", "off", "none", "null"}:
+                        return False
+                    if text in {"1", "true", "yes", "on"}:
+                        return True
+                    # Non-empty structured/window text means an authored JC
+                    # window exists (for example "6-12").
+                    return bool(text)
+
                 jump_cancel_fields = (
                     "jump_cancel",
                     "jump_cancelable",
@@ -593,16 +593,26 @@ class MissionManager:
                     field in move and move.get(field) not in (None, "")
                     for field in jump_cancel_fields
                 )
-                jump_cancel = bool(
-                    move.get("jump_cancel")
-                    or move.get("jump_cancelable")
-                    or move.get("jump_cancellable")
-                    or move.get("jump_cancel_window")
-                )
+                jump_cancel = any(_boolish(move.get(field)) for field in jump_cancel_fields)
+
+                # Pending hit confirmation must have a deterministic wall-clock
+                # expiry. Prefer the captured move duration, but retain enough
+                # padding for hitstop and cross-slot sampler ordering. This is a
+                # whiff failsafe, not the normal combo-reset clock.
+                if animation_total > 0:
+                    mission_timeout_frames = animation_total + 18
+                elif recovery > 0:
+                    mission_timeout_frames = max(active_end, startup) + recovery + 18
+                else:
+                    mission_timeout_frames = max(45, max(active_end, startup) + 24)
+                mission_timeout_frames = max(30, min(240, mission_timeout_frames))
+
                 candidate = {
                     "startup": startup or MISSION_PREDICTION_FALLBACK_STARTUP,
                     "active": active,
                     "hitstun": hitstun,
+                    "recovery": recovery,
+                    "mission_timeout_frames": mission_timeout_frames,
                     "jump_cancel_known": jump_cancel_known,
                     "jump_cancel": jump_cancel,
                 }
@@ -895,11 +905,20 @@ class MissionManager:
         key = tuple(context.get("key") or ())
         steps = list(context.get("steps") or [])
         total_steps = len(steps) if steps else 1
-        completed = total_steps if result.cleared else max(0, int(result.progress_index))
+        confirmed = total_steps if result.cleared else max(0, int(result.progress_index))
+        ready_progress = confirmed
+        if not result.cleared and result.goal_progress_type is None:
+            ready_progress = max(confirmed, int(result.ready_progress_index or 0))
+        completed = max(0, min(total_steps, ready_progress))
+        predicted = max(0, completed - confirmed)
+        prediction_active = bool(predicted and result.prediction_active)
         current_idx = max(0, min(total_steps - 1, int(result.progress_index))) if total_steps else 0
         signature = (
             key,
             completed,
+            confirmed,
+            predicted,
+            prediction_active,
             current_idx,
             bool(result.cleared),
             int(result.attempt_id),
@@ -930,9 +949,9 @@ class MissionManager:
 
         packet.update({
             "completed_step_count": completed,
-            "confirmed_step_count": completed,
-            "predicted_step_count": 0,
-            "prediction_active": False,
+            "confirmed_step_count": confirmed,
+            "predicted_step_count": predicted,
+            "prediction_active": prediction_active,
             "current_step_index": current_idx,
             "current_step_label": result.current_step_label,
             "mission_event_cursor": int(result.event_cursor),
@@ -954,7 +973,11 @@ class MissionManager:
         })
         publish_seq = self._allocate_overlay_publish_seq()
         packet["__publish_seq"] = publish_seq
-        self._write_overlay_payload_file(packet)
+        # Never perform JSON serialization or filesystem I/O on the realtime
+        # evaluator. A slow antivirus scan, cloud-sync hook, or filesystem flush
+        # must be incapable of delaying the next mission input. The writer is
+        # latest-only, which is exactly what the 60 Hz renderer needs.
+        self._queue_overlay_payload(packet)
 
     def _mission_realtime_loop(self) -> None:
         """Continuously consume Mission V2 events independently of GUI cadence."""
@@ -998,11 +1021,18 @@ class MissionManager:
 
             newest = max(cursor, int(newest or 0))
             if not events and newest <= cursor:
+                # Deadlines must continue to advance while the game is quiet.
+                # Previously a scheduled combo reset only expired when another
+                # input/action event arrived, so the *next* button press could
+                # become the thing that finally reset the route.
                 with self._mission_realtime_lock:
-                    idle_result = self._mission_realtime_result
-                    idle_key = self._mission_realtime_result_key
-                if idle_result is not None and idle_key == tuple(context.get("key") or ()):
-                    self._publish_mission_realtime_result(context, idle_result)
+                    idle_result = self._mission_runtime_v2.tick(
+                        now_ns=time.monotonic_ns(),
+                        newest_sequence=newest,
+                    )
+                    self._mission_realtime_result = idle_result
+                    self._mission_realtime_result_key = tuple(context.get("key") or ())
+                self._publish_mission_realtime_result(context, idle_result)
                 self._mission_realtime_wake.wait(0.0015)
                 self._mission_realtime_wake.clear()
                 continue
@@ -1019,8 +1049,24 @@ class MissionManager:
                     (int(char_id_hint or 0), int(action_id or 0) & 0x7FFF)
                 )
                 if not isinstance(info, dict) or not info.get("jump_cancel_known"):
+                    # Native accepted jump remains authoritative when the frame
+                    # profile has no JC metadata for this exact action.
                     return True
                 return bool(info.get("jump_cancel"))
+
+            def _action_timeout_ns(action_id: int) -> int:
+                info = self._mission_timing_by_action.get(
+                    (int(char_id_hint or 0), int(action_id or 0) & 0x7FFF)
+                )
+                if not isinstance(info, dict):
+                    return 0
+                try:
+                    frames = max(0, int(info.get("mission_timeout_frames", 0) or 0))
+                except Exception:
+                    frames = 0
+                if frames <= 0:
+                    return 0
+                return int(frames * (1_000_000_000 / 60.0))
 
             with self._mission_realtime_lock:
                 result = self._mission_runtime_v2.consume(
@@ -1029,6 +1075,7 @@ class MissionManager:
                     label_matcher=self._mission_label_matches,
                     action_label_resolver=_resolve_action,
                     jump_cancel_checker=_jump_cancel_allowed,
+                    action_timeout_resolver=_action_timeout_ns,
                     newest_sequence=newest,
                 )
                 self._mission_realtime_result = result
@@ -1291,11 +1338,10 @@ class MissionManager:
             self._overlay_write_condition.notify()
 
     def _write_overlay_payload_file(self, payload: dict) -> None:
-        """Write one mission payload without allowing an older async state to win.
+        """Write one queued mission payload without allowing stale state to win.
 
-        Normal unchanged frames may still use the latest-only background writer,
-        but progress edges call this synchronously. The private publish sequence
-        is not serialized into the public mission payload.
+        This method runs only on the overlay writer thread. The private publish
+        sequence is not serialized into the public mission payload.
         """
         packet = dict(payload or {})
         publish_seq = int(packet.pop("__publish_seq", 0) or 0)
@@ -1384,26 +1430,14 @@ class MissionManager:
         self._sync_debug_overrides(payload)
         self._last_overlay_payload = dict(payload or {})
 
-        progress_signature = (
-            bool(payload.get("active")),
-            str(payload.get("active_mission_id") or ""),
-            int(payload.get("completed_step_count", 0) or 0),
-            int(payload.get("current_step_index", 0) or 0),
-            bool(payload.get("just_cleared", False)),
-            int(payload.get("clear_seq", 0) or 0),
-        )
-        # Progress edges are latency-sensitive. Publish them synchronously so a
-        # busy latest-only writer cannot collapse hit 1, hit 2, hit 3 into one
-        # late catch-up. Unchanged frames still use the background writer.
-        progress_changed = progress_signature != self._last_overlay_progress_signature
-        self._last_overlay_progress_signature = progress_signature
+        # Mission evaluation is lossless; rendering only needs the newest state.
+        # Never block the GUI or realtime evaluator on JSON/disk I/O. The writer
+        # thread coalesces superseded payloads while publish sequence + event
+        # cursor guards prevent a stale GUI frame from rolling progress backward.
         self._last_overlay_write_time = float(getattr(self, "_now", 0.0) or time.time())
         publish_payload = dict(payload or {})
         publish_payload["__publish_seq"] = self._allocate_overlay_publish_seq()
-        if progress_changed or force:
-            self._write_overlay_payload_file(publish_payload)
-        else:
-            self._queue_overlay_payload(publish_payload)
+        self._queue_overlay_payload(publish_payload)
 
 
     def write_mode_state(self, *, force: bool = False) -> None:
@@ -4579,16 +4613,16 @@ class MissionManager:
                 "mission_last_restart_reason": result.last_restart_reason,
                 "mission_event_cursor": result.event_cursor,
             })
-            self._runtime = self._fresh_runtime(
-                slot=slot,
-                mission_id=mission_id,
-                clear_seq=next_seq,
-                celebrate_token=next_token,
-                celebrate_pending=True,
-                celebrate_acked_token=0,
-            )
-            with self._mission_realtime_lock:
-                self._mission_runtime_v2.rearm(result.event_cursor)
+            # Keep the runtime in CLEAR until the defender actually recovers.
+            # Rearming here made the trial visually reset on the final hit and
+            # threw away the continuity state needed to observe knockdown ->
+            # wakeup/Idle.  The realtime runtime now rearms itself only from the
+            # defender recovery boundary (or grace expiry).
+            self._runtime["clear_seq"] = next_seq
+            self._runtime["celebrate_token"] = next_token
+            self._runtime["celebrate_pending"] = True
+            self._runtime["celebrate_acked_token"] = 0
+            self._runtime["v2_clear_latched_attempt"] = int(result.attempt_id)
             return cp
 
         total_steps = len(steps) if steps else 1
@@ -4601,17 +4635,56 @@ class MissionManager:
                     final_label = str(final_step.get("display") or "").strip() or " / ".join(self._step_labels(final_step))
                 else:
                     final_label = " / ".join(self._step_labels(final_step))
+
+            # Celebrate/persist exactly once, but hold the completed route on
+            # screen while the defender is still in hitstun/knockdown.
+            latched_attempt = int(self._runtime.get("v2_clear_latched_attempt", 0) or 0)
+            if latched_attempt == int(result.attempt_id):
+                payload.update({
+                    "just_cleared": False,
+                    "clear_seq": int(self._runtime.get("clear_seq", 0) or 0),
+                    "celebrate_pending": bool(self._runtime.get("celebrate_pending", False)),
+                    "celebrate_token": int(self._runtime.get("celebrate_token", 0) or 0),
+                    "completed_step_count": total_steps,
+                    "confirmed_step_count": total_steps,
+                    "predicted_step_count": 0,
+                    "prediction_active": False,
+                    "current_step_index": final_idx,
+                    "current_step_label": final_label,
+                    "mission_runtime_version": 2,
+                    "mission_attempt_id": int(result.attempt_id),
+                    "mission_attempt_phase": str(result.phase),
+                    "mission_event_floor": int(result.event_floor),
+                    "mission_restart_count": int(result.restart_count),
+                    "mission_last_restart_reason": str(result.last_restart_reason),
+                    "mission_event_cursor": int(result.event_cursor),
+                })
+                return payload
             return _clear_v2(total_steps, final_idx, final_label)
+
+        # Recovery starts a new attempt. Drop the old clear latch only after the
+        # realtime runtime has actually crossed that defender boundary.
+        if int(self._runtime.get("v2_clear_latched_attempt", 0) or 0):
+            if int(self._runtime.get("v2_clear_latched_attempt", 0) or 0) != int(result.attempt_id):
+                self._runtime.pop("v2_clear_latched_attempt", None)
+
+        confirmed = max(0, int(result.progress_index))
+        ready_progress = confirmed
+        if result.goal_progress_type is None:
+            ready_progress = max(confirmed, int(result.ready_progress_index or 0))
+        completed = max(0, min(total_steps, ready_progress))
+        predicted = max(0, completed - confirmed)
+        prediction_active = bool(predicted and result.prediction_active)
 
         payload.update({
             "just_cleared": False,
             "clear_seq": int(self._runtime.get("clear_seq", 0) or 0),
             "celebrate_pending": bool(self._runtime.get("celebrate_pending", False)),
             "celebrate_token": int(self._runtime.get("celebrate_token", 0) or 0),
-            "completed_step_count": int(result.progress_index),
-            "confirmed_step_count": int(result.progress_index),
-            "predicted_step_count": 0,
-            "prediction_active": False,
+            "completed_step_count": completed,
+            "confirmed_step_count": confirmed,
+            "predicted_step_count": predicted,
+            "prediction_active": prediction_active,
             "current_step_index": int(result.progress_index),
             "current_step_label": result.current_step_label,
             "mission_event_cursor": int(result.event_cursor),

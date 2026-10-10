@@ -504,6 +504,47 @@ def _build_property_phases(commands: list[dict]) -> list[dict]:
     return phases
 
 
+
+def parse_attack_definition_blob(blob: bytes, move_root: int, *, scan_size: int | None = None) -> dict:
+    """Decode Property A/B phases from an already-read action-script blob.
+
+    This is the zero-I/O form used by the static frame-data scanner. It keeps
+    profile construction from rereading Dolphin memory solely to expose the
+    native Property A/B mutation chain.
+    """
+    try:
+        root = int(move_root or 0)
+    except Exception:
+        root = 0
+    data = bytes(blob or b"")
+    size = int(scan_size if scan_size is not None else len(data))
+    commands = _script_property_commands(data, root)
+    phases = _build_property_phases(commands)
+    if not phases:
+        return {
+            "status": "NO_PROPERTY_COMMAND",
+            "move_root": root,
+            "scan_size": size,
+            "command_count": len(commands),
+            "phase_count": 0,
+            "phases": [],
+            "operations": commands,
+        }
+    first = phases[0]
+    return {
+        "status": "OK",
+        "move_root": root,
+        "scan_size": size,
+        "command_count": len(commands),
+        "property_a": int(first["property_a"]) & 0xFF,
+        "property_b": int(first["property_b"]) & 0xFFFFFFFF,
+        "property_a_addr": int(first["property_a_addr"]),
+        "property_b_addr": int(first["property_b_addr"]),
+        "phase_count": len(phases),
+        "phases": phases,
+        "operations": commands,
+    }
+
 def resolve_live_attack_definition(
     fighter_base_abs: int,
     action_id: int,
@@ -576,38 +617,14 @@ def resolve_live_attack_definition(
         else:
             scan_size = _action_span(move_root, sorted_roots)
             blob = _read_bytes(block_reader, move_root, scan_size)
-            commands = _script_property_commands(blob, move_root)
-            phases = _build_property_phases(commands)
-            if not phases:
-                result = {
-                    "status": "NO_PROPERTY_COMMAND",
-                    "fighter_base": base,
-                    "action_id": action,
-                    "chr_tbl": root,
-                    "table_generation": table_generation,
-                    "move_root": move_root,
-                    "scan_size": scan_size,
-                    "command_count": len(commands),
-                }
-            else:
-                first = phases[0]
-                result = {
-                    "status": "OK",
-                    "fighter_base": base,
-                    "action_id": action,
-                    "chr_tbl": root,
-                    "table_generation": table_generation,
-                    "move_root": move_root,
-                    "scan_size": scan_size,
-                    "command_count": len(commands),
-                    "property_a": int(first["property_a"]) & 0xFF,
-                    "property_b": int(first["property_b"]) & 0xFFFFFFFF,
-                    "property_a_addr": int(first["property_a_addr"]),
-                    "property_b_addr": int(first["property_b_addr"]),
-                    "phase_count": len(phases),
-                    "phases": phases,
-                    "operations": commands,
-                }
+            parsed = parse_attack_definition_blob(blob, move_root, scan_size=scan_size)
+            result = dict(parsed)
+            result.update({
+                "fighter_base": base,
+                "action_id": action,
+                "chr_tbl": root,
+                "table_generation": table_generation,
+            })
 
     with _LOCK:
         if result.get("status") == "OK":
@@ -653,6 +670,7 @@ __all__ = [
     "SCRIPT_OP_OR",
     "SCRIPT_OP_CLEAR",
     "collect_live_projectile_properties",
+    "parse_attack_definition_blob",
     "resolve_live_attack_definition",
     "resolve_live_attack_property",
     "clear_attack_property_runtime_cache",

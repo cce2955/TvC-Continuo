@@ -1,0 +1,691 @@
+﻿import ctypes
+import json
+import math
+import os
+import struct
+import subprocess
+import sys
+import threading
+import time
+from ctypes import wintypes
+from pathlib import Path
+
+from tvcgui.core.constants import MEM1_LO, MEM1_HI, MEM2_LO, MEM2_HI
+from tvcgui.core.paths import user_data_path
+
+
+# ============================================================
+# MODERNGEKKO CONFIG
+# ============================================================
+
+_DEFAULT_MG_ROOT = Path(
+    r"C:\Users\cce29\OneDrive\Desktop\new recomp\MG"
+)
+
+MG_ROOT = Path(
+    os.environ.get("TVC_MODERNGEKKO_ROOT", str(_DEFAULT_MG_ROOT))
+)
+
+AUTOMATION_ROOT = Path(
+    os.environ.get(
+        "TVC_MODERNGEKKO_AUTOMATION",
+        str(MG_ROOT / "tvc-automation"),
+    )
+)
+
+STATUS_PATH = AUTOMATION_ROOT / "status.txt"
+PROCESS_EXE = "moderngekko-run.exe"
+
+
+# ============================================================
+# WRITE QUARANTINE
+# ============================================================
+
+_WRITE_QUARANTINE_LOCK = threading.RLock()
+_WRITE_QUARANTINE_ACTIVE = False
+_WRITE_QUARANTINE_REASON = ""
+_WRITE_QUARANTINE_TRACE_PATH = user_data_path(
+    "runtime", "chrsel_write_trace.jsonl"
+)
+_WRITE_QUARANTINE_LAST = {}
+_WRITE_QUARANTINE_TRACE_INTERVAL_SEC = 0.50
+
+
+def set_emulated_write_quarantine(
+    active: bool,
+    *,
+    reason: str = "",
+    trace_path: str | None = None,
+) -> None:
+    global _WRITE_QUARANTINE_ACTIVE
+    global _WRITE_QUARANTINE_REASON
+    global _WRITE_QUARANTINE_TRACE_PATH
+
+    with _WRITE_QUARANTINE_LOCK:
+        _WRITE_QUARANTINE_ACTIVE = bool(active)
+        _WRITE_QUARANTINE_REASON = str(reason or "")
+        if trace_path:
+            _WRITE_QUARANTINE_TRACE_PATH = str(trace_path)
+
+
+def get_emulated_write_quarantine_state() -> dict:
+    with _WRITE_QUARANTINE_LOCK:
+        return {
+            "active": bool(_WRITE_QUARANTINE_ACTIVE),
+            "reason": str(_WRITE_QUARANTINE_REASON),
+            "trace_path": str(_WRITE_QUARANTINE_TRACE_PATH),
+        }
+
+
+def _quarantine_caller() -> str:
+    try:
+        frame = sys._getframe(2)
+    except Exception:
+        return "unknown"
+
+    for _ in range(10):
+        if frame is None:
+            break
+
+        filename = os.path.basename(str(frame.f_code.co_filename))
+
+        if filename not in {
+            "dolphin.py",
+            "patch_manager.py",
+            "dolphin_io.py",
+            "runtime_patch_manager.py",
+        }:
+            return f"{filename}:{frame.f_code.co_name}"
+
+        frame = frame.f_back
+
+    return "unknown"
+
+
+def _trace_quarantined_write(addr: int, payload: bytes) -> None:
+    now = time.monotonic()
+    caller = _quarantine_caller()
+
+    with _WRITE_QUARANTINE_LOCK:
+        reason = str(_WRITE_QUARANTINE_REASON)
+        path = str(_WRITE_QUARANTINE_TRACE_PATH)
+
+        key = (int(addr), bytes(payload), caller)
+        prior = float(_WRITE_QUARANTINE_LAST.get(key, 0.0) or 0.0)
+
+        if now - prior < _WRITE_QUARANTINE_TRACE_INTERVAL_SEC:
+            return
+
+        _WRITE_QUARANTINE_LAST[key] = now
+
+    record = {
+        "monotonic": round(now, 6),
+        "addr": f"0x{int(addr):08X}",
+        "size": len(payload),
+        "data_hex": bytes(payload).hex(),
+        "caller": caller,
+        "reason": reason,
+    }
+
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "a", encoding="utf-8") as trace_file:
+            trace_file.write(json.dumps(record, sort_keys=True) + "\n")
+    except Exception:
+        pass
+
+
+# ============================================================
+# WINDOWS PROCESS MEMORY
+# ============================================================
+
+_IS_WINDOWS = os.name == "nt"
+
+PROCESS_QUERY_INFORMATION = 0x0400
+PROCESS_VM_READ = 0x0010
+PROCESS_VM_WRITE = 0x0020
+PROCESS_VM_OPERATION = 0x0008
+
+if _IS_WINDOWS:
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+    kernel32.OpenProcess.argtypes = [
+        wintypes.DWORD,
+        wintypes.BOOL,
+        wintypes.DWORD,
+    ]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+
+    kernel32.ReadProcessMemory.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPCVOID,
+        wintypes.LPVOID,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    kernel32.ReadProcessMemory.restype = wintypes.BOOL
+
+    kernel32.WriteProcessMemory.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPVOID,
+        wintypes.LPCVOID,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    kernel32.WriteProcessMemory.restype = wintypes.BOOL
+
+
+# ============================================================
+# CONNECTION STATE
+# ============================================================
+
+_proc_handle = None
+_pid = None
+
+_mem1_host_base = None
+_mem2_host_base = None
+
+_connection_note = "not connected"
+_last_connect_attempt = 0.0
+
+CONNECT_RETRY_SEC = 0.25
+
+
+def _close_process():
+    global _proc_handle, _pid
+    global _mem1_host_base, _mem2_host_base
+    global _connection_note
+
+    if _proc_handle and _IS_WINDOWS:
+        try:
+            kernel32.CloseHandle(_proc_handle)
+        except Exception:
+            pass
+
+    _proc_handle = None
+    _pid = None
+    _mem1_host_base = None
+    _mem2_host_base = None
+    _connection_note = "not connected"
+
+
+def _find_pid_by_name(exe_name: str):
+    if not _IS_WINDOWS:
+        return None
+
+    try:
+        import psutil
+
+        matches = []
+
+        for p in psutil.process_iter(
+            ["pid", "name", "create_time"]
+        ):
+            name = p.info.get("name")
+
+            if name and name.lower() == exe_name.lower():
+                matches.append(
+                    (
+                        float(p.info.get("create_time") or 0.0),
+                        int(p.info["pid"]),
+                    )
+                )
+
+        if matches:
+            matches.sort(reverse=True)
+            return matches[0][1]
+
+    except Exception:
+        pass
+
+    try:
+        out = subprocess.check_output(
+            [
+                "tasklist",
+                "/FI",
+                f"IMAGENAME eq {exe_name}",
+                "/FO",
+                "CSV",
+            ],
+            universal_newlines=True,
+            stderr=subprocess.DEVNULL,
+        )
+
+        lines = [
+            line.strip()
+            for line in out.splitlines()
+            if line.strip()
+        ]
+
+        if len(lines) >= 2:
+            candidates = []
+
+            for line in lines[1:]:
+                cols = [
+                    col.strip().strip('"')
+                    for col in line.split(",")
+                ]
+
+                if (
+                    len(cols) >= 2
+                    and cols[0].lower() == exe_name.lower()
+                ):
+                    candidates.append(int(cols[1]))
+
+            if candidates:
+                return max(candidates)
+
+    except Exception:
+        pass
+
+    return None
+
+
+def _read_status():
+    try:
+        lines = STATUS_PATH.read_text(
+            encoding="utf-8",
+            errors="replace",
+        ).splitlines()
+    except Exception:
+        return {}
+
+    values = {}
+
+    for line in lines:
+        if "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip()
+
+    return values
+
+
+def _parse_host_pointer(value):
+    if not value:
+        return None
+
+    try:
+        return int(str(value), 0)
+    except Exception:
+        return None
+
+
+def _open_process(pid: int):
+    if not _IS_WINDOWS:
+        return None
+
+    access = (
+        PROCESS_QUERY_INFORMATION
+        | PROCESS_VM_READ
+        | PROCESS_VM_WRITE
+        | PROCESS_VM_OPERATION
+    )
+
+    handle = kernel32.OpenProcess(
+        access,
+        False,
+        int(pid),
+    )
+
+    return handle or None
+
+
+def _connect(force=False):
+    global _proc_handle, _pid
+    global _mem1_host_base, _mem2_host_base
+    global _connection_note, _last_connect_attempt
+
+    now = time.monotonic()
+
+    if (
+        not force
+        and _proc_handle
+        and _mem1_host_base is not None
+        and _mem2_host_base is not None
+    ):
+        return True
+
+    if (
+        not force
+        and now - _last_connect_attempt < CONNECT_RETRY_SEC
+    ):
+        return False
+
+    _last_connect_attempt = now
+
+    status = _read_status()
+
+    if status.get("state") not in {"running", "paused"}:
+        _connection_note = "ModernGekko status is not running"
+        return False
+
+    mem1 = _parse_host_pointer(status.get("mem1_host"))
+    mem2 = _parse_host_pointer(status.get("mem2_host"))
+
+    if not mem1 or not mem2:
+        _connection_note = "waiting for MEM1/MEM2 host mappings"
+        return False
+
+    pid = _find_pid_by_name(PROCESS_EXE)
+
+    if pid is None:
+        _connection_note = "moderngekko-run.exe not found"
+        return False
+
+    if _pid != pid or not _proc_handle:
+        _close_process()
+
+        handle = _open_process(pid)
+
+        if not handle:
+            _connection_note = f"OpenProcess failed for pid={pid}"
+            return False
+
+        _proc_handle = handle
+        _pid = int(pid)
+
+    _mem1_host_base = int(mem1)
+    _mem2_host_base = int(mem2)
+
+    _connection_note = (
+        f"ModernGekko pid={_pid} "
+        f"MEM1=0x{_mem1_host_base:X} "
+        f"MEM2=0x{_mem2_host_base:X}"
+    )
+
+    return True
+
+
+def _rpm(host_addr: int, size: int) -> bytes:
+    if not _proc_handle or size <= 0:
+        return b""
+
+    buf = (ctypes.c_ubyte * size)()
+    nread = ctypes.c_size_t(0)
+
+    ok = kernel32.ReadProcessMemory(
+        _proc_handle,
+        ctypes.c_void_p(int(host_addr)),
+        buf,
+        size,
+        ctypes.byref(nread),
+    )
+
+    if not ok or nread.value != size:
+        return b""
+
+    return bytes(buf)
+
+
+def _wpm(host_addr: int, data: bytes) -> bool:
+    if not _proc_handle or not data:
+        return False
+
+    payload = bytes(data)
+    size = len(payload)
+
+    buf = (ctypes.c_ubyte * size).from_buffer_copy(payload)
+    nwritten = ctypes.c_size_t(0)
+
+    ok = kernel32.WriteProcessMemory(
+        _proc_handle,
+        ctypes.c_void_p(int(host_addr)),
+        buf,
+        size,
+        ctypes.byref(nwritten),
+    )
+
+    return bool(ok and nwritten.value == size)
+
+
+def _guest_to_host(addr: int):
+    if _mem1_host_base is None or _mem2_host_base is None:
+        return None
+
+    addr = int(addr)
+
+    if MEM1_LO <= addr < MEM1_HI:
+        return int(_mem1_host_base + (addr - MEM1_LO))
+
+    if MEM2_LO <= addr < MEM2_HI:
+        return int(_mem2_host_base + (addr - MEM2_LO))
+
+    return None
+
+
+# ============================================================
+# COMPATIBILITY API
+# ============================================================
+
+def hook():
+    while True:
+        if _connect(force=True):
+            print(f"[ModernGekko] {_connection_note}")
+            return True
+
+        time.sleep(0.20)
+
+
+def prime_mem2_latch() -> bool:
+    return bool(_connect(force=False))
+
+
+def mem2_latch_info():
+    return {
+        "pid": _pid,
+        "host_base": _mem2_host_base,
+        "host_size": max(0, int(MEM2_HI - MEM2_LO)),
+        "latched": bool(
+            _proc_handle
+            and _mem2_host_base is not None
+        ),
+        "mode": "moderngekko_status",
+        "note": _connection_note,
+        "last_attempt": _last_connect_attempt,
+        "expect_ea": None,
+        "dynamic_slot_ptrs": (),
+        "mem1_host_base": _mem1_host_base,
+        "mem2_host_base": _mem2_host_base,
+        "automation_status": str(STATUS_PATH),
+    }
+
+
+def addr_in_ram(a):
+    if a is None:
+        return False
+
+    try:
+        a = int(a)
+    except Exception:
+        return False
+
+    return (
+        MEM1_LO <= a < MEM1_HI
+        or MEM2_LO <= a < MEM2_HI
+    )
+
+
+def _clamp_read_range(addr, size):
+    try:
+        addr = int(addr)
+        size = int(size)
+    except Exception:
+        return False, 0, 0
+
+    if size <= 0:
+        return False, addr, 0
+
+    if MEM1_LO <= addr < MEM1_HI:
+        hi = min(addr + size, MEM1_HI)
+        return True, addr, hi - addr
+
+    if MEM2_LO <= addr < MEM2_HI:
+        hi = min(addr + size, MEM2_HI)
+        return True, addr, hi - addr
+
+    return False, addr, 0
+
+
+# ============================================================
+# READS
+# ============================================================
+
+def rbytes(addr, size):
+    ok, base, span = _clamp_read_range(addr, size)
+
+    if not ok or span <= 0:
+        return b""
+
+    if not _connect():
+        return b""
+
+    host = _guest_to_host(base)
+
+    if host is None:
+        return b""
+
+    data = _rpm(host, span)
+
+    if data:
+        return data
+
+    # One reconnect attempt handles a restarted ModernGekko process.
+    if _connect(force=True):
+        host = _guest_to_host(base)
+
+        if host is not None:
+            return _rpm(host, span)
+
+    return b""
+
+
+def rd8(addr):
+    if not addr_in_ram(addr):
+        return None
+
+    data = rbytes(addr, 1)
+
+    if len(data) != 1:
+        return None
+
+    return data[0]
+
+
+def rd32(addr):
+    if not addr_in_ram(addr):
+        return None
+
+    data = rbytes(addr, 4)
+
+    if len(data) != 4:
+        return None
+
+    return struct.unpack(">I", data)[0]
+
+
+def rdf32(addr):
+    if not addr_in_ram(addr):
+        return None
+
+    data = rbytes(addr, 4)
+
+    if len(data) != 4:
+        return None
+
+    value = struct.unpack(">f", data)[0]
+
+    if not math.isfinite(value) or abs(value) > 1e8:
+        return None
+
+    return value
+
+
+# ============================================================
+# DATA WRITES
+# ============================================================
+
+def wbytes(addr, data, *, bypass_quarantine: bool = False):
+    if not addr_in_ram(addr):
+        return False
+
+    try:
+        payload = bytes(data)
+    except Exception:
+        return False
+
+    if not payload:
+        return False
+
+    with _WRITE_QUARANTINE_LOCK:
+        quarantined = bool(_WRITE_QUARANTINE_ACTIVE)
+
+    if quarantined and not bypass_quarantine:
+        _trace_quarantined_write(int(addr), payload)
+        return False
+
+    if not _connect():
+        return False
+
+    host = _guest_to_host(int(addr))
+
+    if host is None:
+        return False
+
+    if _wpm(host, payload):
+        return True
+
+    if _connect(force=True):
+        host = _guest_to_host(int(addr))
+
+        if host is not None:
+            return _wpm(host, payload)
+
+    return False
+
+
+def wd8(addr, value, *, bypass_quarantine: bool = False):
+    try:
+        value = int(value) & 0xFF
+    except Exception:
+        return False
+
+    return wbytes(
+        addr,
+        bytes([value]),
+        bypass_quarantine=bypass_quarantine,
+    )
+
+
+def wd32(addr, value, *, bypass_quarantine: bool = False):
+    try:
+        value = int(value) & 0xFFFFFFFF
+    except Exception:
+        return False
+
+    return wbytes(
+        addr,
+        struct.pack(">I", value),
+        bypass_quarantine=bypass_quarantine,
+    )
+
+
+def wdf32(addr, value, *, bypass_quarantine: bool = False):
+    try:
+        value = float(value)
+
+        if not math.isfinite(value):
+            return False
+
+    except Exception:
+        return False
+
+    return wbytes(
+        addr,
+        struct.pack(">f", value),
+        bypass_quarantine=bypass_quarantine,
+    )

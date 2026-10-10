@@ -1,5 +1,5 @@
 {
-  "show_hud": true,
+  "show_hud": false,
   "show_hitboxes": false,
   "show_hurtboxes": false,
   "show_debug": false,
@@ -7,11 +7,11 @@
   "show_combo_card": true,
   "show_damage_badge": true,
   "show_untech_panel": true,
-  "show_damage_inactive": false,
+  "show_damage_inactive": true,
   "show_meter_panel": true,
   "show_red_health_panel": true,
   "show_attack_property_panel": false,
   "show_tag_card": true,
-  "hud_info_set": "CUSTOM",
+  "hud_info_set": "FULL",
   "native_hud_defaults_v": 3
 }

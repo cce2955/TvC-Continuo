@@ -51,6 +51,7 @@ MISSION_OVERLAY_FILE = user_data_path("training", "mission_overlay_data.json")
 MISSION_SELECT_FILE = user_data_path("training", "mission_select_command.json")
 MISSION_CELEBRATE_ACK_FILE = user_data_path("training", "mission_celebrate_ack.json")
 CRASH_LOG_FILE = user_data_path("runtime", "master_overlay_crash.log")
+YAMI_NAME_OVERLAY_FILE = user_data_path("character_select", "yami_name_overlay.json")
 
 def _ensure_parent(path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -616,6 +617,9 @@ class MasterOverlay:
         self._last_mission_mtime = 0.0
         self._last_mission_overlay_mtime = 0
         self.mission_overlay_data: dict = {}
+        self._last_yami_name_mtime_ns: int = 0
+        self.yami_name_overlay_data: dict = {}
+        self._yami_name_font_cache: dict[int, pygame.font.Font] = {}
         self.mission_click_rects: list[tuple[pygame.Rect, Optional[str]]] = []
         self.mission_panel_rect: Optional[pygame.Rect] = None
         self.mission_toggle_rect: Optional[pygame.Rect] = None
@@ -1163,6 +1167,98 @@ class MasterOverlay:
     def clear(self) -> None:
         assert self.screen is not None
         self.screen.fill(COLORKEY)
+
+    def _read_yami_name_overlay_file(self) -> None:
+        try:
+            st = os.stat(YAMI_NAME_OVERLAY_FILE)
+            mtime_ns = int(getattr(st, "st_mtime_ns", int(st.st_mtime * 1_000_000_000)))
+            if mtime_ns == self._last_yami_name_mtime_ns:
+                return
+            with open(YAMI_NAME_OVERLAY_FILE, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict):
+                self.yami_name_overlay_data = data
+                self._last_yami_name_mtime_ns = mtime_ns
+        except FileNotFoundError:
+            self.yami_name_overlay_data = {}
+            self._last_yami_name_mtime_ns = 0
+        except Exception:
+            # Character-select labels are cosmetic. Never let a partial state
+            # file disturb the gameplay overlay.
+            return
+
+    def _yami_name_font(self, px: int) -> pygame.font.Font:
+        size = max(8, int(px))
+        cached = self._yami_name_font_cache.get(size)
+        if cached is not None:
+            return cached
+        try:
+            font = pygame.font.SysFont("Arial Black", size, bold=True)
+        except Exception:
+            try:
+                font = pygame.font.SysFont("impact", size, bold=True)
+            except Exception:
+                font = pygame.font.Font(None, size)
+        self._yami_name_font_cache[size] = font
+        return font
+
+    def _draw_yami_name_plate(self, label: str, base_rect: tuple[float, float, float, float]) -> None:
+        if not label or self.screen is None:
+            return
+        scale = min(self.w / float(BASE_W), self.h / float(BASE_H))
+        if scale <= 0.0:
+            return
+        ox = (self.w - BASE_W * scale) * 0.5
+        oy = (self.h - BASE_H * scale) * 0.5
+        bx, by, bw, bh = base_rect
+        x = int(round(ox + bx * scale))
+        y = int(round(oy + by * scale))
+        w = max(34, int(round(bw * scale)))
+        h = max(12, int(round(bh * scale)))
+
+        # Cover only the stock character-name strip, not the portrait or the
+        # Ryu placeholder icon. A slightly skewed plate matches the native card
+        # well enough to read as part of the menu rather than HUD text.
+        cut = max(2, int(round(8 * scale)))
+        pts = [
+            (x + cut, y),
+            (x + w, y + max(1, cut // 2)),
+            (x + w - cut, y + h),
+            (x, y + h - max(1, cut // 2)),
+        ]
+        pygame.draw.polygon(self.screen, (8, 22, 40), pts)
+        pygame.draw.polygon(self.screen, (180, 205, 225), pts, max(1, int(round(2 * scale))))
+        top_y = y + max(1, int(round(3 * scale)))
+        pygame.draw.line(
+            self.screen,
+            (55, 145, 230),
+            (x + cut + 2, top_y),
+            (x + w - 4, top_y),
+            max(1, int(round(2 * scale))),
+        )
+
+        font = self._yami_name_font(max(10, int(round(27 * scale))))
+        text = font.render(str(label).upper(), True, (245, 248, 252))
+        # Small dark outline/shadow to survive the animated character-select BG.
+        shadow = font.render(str(label).upper(), True, (0, 0, 0))
+        tx = x + (w - text.get_width()) // 2
+        ty = y + (h - text.get_height()) // 2 - max(0, int(round(1 * scale)))
+        self.screen.blit(shadow, (tx + max(1, int(round(scale))), ty + max(1, int(round(scale)))))
+        self.screen.blit(text, (tx, ty))
+
+    def draw_yami_name_overlay(self) -> None:
+        data = self.yami_name_overlay_data
+        if not isinstance(data, dict) or not bool(data.get("active")):
+            return
+        p1 = str(data.get("p1") or "").strip()
+        p2 = str(data.get("p2") or "").strip()
+        # Calibrated against the native 1280x720 Character Select layout. The
+        # master overlay applies the same centered aspect-fit transform used for
+        # the rest of TvCGUI, so windowed/letterboxed Dolphin scales cleanly.
+        if p1:
+            self._draw_yami_name_plate(p1, (198.0, 365.0, 230.0, 48.0))
+        if p2:
+            self._draw_yami_name_plate(p2, (852.0, 365.0, 230.0, 48.0))
 
     def draw_master_debug(self, dt: float) -> None:
         if not self.control.show_debug:
@@ -3373,6 +3469,7 @@ class MasterOverlay:
                 self._read_control_file()
                 self._read_mission_mode_file()
                 self._read_mission_overlay_file()
+                self._read_yami_name_overlay_file()
                 self.handle_events()
 
                 dt = self.clock.tick(TARGET_FPS) / 1000.0
@@ -3398,6 +3495,14 @@ class MasterOverlay:
                 self.update_mission_animations(dt)
                 self.update_celebration(dt)
 
+                # Overlay OFF is the global visual master switch. Keep the
+                # compositor process and live model state running so all user
+                # layer selections return unchanged on Overlay ON, but present
+                # a fully transparent frame without drawing ANY HUD component.
+                if not self.control.show_hud:
+                    self.present()
+                    continue
+
                 try:
                     self.hitbox_renderer.draw(self.screen, self.control)
                 except Exception as exc:
@@ -3414,6 +3519,7 @@ class MasterOverlay:
                     self.hud_renderer = NullHudRenderer()
                     self.hud_renderer.on_resize(self.w, self.h)
 
+                self.draw_yami_name_overlay()
                 self.draw_mission_overlay()
                 self.draw_master_debug(dt)
 

@@ -21,6 +21,7 @@ from tvcgui.features.frame_data.profile_store import (
     default_writable_legacy_file as _store_writable_legacy_file,
 )
 from tvcgui.features.combat.move_filters import is_purged_move_label, filter_purged_moves_for_char
+from tvcgui.features.frame_data.move_families import annotate_move_families
 try:
     from tvcgui.features.training.stun_profiler import apply_runtime_stun_observations
 except Exception:
@@ -39,6 +40,10 @@ try:
 except Exception:
     def apply_animation_metadata(_moves, _char_name, _char_id=None):
         return None
+try:
+    from tvcgui.features.frame_data.attack_property_runtime import parse_attack_definition_blob
+except Exception:
+    parse_attack_definition_blob = None
 
 
 # ============================================================
@@ -373,7 +378,7 @@ SLOT_REGION_PAD = 0x2000
 # file under data/frame_data/frame_data_profiles or set TVC_FD_PROFILE_CACHE=0
 # to force the legacy dynamic path.
 PROFILE_CACHE_VERSION = 9
-PROFILE_SCANNER_BUILD = "fd-profile-v14-protection-kinds"
+PROFILE_SCANNER_BUILD = "fd-profile-v15-air-owner-timing"
 # Kept separate from the global profile format version so existing projectile
 # and super profiles remain intact.  A normal move profile simply refreshes
 # once when this resolver changes.
@@ -381,7 +386,7 @@ STUN_RESOLVER_REVISION = 1
 # Bump whenever the active-frame packet parser changes. Cached rows retain the
 # old block address, so a rescan is required to remove a previously accepted
 # false-positive packet instead of merely refreshing the scalar bytes.
-ACTIVE_RESOLVER_REVISION = 2
+ACTIVE_RESOLVER_REVISION = 3
 PROFILE_CACHE_FILENAME = "frame_data_profiles.json"  # legacy read-only import
 PROFILE_CACHE_DIRNAME = "frame_data_profiles"
 PROFILE_CACHE_ENABLED = str(os.environ.get("TVC_FD_PROFILE_CACHE", "1")).strip().lower() not in {"0", "false", "no", "off"}
@@ -2517,6 +2522,59 @@ def _next_real_boundary_for_move(moves: List[Dict[str, Any]], mv_abs: int) -> in
     return mv_abs + HIT_SEGMENT_SCAN_MAX
 
 
+def _timing_owner_window_for_move(
+    moves: List[Dict[str, Any]],
+    mv: Dict[str, Any],
+) -> Tuple[int, int]:
+    """Return the narrow script window that owns attack timing for ``mv``.
+
+    Air actions are frequently discovered at a nested ANIM_HDR even though the
+    active/damage declaration sits earlier in the surrounding AIR_HDR wrapper.
+    chr_tbl roots can have the same small preamble issue.  The normal scalar
+    matcher is intentionally conservative, so this window is used only as a
+    fallback when the ordinary forward hit-segment pass found nothing.
+    """
+    try:
+        root = int(mv.get("abs") or 0)
+    except Exception:
+        return (0, 0)
+    if root <= 0:
+        return (0, 0)
+
+    start = root
+    end = _next_real_boundary_for_move(moves, root)
+
+    try:
+        air_owner = int(mv.get("air_owner_addr") or 0)
+    except Exception:
+        air_owner = 0
+
+    if str(mv.get("source") or "") == "table":
+        try:
+            owner_start, owner_end = _invuln_owner_window(
+                moves, root, mv_source="table",
+            )
+            # Only air-tagged table actions use this helper. Their canonical
+            # chr_tbl root owns the small preamble too, so include it; this is
+            # where several aerial actions declare their first active packet.
+            if owner_start is not None:
+                start = min(start, int(owner_start))
+            if owner_end is not None and int(owner_end) > start:
+                # chr_tbl is authoritative for a table action. Internal
+                # ANIM_HDR/AIR_HDR phases are children, not move boundaries.
+                end = int(owner_end)
+        except Exception:
+            pass
+    elif air_owner and air_owner <= root and root - air_owner <= LOOKAHEAD_AFTER_HDR + AIR_HDR_LEN + 0x10:
+        # Non-table AIR_HDR rows are identified at a nested ANIM_HDR. Their
+        # surrounding marker is the earliest trustworthy local owner.
+        start = air_owner
+
+    if end <= start:
+        end = start + HIT_SEGMENT_SCAN_MAX
+    return (start, min(end, start + HIT_SEGMENT_SCAN_MAX))
+
+
 def _next_invuln_action_boundary(
     moves: List[Dict[str, Any]],
     mv_abs: int,
@@ -2740,7 +2798,32 @@ def collect_move_anchors(
         low = aid & 0xFF
         return low if low in NORMAL_IDS else None
 
-    def add_mv(kind: str, abs_addr: int, aid: Optional[int], source: str = "unknown") -> None:
+    def _merge_air_owner(abs_addr: int, air_owner_addr: Optional[int]) -> None:
+        if air_owner_addr is None:
+            return
+        try:
+            wanted = int(abs_addr)
+            owner = int(air_owner_addr)
+        except Exception:
+            return
+        for existing in moves:
+            try:
+                if int(existing.get("abs") or 0) == wanted:
+                    current = existing.get("air_owner_addr")
+                    if current is None or int(owner) < int(current):
+                        existing["air_owner_addr"] = owner
+                    return
+            except Exception:
+                continue
+
+    def add_mv(
+        kind: str,
+        abs_addr: int,
+        aid: Optional[int],
+        source: str = "unknown",
+        *,
+        air_owner_addr: Optional[int] = None,
+    ) -> None:
         nkey = normal_key(kind, aid)
 
         # Table rows are the canonical gameplay-action owners.  Several games
@@ -2751,7 +2834,10 @@ def collect_move_anchors(
             if abs_addr in seen_abs:
                 return
             seen_abs.add(abs_addr)
-            moves.append({"kind": kind, "abs": abs_addr, "id": aid, "source": source})
+            row = {"kind": kind, "abs": abs_addr, "id": aid, "source": source}
+            if air_owner_addr is not None:
+                row["air_owner_addr"] = int(air_owner_addr)
+            moves.append(row)
             return
 
         if nkey is not None:
@@ -2767,25 +2853,44 @@ def collect_move_anchors(
                 if new_rank > old_rank or (new_rank == old_rank and abs_addr < old_abs):
                     seen_abs.discard(old_abs)
                     seen_abs.add(abs_addr)
-                    moves[existing_idx] = {
+                    replacement = {
                         "kind": kind,
                         "abs": abs_addr,
                         "id": aid,
                         "source": source,
                     }
+                    inherited_owner = old_mv.get("air_owner_addr")
+                    chosen_owner = air_owner_addr if air_owner_addr is not None else inherited_owner
+                    if chosen_owner is not None:
+                        replacement["air_owner_addr"] = int(chosen_owner)
+                    moves[existing_idx] = replacement
+                elif air_owner_addr is not None:
+                    try:
+                        if abs(int(old_abs) - int(abs_addr)) <= LOOKAHEAD_AFTER_HDR:
+                            _merge_air_owner(old_abs, air_owner_addr)
+                    except Exception:
+                        pass
                 return
 
             if abs_addr in seen_abs:
+                _merge_air_owner(abs_addr, air_owner_addr)
                 return
             seen_abs.add(abs_addr)
             seen_normal_key[nkey] = len(moves)
-            moves.append({"kind": kind, "abs": abs_addr, "id": aid, "source": source})
+            row = {"kind": kind, "abs": abs_addr, "id": aid, "source": source}
+            if air_owner_addr is not None:
+                row["air_owner_addr"] = int(air_owner_addr)
+            moves.append(row)
             return
 
         if abs_addr in seen_abs:
+            _merge_air_owner(abs_addr, air_owner_addr)
             return
         seen_abs.add(abs_addr)
-        moves.append({"kind": kind, "abs": abs_addr, "id": aid, "source": source})
+        row = {"kind": kind, "abs": abs_addr, "id": aid, "source": source}
+        if air_owner_addr is not None:
+            row["air_owner_addr"] = int(air_owner_addr)
+        moves.append(row)
 
     # chr_tbl index is the action ID.  Do not infer a table row's identity from
     # the first nested animation command: special wrappers commonly contain a
@@ -2816,14 +2921,48 @@ def collect_move_anchors(
             continue
 
         if match_bytes(buf, i, AIR_HDR):
+            air_owner_abs = base_abs + i
+            # If chr_tbl points at the wrapper or anywhere inside its short
+            # AIR_HDR lookahead, preserve that canonical action ID while
+            # teaching the row where the air action actually begins.
+            _merge_air_owner(air_owner_abs, air_owner_abs)
             s0 = i + AIR_HDR_LEN
             s1 = min(s0 + LOOKAHEAD_AFTER_HDR, len(buf))
+            air_end_abs = base_abs + s1
+
+            # chr_tbl is the runtime-action authority. Associate this AIR_HDR
+            # marker with the table action that physically owns it, not merely
+            # the nested animation ID. This preserves the correct runtime ID
+            # for air specials whose child animation differs from the action
+            # the realtime sampler reports.
+            table_before = []
+            table_inside = []
+            for existing in moves:
+                if str(existing.get("source") or "") != "table":
+                    continue
+                try:
+                    existing_abs = int(existing.get("abs") or 0)
+                except Exception:
+                    continue
+                if 0 < air_owner_abs - existing_abs <= HIT_SEGMENT_SCAN_MAX:
+                    table_before.append((existing_abs, existing))
+                if air_owner_abs <= existing_abs < air_end_abs:
+                    table_inside.append((existing_abs, existing))
+            if table_inside:
+                _owner_abs, owner_row = min(table_inside, key=lambda item: item[0])
+                owner_row["air_owner_addr"] = air_owner_abs
+            elif table_before:
+                _owner_abs, owner_row = max(table_before, key=lambda item: item[0])
+                owner_row["air_owner_addr"] = air_owner_abs
             p = s0
             while p < s1:
                 if match_bytes(buf, p, ANIM_HDR):
                     aid = get_anim_id_after_hdr_strict(buf, p)
                     kind = "normal" if (aid and (aid & 0xFF) in NORMAL_IDS) else "special"
-                    add_mv(kind, base_abs + p, aid, "air_hdr")
+                    add_mv(
+                        kind, base_abs + p, aid, "air_hdr",
+                        air_owner_addr=air_owner_abs,
+                    )
                     p += len(ANIM_HDR)
                     continue
                 p += 1
@@ -3000,6 +3139,115 @@ def collect_blocks(buf: bytes, base_abs: int) -> Dict[str, Any]:
         "ground_kb_blocks": ground_kb_blocks,
         "stun_blocks": stun_blocks,
     }
+def _fmt_native_operation_map(operations: list[dict]) -> str:
+    parts = []
+    for row in operations or []:
+        try:
+            op = str(row.get("operation_name") or f"op{int(row.get('operation') or 0):02X}")
+            fld = int(row.get("field_id") or 0)
+            val = int(row.get("value") or 0) & 0xFFFFFFFF
+            addr = int(row.get("address") or 0)
+            parts.append(f"{op} +0x{fld:X}=0x{val:08X} @0x{addr:08X}")
+        except Exception:
+            continue
+    return " | ".join(parts)
+
+
+def _fmt_native_phase_map(phases: list[dict]) -> str:
+    parts = []
+    for phase in phases or []:
+        try:
+            idx = int(phase.get("phase_index") or 0)
+            a0 = int(phase.get("property_a_initial") or 0) & 0xFFFFFFFF
+            af = int(phase.get("property_a_final") or 0) & 0xFFFFFFFF
+            b0 = int(phase.get("property_b_initial") or 0) & 0xFFFFFFFF
+            bf = int(phase.get("property_b_final") or 0) & 0xFFFFFFFF
+            rr = phase.get("hit_result_raw")
+            result = "none" if rr is None else f"0x{int(rr) & 0xFFFFFFFF:08X}"
+            parts.append(f"P{idx}: A {a0:08X}->{af:08X}, B {b0:08X}->{bf:08X}, result {result}")
+        except Exception:
+            continue
+    return " | ".join(parts)
+
+
+def _attach_native_property_summary(mv: Dict[str, Any], moves: List[Dict[str, Any]], buf: bytes, base_abs: int) -> None:
+    """Attach the complete decoded native Property A/B mutation chain.
+
+    The full scanner already owns the character script bytes, so this adds no
+    Dolphin I/O. Unknown bits remain raw; no route/result semantics are guessed.
+    """
+    if parse_attack_definition_blob is None:
+        return
+    try:
+        start = int(mv.get("abs") or 0)
+    except Exception:
+        start = 0
+    if not start:
+        return
+    try:
+        end = int(_next_real_boundary_for_move(moves, start) or 0)
+    except Exception:
+        end = 0
+    if end <= start:
+        end = start + 0x4000
+    size = max(0x40, min(0x4000, end - start))
+    rel = start - int(base_abs)
+    if rel < 0 or rel >= len(buf):
+        return
+    blob = bytes(buf[rel:min(len(buf), rel + size)])
+    if not blob:
+        return
+    parsed = parse_attack_definition_blob(blob, start, scan_size=len(blob))
+    status = str(parsed.get("status") or "")
+    mv["native_definition_status"] = status
+    mv["native_definition_scan_size"] = int(parsed.get("scan_size") or len(blob))
+    mv["native_property_command_count"] = int(parsed.get("command_count") or 0)
+    mv["native_property_phase_count"] = int(parsed.get("phase_count") or 0)
+    mv["native_phases"] = list(parsed.get("phases") or [])
+    mv["native_operations"] = list(parsed.get("operations") or [])
+    mv["native_phase_map"] = _fmt_native_phase_map(mv["native_phases"])
+    mv["native_operation_map"] = _fmt_native_operation_map(mv["native_operations"])
+    if status != "OK" or not mv["native_phases"]:
+        return
+    first = mv["native_phases"][0]
+    mv["native_property_a"] = parsed.get("property_a")
+    mv["native_property_b"] = parsed.get("property_b")
+    mv["native_property_a_addr"] = parsed.get("property_a_addr")
+    mv["native_property_b_addr"] = parsed.get("property_b_addr")
+    for src, dst in (
+        ("property_a_initial", "native_property_a_initial"),
+        ("property_a_initial_unknown_mask", "native_property_a_initial_unknown_mask"),
+        ("property_a_final", "native_property_a_final"),
+        ("property_a_final_unknown_mask", "native_property_a_final_unknown_mask"),
+        ("property_a_all_or_mask", "native_property_a_all_or_mask"),
+        ("property_a_all_clear_mask", "native_property_a_all_clear_mask"),
+        ("property_a_post_result_or_mask", "native_property_a_post_result_or_mask"),
+        ("property_b_initial", "native_property_b_initial"),
+        ("property_b_final", "native_property_b_final"),
+        ("property_a_modifier_count", "native_property_a_modifier_count"),
+        ("property_b_modifier_count", "native_property_b_modifier_count"),
+        ("result_clear_mask", "native_result_clear_mask"),
+    ):
+        mv[dst] = first.get(src)
+    mv["native_hit_result_raw"] = first.get("hit_result_raw")
+    mv["native_hit_result_code"] = first.get("a_result_code")
+    mv["native_hit_result_addr"] = first.get("hit_result_addr") or None
+    # Add friendly labels without replacing any raw words/masks.  This import
+    # stays local so the scanner does not require the live profiler to exist.
+    try:
+        from tvcgui.features.training.attack_property_profiler import decode_property_a, decode_property_b
+        prop_a = parsed.get("property_a")
+        prop_b = parsed.get("property_b")
+        if prop_a is not None:
+            mv["native_property_a_text"] = str(decode_property_a(prop_a).get("text") or "")
+        if prop_b is not None:
+            decoded_b = decode_property_b(prop_b)
+            mv["native_property_b_text"] = str(decoded_b.get("text") or "")
+            mv["native_property_b_unknown_mask"] = int(decoded_b.get("unknown_mask") or 0)
+    except Exception:
+        pass
+
+
 # ============================================================
 # Field attachment
 # ============================================================
@@ -3168,6 +3416,17 @@ def attach_move_fields(moves: List[Dict[str, Any]],
         if collect_segments_for_row:
             next_boundary = _next_real_boundary_for_move(moves, mv_abs)
             hit_segments = collect_hit_segments_for_move(mv_abs, next_boundary, blocks)
+
+            # Air wrappers often declare their active/damage bundle before the
+            # nested ANIM_HDR that identifies the runtime action.  Keep the
+            # existing forward-owner behavior first, then retry only missing
+            # rows against the action-owned preamble/wrapper.  This leaves
+            # already-correct ground moves and multihit normals untouched.
+            if not hit_segments and mv.get("air_owner_addr") is not None:
+                owner_start, owner_end = _timing_owner_window_for_move(moves, mv)
+                if owner_start and owner_end > owner_start and owner_start < mv_abs:
+                    hit_segments = collect_hit_segments_for_move(owner_start, owner_end, blocks)
+
             if hit_segments:
                 for seg in hit_segments:
                     seg["parent_abs"] = mv_abs
@@ -3175,6 +3434,22 @@ def attach_move_fields(moves: List[Dict[str, Any]],
                 mv["hit_segments"] = hit_segments
                 mv["multi_hit_count"] = len(hit_segments)
                 apply_hit_segment_to_move(mv, hit_segments[0])
+            elif mv.get("active_start") is None and mv.get("air_owner_addr") is not None:
+                # Projectile-style air actions may own a timing packet without
+                # an inline fighter damage bundle.  The ground timing rail
+                # already accepts scalar active packets for these actions; do
+                # the same for an explicitly identified AIR_HDR owner instead
+                # of borrowing an arbitrary neighboring packet.
+                owner_start, owner_end = _timing_owner_window_for_move(moves, mv)
+                if owner_start and owner_end > owner_start:
+                    for active_addr, active_values in active_blocks:
+                        if owner_start <= int(active_addr) < owner_end:
+                            try:
+                                mv["active_start"], mv["active_end"] = active_values
+                                mv["active_addr"] = int(active_addr)
+                            except Exception:
+                                pass
+                            break
 
         # 35/0C is optional and must never borrow a neighboring move's packet.
         # Re-pair it from the move's own 35/07-or-09 bundle after all segment
@@ -3263,6 +3538,10 @@ def attach_move_fields(moves: List[Dict[str, Any]],
                 mv["invuln_addr"] = None
             mv["invuln_confidence"] = str((best_invuln or {}).get("invuln_confidence") or "none")
             mv["invuln_kind"] = str((best_invuln or {}).get("invuln_kind") or "")
+
+        # Native Property A/B is part of the authored action definition, not a
+        # transient contact sample. Decode it from the same already-read bytes.
+        _attach_native_property_summary(mv, moves, buf, base_abs)
 
 
 def move_quality_score(mv: Dict[str, Any]) -> Tuple[int, int, int, int, int, int]:
@@ -3425,12 +3704,19 @@ def _profile_key(char_id: Optional[int], char_name: str) -> str:
     return f"name_{_profile_safe_name(char_name)}"
 
 
-def _load_profile_entry(key: str) -> Optional[Dict[str, Any]]:
-    """Load one character profile without materializing the full roster."""
+def _load_profile_entry(key: str, *, copy_result: bool = True) -> Optional[Dict[str, Any]]:
+    """Load one character profile without materializing the full roster.
+
+    Read-only consumers can request the cached object directly. Rebase helpers
+    already build new dict/list structures, so copying the full profile first
+    only doubles startup work for the Frame Data workbench.
+    """
     with _PROFILE_CACHE_LOCK:
         cached = _PROFILE_CACHE_BY_KEY.get(key, _PROFILE_CACHE_MISSING)
         if cached is not _PROFILE_CACHE_MISSING:
-            return copy.deepcopy(cached) if isinstance(cached, dict) else None
+            if not isinstance(cached, dict):
+                return None
+            return copy.deepcopy(cached) if copy_result else cached
 
         profile = load_frame_data_profile(
             key,
@@ -3439,9 +3725,13 @@ def _load_profile_entry(key: str) -> Optional[Dict[str, Any]]:
             writable_directory=PROFILE_CACHE_DIR,
             bundled_legacy_file=PROFILE_BUNDLED_CACHE_FILE,
             writable_legacy_file=PROFILE_CACHE_FILE,
+            copy_result=False,
         )
-        _PROFILE_CACHE_BY_KEY[key] = copy.deepcopy(profile) if isinstance(profile, dict) else None
-        return copy.deepcopy(profile) if isinstance(profile, dict) else None
+        cached_profile = profile if isinstance(profile, dict) else None
+        _PROFILE_CACHE_BY_KEY[key] = cached_profile
+        if cached_profile is None:
+            return None
+        return copy.deepcopy(cached_profile) if copy_result else cached_profile
 
 
 def _profile_warn_once(key: str, message: str) -> None:
@@ -3574,6 +3864,155 @@ _PREVIEW_MOVE_FIELDS = {
     "runtime_profile_eligible", "stun_source",
 }
 
+# The compact normals table and the realtime FD rail have different jobs. Keep
+# the visible Normals Preview normal-only, but persist a second tiny timing-only
+# table covering every gameplay action with a known active window. This avoids
+# loading the large workbench profile in the HUD process and gives specials the
+# same zero-lag action-ID lookup as normals.
+_PREVIEW_TIMING_COVERAGE = "all_actions_v3_family_variants"
+_TIMING_PREVIEW_FIELDS = {
+    "id", "kind", "move_name", "move_name_source", "source",
+    "startup", "active_start", "active_end", "active2_start", "active2_end",
+    "recovery", "runtime_observed_recovery", "recovery_source",
+    "animation_total_frames",
+    # Preserve display-only family identity for actions whose internal runtime
+    # IDs are reused across strength variants (Ryu Tatsu Start/Spin/End is the
+    # first confirmed example). The realtime FD lane uses this only to choose
+    # the correct authored timing row; it does not alter game state or labels.
+    "family_key", "family_group_key", "family_group_label",
+    "family_strength", "family_strength_guess", "family_context",
+    "family_role", "family_phase", "family_chain_index",
+    "family_chain_label", "family_link_label", "family_confidence",
+}
+
+
+def _timing_windows_from_move(move: Dict[str, Any]) -> List[List[int]]:
+    """Return attack-active windows suitable for the live FD rail.
+
+    ``active2`` is an inline script-pattern candidate, not inherently a second
+    confirmed hit.  Folding it into every move produced phantom late red
+    windows (Ryu 5C is a clear example).  Prefer the primary active packet and
+    hit segments, whose segment collector requires a nearby owned damage
+    bundle.  Keep Active 2 only as a last-resort timing fallback when no
+    confirmed/primary active geometry exists at all.
+    """
+    windows: List[List[int]] = []
+
+    def append_window(start, end) -> None:
+        try:
+            start_i = int(start)
+            end_i = int(end)
+        except (TypeError, ValueError):
+            return
+        if start_i < 0 or end_i < start_i:
+            return
+        pair = [start_i, end_i]
+        if pair not in windows:
+            windows.append(pair)
+
+    # Primary packet is the scalar compatibility view of hit 1 when concrete
+    # hit segments exist, and remains the best legacy source otherwise.
+    append_window(move.get("active_start"), move.get("active_end"))
+
+    # Concrete hit segments are stronger evidence than the free-standing
+    # inline Active 2 candidate: collect_hit_segments_for_move() only keeps an
+    # active packet when it owns a nearby damage bundle.
+    for segment in (move.get("hit_segments") or []):
+        if isinstance(segment, dict):
+            append_window(segment.get("active_start"), segment.get("active_end"))
+
+    # Some compact/legacy rows already carry a curated active_windows list.
+    # Accept it only when the row does not expose richer hit-segment evidence.
+    if not (move.get("hit_segments") or []):
+        for pair in (move.get("active_windows") or []):
+            if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+                append_window(pair[0], pair[1])
+
+    # Active 2 remains useful for odd rows where it is literally the only
+    # timing source.  It must not manufacture a second hit beside valid data.
+    if not windows:
+        append_window(move.get("active2_start"), move.get("active2_end"))
+
+    windows.sort(key=lambda pair: (pair[0], pair[1]))
+    return windows
+
+
+def _compact_timing_moves(
+    moves: Sequence[Dict[str, Any]],
+    char_name: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return tiny all-action timing rows for the realtime FD rail.
+
+    Most gameplay actions have one useful timing owner, so they still compact
+    to one row per action ID. A small class of player-facing moves reuses the
+    same native action ID for several strength-specific internal sections.
+    Ryu Tatsu is the confirmed case: L/M/H each have their own Start/Spin/End
+    table rows, but those rows reuse IDs 273/274/275 at runtime.
+
+    Keep those family variants distinct by ``family_group_key`` instead of
+    flattening them to whichever duplicate row happens to win by address. The
+    realtime overlay can then retain the command strength as a short session
+    and select the matching internal timing row when the action ID changes.
+    """
+    working: List[Dict[str, Any]] = [
+        dict(move) for move in list(moves or []) if isinstance(move, dict)
+    ]
+    if char_name and working:
+        try:
+            annotate_move_families(working, char_name)
+        except Exception:
+            # Family annotation is an optional disambiguation layer. Timing
+            # compaction must remain available even if a display helper fails.
+            pass
+
+    best_by_key: Dict[
+        Tuple[int, str],
+        Tuple[Tuple[int, Tuple[int, int, int, int, int, int]], Dict[str, Any], List[List[int]]],
+    ] = {}
+    for move in working:
+        try:
+            action_id = int(move.get("id")) & 0x7FFF
+        except (TypeError, ValueError):
+            continue
+        if action_id <= 0:
+            continue
+        windows = _timing_windows_from_move(move)
+        if not windows:
+            continue
+
+        family_group = str(move.get("family_group_key") or "").strip()
+        # Only linkable family rows need a second key. Ordinary duplicate scan
+        # rows continue to collapse exactly as before.
+        if not bool(move.get("family_linkable")) and not family_group.startswith("ryu:tatsu:"):
+            family_group = ""
+        key = (action_id, family_group)
+        quality = (len(windows), move_quality_score(move))
+        old = best_by_key.get(key)
+        if old is None or quality > old[0]:
+            best_by_key[key] = (quality, move, windows)
+
+    compact: List[Dict[str, Any]] = []
+    ordered_items = list(best_by_key.items())
+
+    def _timing_variant_sort(item) -> tuple[int, int, str]:
+        (action_id, family_group), (_quality, move, _windows) = item
+        try:
+            chain_index = int(move.get("family_chain_index") or 999)
+        except Exception:
+            chain_index = 999
+        return (action_id, chain_index, family_group)
+
+    # Preserve the family annotator's natural L/M/H chain order. The default
+    # compatibility action map still picks the first equally-good row, matching
+    # pre-session behavior if a runtime section appears before its owner entry.
+    for (action_id, family_group), (_quality, move, windows) in sorted(ordered_items, key=_timing_variant_sort):
+        row = {key: copy.deepcopy(move[key]) for key in _TIMING_PREVIEW_FIELDS if key in move}
+        row["id"] = action_id
+        row["active_windows"] = copy.deepcopy(windows)
+        row.setdefault("kind", str(move.get("kind") or "special"))
+        compact.append(row)
+    return compact
+
 
 def _compact_preview_moves(moves: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Strip a dynamic profile down to the small normal-preview contract."""
@@ -3643,7 +4082,8 @@ def _save_preview_profile_moves(
         return False
     visible_moves = filter_purged_moves_for_char({"char_id": char_id, "char_name": char_name}, moves)
     rows = _compact_preview_moves(visible_moves)
-    if not rows:
+    timing_rows = _compact_timing_moves(visible_moves, char_name)
+    if not rows and not timing_rows:
         return False
     key = _profile_key(char_id, char_name)
     entry = {
@@ -3651,6 +4091,8 @@ def _save_preview_profile_moves(
         "char_name": char_name,
         "table_signature": _profile_table_signature(tbl_move_addrs, chr_tbl_abs),
         "moves": rows,
+        "timing_moves": timing_rows,
+        "timing_coverage": _PREVIEW_TIMING_COVERAGE,
     }
     with _PREVIEW_PROFILE_LOCK:
         doc = _load_preview_profile_doc()
@@ -4264,7 +4706,7 @@ def _load_preview_profile_moves(
     return [copy.deepcopy(row) for row in rows if isinstance(row, dict)]
 
 
-def _load_profile_moves(
+def _load_preview_timing_moves(
     char_id: Optional[int],
     char_name: str,
     chr_tbl_abs: int,
@@ -4272,11 +4714,101 @@ def _load_profile_moves(
     *,
     tbl_move_entries: Optional[List[Tuple[int, int]]] = None,
 ) -> Optional[List[Dict[str, Any]]]:
+    """Return all-action timing rows, upgrading old normal-only previews once.
+
+    Version-3 preview files shipped before the FD rail existed and contain only
+    normals. When such an entry is encountered, borrow the already-saved full
+    per-character profile once, compact only its timing geometry, and persist
+    that tiny result back into the preview file. No Dolphin scan is performed.
+    """
+    global _PREVIEW_PROFILE_DOC
+    if not PREVIEW_PROFILE_CACHE_ENABLED:
+        return None
+    key = _profile_key(char_id, char_name)
+    sig = _profile_table_signature(tbl_move_addrs, chr_tbl_abs)
+    doc = _load_preview_profile_doc()
+    prof = (doc.get("profiles") or {}).get(key)
+    if not isinstance(prof, dict):
+        return None
+    if str(prof.get("table_signature") or "") != sig:
+        return None
+
+    rows = prof.get("timing_moves")
+    if str(prof.get("timing_coverage") or "") == _PREVIEW_TIMING_COVERAGE and isinstance(rows, list):
+        rows = filter_purged_moves_for_char(
+            {"char_id": char_id, "char_name": char_name, "profile_key": key}, rows
+        )
+        return [copy.deepcopy(row) for row in rows if isinstance(row, dict)]
+
+    # One-time migration path for an existing normal-only compact cache. The
+    # full cache is sharded per fighter, so this never materializes the roster.
+    full = _load_profile_entry(key)
+    timing_rows: List[Dict[str, Any]] = []
+    if isinstance(full, dict) and str(full.get("table_signature") or "") == sig:
+        full_rows = full.get("moves")
+        if isinstance(full_rows, list):
+            full_rows = filter_purged_moves_for_char(
+                {"char_id": char_id, "char_name": char_name, "profile_key": key}, full_rows
+            )
+            # Rebase only this fighter's saved rows and repair table-owned IDs
+            # from the live chr_tbl index. Older profiles sometimes inferred a
+            # special's identity from its first child animation; the gameplay
+            # action at +0x1E8 follows the table index instead.
+            live_table_ids = {
+                int(addr): int(action_id) & 0x7FFF
+                for action_id, addr in (tbl_move_entries or [])
+            }
+            live_rows: List[Dict[str, Any]] = []
+            for saved_row in full_rows:
+                if not isinstance(saved_row, dict):
+                    continue
+                row = _rebase_profile_obj(copy.deepcopy(saved_row), chr_tbl_abs)
+                if not isinstance(row, dict):
+                    continue
+                try:
+                    root_abs = int(row.get("abs") or 0)
+                except Exception:
+                    root_abs = 0
+                if str(row.get("source") or "") == "table" and root_abs in live_table_ids:
+                    row["id"] = live_table_ids[root_abs]
+                    row["kind"] = "normal" if ((row["id"] & 0xFF) in NORMAL_IDS) else "special"
+                live_rows.append(row)
+            timing_rows = _compact_timing_moves(live_rows, char_name)
+
+    # If a full profile is unavailable, retain normal timing rather than
+    # regressing the rail. Specials will populate automatically after the next
+    # ordinary dynamic frame-data scan saves this character again.
+    if not timing_rows:
+        timing_rows = _compact_timing_moves(prof.get("moves") or [], char_name)
+        return timing_rows or None
+
+    with _PREVIEW_PROFILE_LOCK:
+        current = _load_preview_profile_doc()
+        out = _normalize_preview_profile_doc(copy.deepcopy(current))
+        entry = copy.deepcopy((out.get("profiles") or {}).get(key) or prof)
+        entry["timing_moves"] = copy.deepcopy(timing_rows)
+        entry["timing_coverage"] = _PREVIEW_TIMING_COVERAGE
+        out.setdefault("profiles", {})[key] = entry
+        out["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
+        if _write_preview_profile_doc_safely(out):
+            _PREVIEW_PROFILE_DOC = out
+    return [copy.deepcopy(row) for row in timing_rows]
+
+
+def _load_profile_moves(
+    char_id: Optional[int],
+    char_name: str,
+    chr_tbl_abs: int,
+    tbl_move_addrs: List[int],
+    *,
+    tbl_move_entries: Optional[List[Tuple[int, int]]] = None,
+    refresh_live: bool = True,
+) -> Optional[List[Dict[str, Any]]]:
     if not PROFILE_CACHE_ENABLED:
         return None
     key = _profile_key(char_id, char_name)
     sig = _profile_table_signature(tbl_move_addrs, chr_tbl_abs)
-    prof = _load_profile_entry(key)
+    prof = _load_profile_entry(key, copy_result=False)
     if not isinstance(prof, dict):
         return None
     # Reject experimental Morrigan inherited-stun profiles from v28/v29.
@@ -4311,7 +4843,7 @@ def _load_profile_moves(
     for row in rows:
         if not isinstance(row, dict):
             continue
-        rebased = _rebase_profile_obj(copy.deepcopy(row), chr_tbl_abs)
+        rebased = _rebase_profile_obj(row, chr_tbl_abs)
         if isinstance(rebased, dict):
             try:
                 root_abs = int(rebased.get("abs") or 0)
@@ -4327,37 +4859,41 @@ def _load_profile_moves(
     if not moves:
         return None
 
-    try:
-        buf, base_abs = _read_profile_window(chr_tbl_abs, moves)
-        if not buf:
+    # A normal workbench open is allowed to be *actually cache-only*. Older
+    # builds deserialized the profile and then immediately paid for a large
+    # Dolphin read, every-row packet refresh, another collect_blocks() pass,
+    # and generic-target rebinding. That defeated the saved profile.
+    if refresh_live:
+        try:
+            buf, base_abs = _read_profile_window(chr_tbl_abs, moves)
+            if not buf:
+                return None
+            for mv in moves:
+                try:
+                    _owner_start, _owner_end = _invuln_owner_window(
+                        moves, int(mv.get("abs") or 0), mv_source=mv.get("source"),
+                    )
+                    mv["_invuln_owner_start_abs"] = _owner_start
+                    mv["_invuln_owner_end_abs"] = _owner_end
+                except Exception:
+                    mv["_invuln_owner_end_abs"] = None
+                _profile_refresh_move(mv, buf, base_abs, char_id)
+                try:
+                    _attach_native_property_summary(mv, moves, buf, base_abs)
+                except Exception:
+                    pass
+                mv.pop("_invuln_owner_start_abs", None)
+                mv.pop("_invuln_owner_end_abs", None)
+            profile_blocks = collect_blocks(buf, base_abs)
+            for mv in moves:
+                _profile_rebind_generic_write_targets(mv, moves, profile_blocks)
+        except Exception as e:
+            print(f"[fd profile] live refresh failed for {char_name}: {e!r}")
             return None
-        for mv in moves:
-            try:
-                _owner_start, _owner_end = _invuln_owner_window(
-                    moves, int(mv.get("abs") or 0),
-                    mv_source=mv.get("source"),
-                )
-                mv["_invuln_owner_start_abs"] = _owner_start
-                mv["_invuln_owner_end_abs"] = _owner_end
-            except Exception:
-                mv["_invuln_owner_end_abs"] = None
-            _profile_refresh_move(mv, buf, base_abs, char_id)
-            # This is a transient scan aid, not profile data.
-            mv.pop("_invuln_owner_start_abs", None)
-            mv.pop("_invuln_owner_end_abs", None)
-        # Cache rows can have valid-looking packets assigned to a neighboring
-        # action. Rebuild only the generic editable targets inside each row's
-        # current live owner window before handing the workbench its snapshot.
-        profile_blocks = collect_blocks(buf, base_abs)
-        for mv in moves:
-            _profile_rebind_generic_write_targets(mv, moves, profile_blocks)
-    except Exception as e:
-        print(f"[fd profile] fast path failed for {char_name}: {e!r}")
-        return None
 
     _profile_warn_once(
-        f"fast:{key}",
-        f"[fd profile] fast path for {char_name} ({key})",
+        f"fast:{key}:{'live' if refresh_live else 'cache'}",
+        f"[fd profile] {'live-refreshed' if refresh_live else 'cache-only'} fast path for {char_name} ({key})",
     )
     return moves
 
@@ -4436,7 +4972,7 @@ def _profile_extra_bundle(
     if not PROFILE_CACHE_ENABLED:
         return empty
     key = _profile_key(char_id, char_name)
-    prof = _load_profile_entry(key)
+    prof = _load_profile_entry(key, copy_result=False)
     if not isinstance(prof, dict):
         return empty
     if int(prof.get("version") or 0) != PROFILE_CACHE_VERSION:
@@ -4455,7 +4991,7 @@ def _profile_extra_bundle(
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            value = _rebase_profile_obj(copy.deepcopy(row), chr_tbl_abs)
+            value = _rebase_profile_obj(row, chr_tbl_abs)
             if isinstance(value, dict):
                 value["_profile_fast_path"] = True
                 rebased.append(value)
@@ -4549,6 +5085,21 @@ def save_profile_extras(
 # Runtime resolved-stun overlay
 # ============================================================
 
+def _profile_needs_animation_metadata(moves: Sequence[Dict[str, Any]]) -> bool:
+    """True only when a cached row is missing the MOT-derived timing layer."""
+    for mv in moves or ():
+        if not isinstance(mv, dict):
+            continue
+        # Rows with a known active end are the ones for which recovery/total
+        # animation metadata is useful. New profiles already persist both, so
+        # avoid reopening/reparsing animation metadata on every workbench open.
+        if mv.get("active_end") is not None and (
+            mv.get("animation_total_frames") is None or mv.get("recovery") is None
+        ):
+            return True
+    return False
+
+
 def _apply_runtime_stun_overlay(moves: List[Dict[str, Any]], char_id: Optional[int]) -> None:
     """Overlay live-observed stun and protection without changing static data."""
     if not moves or char_id is None:
@@ -4568,6 +5119,112 @@ def _apply_runtime_stun_overlay(moves: List[Dict[str, Any]], char_id: Optional[i
 # ============================================================
 # MAIN SCAN
 # ============================================================
+
+def load_workbench_from_snapshot(snapshot: Sequence[Dict[str, Any]] | None) -> Optional[List[Dict[str, Any]]]:
+    """Load full saved workbench profiles from a fresh compact scanner snapshot.
+
+    This path performs no Dolphin reads.  The always-on compact scanner already
+    resolved slot identity, fighter base, character-table base and the table
+    signature.  Reuse that metadata rather than re-reading the same fighter and
+    chr_tbl windows when the user opens Frame Data.  Any validation miss returns
+    ``None`` so the caller can fall back to ``scan_once(cache_only=True)``.
+    """
+    if not PROFILE_CACHE_ENABLED or not isinstance(snapshot, (list, tuple)):
+        return None
+
+    result: List[Dict[str, Any]] = []
+    loaded_any = False
+    for index in range(4):
+        src = snapshot[index] if index < len(snapshot) and isinstance(snapshot[index], dict) else {}
+        slot_label = str(src.get("slot_label") or "")
+        char_name = str(src.get("char_name") or "")
+        char_id = src.get("char_id")
+        fighter_base_abs = int(src.get("fighter_base_abs") or 0)
+        chr_tbl_abs = int(src.get("chr_tbl_abs") or 0)
+        table_signature = str(src.get("profile_table_signature") or "")
+        base_row = {
+            "slot_label": slot_label,
+            "char_name": char_name,
+            "char_id": char_id,
+            "fighter_base_abs": fighter_base_abs or None,
+            "moves": [],
+            "chr_tbl_abs": chr_tbl_abs or None,
+            "tbl_move_count": int(src.get("tbl_move_count") or 0),
+            "profile_table_signature": table_signature,
+        }
+        result.append(base_row)
+
+        if not char_name or not chr_tbl_abs or not table_signature:
+            continue
+        key = _profile_key(char_id, char_name)
+        prof = _load_profile_entry(key, copy_result=False)
+        if not isinstance(prof, dict):
+            continue
+        if int(prof.get("version") or 0) != PROFILE_CACHE_VERSION:
+            continue
+        if int(prof.get("stun_resolver_revision") or 0) != STUN_RESOLVER_REVISION:
+            continue
+        if int(prof.get("active_resolver_revision") or 0) != ACTIVE_RESOLVER_REVISION:
+            continue
+        if str(prof.get("table_signature") or "") != table_signature:
+            continue
+        if "morrigan" in key.lower() and "morrigan-stun" in str(prof.get("scanner_build") or "").lower():
+            continue
+        saved_rows = prof.get("moves")
+        if not isinstance(saved_rows, list) or not saved_rows:
+            continue
+        saved_rows = filter_purged_moves_for_char(
+            {"char_id": char_id, "char_name": char_name, "profile_key": key}, saved_rows
+        )
+        moves: List[Dict[str, Any]] = []
+        invalid_legacy_row = False
+        for saved in saved_rows:
+            if not isinstance(saved, dict):
+                continue
+            row = _rebase_profile_obj(saved, chr_tbl_abs)
+            if not isinstance(row, dict):
+                continue
+            # Old cache rows with a missing table-owned action id need the live
+            # chr_tbl index repair performed by the fallback path.
+            if str(row.get("source") or "") == "table" and row.get("id") is None:
+                invalid_legacy_row = True
+                break
+            row["_profile_fast_path"] = True
+            moves.append(row)
+        if invalid_legacy_row or not moves:
+            continue
+
+        try:
+            if fighter_base_abs:
+                apply_experimental_property_live_addresses(moves, fighter_base_abs)
+        except Exception:
+            pass
+        try:
+            if _profile_needs_animation_metadata(moves):
+                apply_animation_metadata(moves, char_name, char_id)
+        except Exception:
+            pass
+        try:
+            _apply_runtime_stun_overlay(moves, char_id)
+        except Exception:
+            pass
+        extras = _profile_extra_bundle(char_id, char_name, chr_tbl_abs, table_signature)
+        result[index] = {
+            **base_row,
+            "moves": sorted(moves, key=sort_key),
+            "timing_moves": _compact_timing_moves(moves, char_name),
+            "profile_projectile_hits": list(extras.get("projectiles") or []),
+            "profile_super_hits": list(extras.get("specials") or []),
+            "profile_projectiles_profiled": bool(extras.get("projectiles_profiled")),
+            "profile_specials_profiled": bool(extras.get("specials_profiled")),
+            "profile_fast_path": True,
+            "profile_snapshot_fast_path": True,
+            "profile_key": key,
+        }
+        loaded_any = True
+
+    return result if loaded_any else None
+
 
 def scan_once(
     force_dynamic: bool = False,
@@ -4628,6 +5285,10 @@ def scan_once(
         # already have compact previews.  They remain cache-only for this pass.
         if force_dynamic and dynamic_targets and int(cid or 0) not in dynamic_targets:
             preview_moves = _load_preview_profile_moves(cid, cname, chr_tbl_abs, tbl_move_addrs)
+            preview_timing_moves = _load_preview_timing_moves(
+                cid, cname, chr_tbl_abs, tbl_move_addrs,
+                tbl_move_entries=tbl_move_entries,
+            )
             if preview_moves is not None:
                 apply_animation_metadata(preview_moves, cname, cid)
                 _apply_runtime_stun_overlay(preview_moves, cid)
@@ -4637,6 +5298,7 @@ def scan_once(
                     "char_id": cid,
                     "fighter_base_abs": fighter_base_abs,
                     "moves": sorted(preview_moves, key=sort_key),
+                    "timing_moves": list(preview_timing_moves or _compact_timing_moves(preview_moves, cname)),
                     "chr_tbl_abs": chr_tbl_abs,
                     "tbl_move_count": len(tbl_move_addrs),
                     "profile_table_signature": table_signature,
@@ -4666,6 +5328,10 @@ def scan_once(
         # because a fighter pointer changed.
         if preview_only and not force_dynamic:
             preview_moves = _load_preview_profile_moves(cid, cname, chr_tbl_abs, tbl_move_addrs)
+            preview_timing_moves = _load_preview_timing_moves(
+                cid, cname, chr_tbl_abs, tbl_move_addrs,
+                tbl_move_entries=tbl_move_entries,
+            )
             if preview_moves is not None:
                 apply_animation_metadata(preview_moves, cname, cid)
                 _apply_runtime_stun_overlay(preview_moves, cid)
@@ -4675,6 +5341,7 @@ def scan_once(
                     "char_id": cid,
                     "fighter_base_abs": fighter_base_abs,
                     "moves": sorted(preview_moves, key=sort_key),
+                    "timing_moves": list(preview_timing_moves or _compact_timing_moves(preview_moves, cname)),
                     "chr_tbl_abs": chr_tbl_abs,
                     "tbl_move_count": len(tbl_move_addrs),
                     "profile_table_signature": table_signature,
@@ -4703,13 +5370,16 @@ def scan_once(
             profiled_moves = _load_profile_moves(
                 cid, cname, chr_tbl_abs, tbl_move_addrs,
                 tbl_move_entries=tbl_move_entries,
+                # Workbench cache requests must not turn into hidden all-row reads.
+                refresh_live=not cache_only,
             )
             if profiled_moves is not None:
                 apply_experimental_property_live_addresses(profiled_moves, fighter_base_abs)
                 # MOT total frames are static FPK data, so layer them onto both
                 # cached and fresh SEQ rows after the live active window has
                 # been refreshed. This keeps Recovery deterministic per action.
-                apply_animation_metadata(profiled_moves, cname, cid)
+                if _profile_needs_animation_metadata(profiled_moves):
+                    apply_animation_metadata(profiled_moves, cname, cid)
                 _apply_runtime_stun_overlay(profiled_moves, cid)
                 extras = load_profile_extras(
                     cid, cname, chr_tbl_abs, tbl_move_addrs,
@@ -4721,6 +5391,7 @@ def scan_once(
                     "char_id": cid,
                     "fighter_base_abs": fighter_base_abs,
                     "moves": sorted(profiled_moves, key=sort_key),
+                    "timing_moves": _compact_timing_moves(profiled_moves, cname),
                     "chr_tbl_abs": chr_tbl_abs,
                     "tbl_move_count": len(tbl_move_addrs),
                     "profile_table_signature": table_signature,
@@ -4809,6 +5480,7 @@ def scan_once(
             "char_id": cid,
                     "fighter_base_abs": fighter_base_abs,
             "moves": sorted_moves,
+            "timing_moves": _compact_timing_moves(sorted_moves, cname),
             "chr_tbl_abs": chr_tbl_abs,
             "tbl_move_count": len(tbl_move_addrs),
             "profile_table_signature": table_signature,

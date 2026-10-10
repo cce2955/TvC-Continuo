@@ -874,6 +874,9 @@ class MoveFrameData:
     move_id: int
     move_name: str
     active_windows: Tuple[Tuple[int, int], ...]
+    startup_frames: int = 0
+    recovery_frames: int = 0
+    total_frames: int = 0
     invuln_frames: int = 0
 
     def active_text(self) -> str:
@@ -1328,10 +1331,32 @@ def build_frame_data_cache() -> Dict[str, Dict[int, MoveFrameData]]:
             except Exception:
                 continue
 
+            try:
+                startup_frames = int(mv.get("startup"))
+            except Exception:
+                startup_frames = min((int(start) for start, _end in windows), default=0)
+            startup_frames = max(0, int(startup_frames))
+
+            recovery_raw = mv.get("runtime_observed_recovery")
+            if recovery_raw is None:
+                recovery_raw = mv.get("recovery")
+            try:
+                recovery_frames = max(0, int(recovery_raw))
+            except Exception:
+                recovery_frames = 0
+
+            try:
+                total_frames = max(0, int(mv.get("animation_total_frames") or 0))
+            except Exception:
+                total_frames = 0
+
             fd = MoveFrameData(
                 move_id=mid,
                 move_name=str(mv.get("move_name") or f"anim_{mid:04X}"),
                 active_windows=tuple(windows),
+                startup_frames=startup_frames,
+                recovery_frames=recovery_frames,
+                total_frames=total_frames,
                 invuln_frames=invuln_frames,
             )
 
@@ -6651,15 +6676,20 @@ class HitboxRenderer:
         action_frame: Optional[int],
         group_visible: bool,
     ) -> Tuple[Optional[str], bool]:
-        """Return one stable move-level phase chip for the physical group.
+        """Return one stable move-level countdown for startup, active, and recovery.
 
-        The timer begins only when the physical hitbox group is actually
-        visible.  When TvC supplies a usable action frame, that frame is the
-        source of truth.  A local elapsed counter is retained only across brief
-        counter discontinuities.
+        TvC's action counter is exposed as a zero-based frame after the local
+        bias is applied.  Preserve frame zero.  Dropping it made an 8-frame
+        startup begin at 7, and clamping active time to one made the last active
+        number display twice.
+
+        The active range shown by the frame-data table is treated as a boundary
+        pair for this countdown: 8-17 displays 9..1.  A single-frame range such
+        as 8-8 still receives one active frame.  Recovery then begins at the
+        end boundary and uses the saved frame-data recovery value.
         """
         tick = int(self._move_phase_tick)
-        if fd is None or not getattr(fd, "active_windows", None) or not group_visible:
+        if fd is None or not getattr(fd, "active_windows", None):
             self._move_phase_state.pop(slot_name, None)
             return None, False
 
@@ -6671,50 +6701,85 @@ class HitboxRenderer:
                 "start_tick": tick,
                 "last_tick": tick,
                 "last_raw_frame": None,
-                "effective_frame": 1,
+                "effective_frame": 0,
             }
             self._move_phase_state[slot_name] = state
+
+        # A missing circle for a draw or two must not restart the move clock.
+        # There is nowhere to anchor the chip while the physical group is absent,
+        # so keep the state but skip drawing until the group is visible again.
+        if not group_visible:
+            return None, False
 
         state["last_tick"] = tick
         raw_frame = int(action_frame) if action_frame is not None else None
         prev_raw = state.get("last_raw_frame")
-        effective = int(state.get("effective_frame") or 1)
+        stored_effective = state.get("effective_frame")
+        effective = int(stored_effective) if stored_effective is not None else 0
 
-        if raw_frame is not None and raw_frame > 0:
+        if raw_frame is not None and raw_frame >= 0:
             if prev_raw is None:
                 effective = raw_frame
             elif raw_frame > int(prev_raw):
                 effective = raw_frame
             elif raw_frame == int(prev_raw):
-                # The GUI may draw more often than the game's counter changes.
-                # Do not advance twice for one game frame.
+                # The overlay may draw more often than the game's counter moves.
                 effective = max(effective, raw_frame)
-            elif raw_frame <= 2 and int(prev_raw) > 2:
+            elif raw_frame <= 1 and int(prev_raw) > 2:
                 # A true reset means a new use of the same move.
                 effective = raw_frame
                 state["start_tick"] = tick
             else:
-                # Brief substate/counter regressions keep the move-level clock.
+                # Brief substate/counter regressions retain the move-level clock.
                 effective += 1
             state["last_raw_frame"] = raw_frame
         else:
-            effective = max(1, tick - int(state.get("start_tick", tick)) + 1)
+            # Local fallback is zero-based too, matching read_action_frame().
+            effective = max(0, tick - int(state.get("start_tick", tick)))
 
         state["effective_frame"] = effective
 
         windows = sorted((int(start), int(end)) for start, end in fd.active_windows)
-        first_start = min(start for start, _end in windows)
+        phase_windows: List[Tuple[int, int]] = []
+        for start_frame, end_frame in windows:
+            # Most table ranges are boundary pairs, so 8-17 is nine active
+            # countdown ticks.  Preserve a true one-frame range as one tick.
+            end_exclusive = end_frame if end_frame > start_frame else start_frame + 1
+            phase_windows.append((start_frame, end_exclusive))
 
+        first_start = min(start for start, _end in phase_windows)
+
+        # The zero-based action clock makes this naturally display S..1.
+        # Example: first active boundary 8 gives startup 8,7,...,1 at f=0..7.
         if effective < first_start:
-            # A move listed with S=5 and first active frame 6 displays 5..1.
             remaining = first_start - effective
             return (str(remaining), False) if remaining > 0 else (None, False)
 
-        for start, end in windows:
-            if start <= effective <= end:
-                # Match the table convention used by the GUI, end-start frames.
-                remaining = max(1, end - effective)
-                return str(remaining), True
+        for start_frame, end_exclusive in phase_windows:
+            if start_frame <= effective < end_exclusive:
+                remaining = end_exclusive - effective
+                return str(max(1, remaining)), True
+            if effective < start_frame:
+                # Multi-hit gap. Keep one move-level chip alive and count toward
+                # the next active window instead of blinking off between hits.
+                remaining = start_frame - effective
+                return (str(remaining), False) if remaining > 0 else (None, False)
+
+        final_boundary = max(end_exclusive for _start, end_exclusive in phase_windows)
+        recovery_frames = max(0, int(getattr(fd, "recovery_frames", 0) or 0))
+
+        # If a legacy preview lacks an explicit Recovery value, the MOT total is
+        # still enough to supply a deterministic animation-tail countdown.
+        if recovery_frames <= 0:
+            total_frames = max(0, int(getattr(fd, "total_frames", 0) or 0))
+            if total_frames > final_boundary:
+                recovery_frames = total_frames - final_boundary
+
+        if recovery_frames > 0 and effective >= final_boundary:
+            recovery_elapsed = effective - final_boundary
+            remaining = recovery_frames - recovery_elapsed
+            if remaining > 0:
+                return str(remaining), False
 
         return None, False
 
