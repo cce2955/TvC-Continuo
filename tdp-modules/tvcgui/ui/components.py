@@ -500,7 +500,8 @@ def _command_dock_layout(width: int, tools_open: bool) -> tuple[dict[str, tuple[
         ("tag_btn", 46),
         ("clear_btn", 54),
         ("tools_btn", 76),
-        ("help_btn", 62),
+        ("help_btn", 52),
+        ("custom_music", 106),  # A single setup button; output modes live in the music window
     ]
     section, rects = _layout_command_section(width_i, y, "HUD", hud_specs)
     sections["hud"] = (section, rects)
@@ -712,6 +713,26 @@ def draw_top_command_dock(
     clear_card_btn_rect = hud["clear_btn"]
     tools_btn_rect = hud["tools_btn"]
     help_btn_rect = hud["help_btn"]
+    # Standalone Music Setup opens from the top-right of the main HUD. Keep
+    # the main.py tuple stable, and process click release only once each frame.
+    music_button_rect = hud["custom_music"]
+    try:
+        from tvcgui.features.audio.music_player import controller as _top_music
+        from tvcgui.features.audio.music_dock import music_dock as _top_music_dock
+        _top_music_dock.frame_mouse(
+            visible=True,
+            inside=music_button_rect.collidepoint(mx, my),
+            left_pressed=pygame.mouse.get_pressed(3)[0],
+        )
+        music_active = _top_music.status().get('desired_enabled', False)
+        draw_glass_button(
+            screen, music_button_rect, "Custom Music", dockfont,
+            active=bool(music_active), hover=music_button_rect.collidepoint(mx, my),
+            accent=GUI_ACCENT_GOLD,
+            fill=(72, 54, 34) if music_active else (45, 35, 45), align="center",
+        )
+    except Exception:
+        pass  # Optional feature must never prevent Continuo from drawing.
 
     draw_glass_button(
         screen, hud_btn_rect, "Overlay: ON" if overlay_enabled else "Overlay: OFF", dockfont,
@@ -1030,6 +1051,9 @@ def draw_top_command_dock(
         elif help_btn_rect.collidepoint(mx, my):
             help_tip = "Help opens the built-in guide for HUD controls, frame data, trainers, charge tracking, and setup tools."
             help_accent = GUI_APP_ACCENT
+        elif music_button_rect.collidepoint(mx, my):
+            help_tip = "Custom Music opens music sources, playlists, folder locations and native audio preferences."
+            help_accent = GUI_ACCENT_GOLD
 
         _draw_horizontal_gradient(screen, help_rect, _mix_col((12, 23, 36), help_accent, 0.06), (7, 13, 22), 248)
         pygame.draw.rect(screen, (38, 55, 73), help_rect, 1, border_radius=5)

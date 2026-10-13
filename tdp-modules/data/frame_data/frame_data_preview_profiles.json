@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-09T20:53:56",
+  "generated_at": "2026-10-13T16:15:54",
   "profiles": {
     "id_01_ken_the_eagle": {
       "char_id": 1,
@@ -49261,7 +49261,7 @@
         }
       ],
       "table_signature": "53c7d995ae84327e",
-      "timing_coverage": "all_actions_v2_verified_hits",
+      "timing_coverage": "all_actions_v3_family_variants",
       "timing_moves": [
         {
           "active2_end": 5,
@@ -49275,6 +49275,15 @@
             ]
           ],
           "animation_total_frames": 60,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 18,
           "kind": "special",
           "move_name": "Jump Cancel",
@@ -49295,6 +49304,15 @@
             ]
           ],
           "animation_total_frames": 5,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 30,
           "kind": "special",
           "move_name": "landing",
@@ -49315,6 +49333,15 @@
             ]
           ],
           "animation_total_frames": 19,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 42,
           "kind": "special",
           "move_name": "Win Pose",
@@ -49335,6 +49362,15 @@
             ]
           ],
           "animation_total_frames": 60,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 43,
           "kind": "special",
           "move_name": "anim_002B",
@@ -49354,6 +49390,15 @@
               8
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 45,
           "kind": "special",
           "move_name": "anim_002D",
@@ -49371,6 +49416,15 @@
               8
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 47,
           "kind": "special",
           "move_name": "anim_002F",
@@ -49388,6 +49442,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 75,
           "kind": "special",
           "move_name": "Crumple",
@@ -49405,6 +49468,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 78,
           "kind": "special",
           "move_name": "anim_004E",
@@ -49422,6 +49494,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 102,
           "kind": "special",
           "move_name": "knocked down (face up)",
@@ -49439,6 +49520,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 104,
           "kind": "special",
           "move_name": "knocked down (face down)",
@@ -49456,6 +49546,15 @@
               15
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 154,
           "kind": "special",
           "move_name": "KO'd",
@@ -49473,6 +49572,15 @@
               15
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 155,
           "kind": "special",
           "move_name": "KO in slow motion",
@@ -49490,6 +49598,15 @@
               20
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 165,
           "kind": "special",
           "move_name": "Breakaway Recovery",
@@ -49508,6 +49625,15 @@
             ]
           ],
           "animation_total_frames": 5,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 167,
           "kind": "special",
           "move_name": "Parry? what is this?",
@@ -49528,6 +49654,15 @@
             ]
           ],
           "animation_total_frames": 22,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 256,
           "kind": "normal",
           "move_name": "5A",
@@ -49548,6 +49683,15 @@
             ]
           ],
           "animation_total_frames": 32,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 257,
           "kind": "normal",
           "move_name": "5B",
@@ -49580,6 +49724,15 @@
             ]
           ],
           "animation_total_frames": 48,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 258,
           "kind": "normal",
           "move_name": "5C",
@@ -49604,6 +49757,15 @@
             ]
           ],
           "animation_total_frames": 24,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 259,
           "kind": "normal",
           "move_name": "2A",
@@ -49624,6 +49786,15 @@
             ]
           ],
           "animation_total_frames": 33,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 260,
           "kind": "normal",
           "move_name": "2B",
@@ -49644,6 +49815,15 @@
             ]
           ],
           "animation_total_frames": 44,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 261,
           "kind": "normal",
           "move_name": "2C",
@@ -49664,6 +49844,15 @@
             ]
           ],
           "animation_total_frames": 48,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 262,
           "kind": "normal",
           "move_name": "6C",
@@ -49684,6 +49873,15 @@
             ]
           ],
           "animation_total_frames": 54,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 263,
           "kind": "special",
           "move_name": "back throw",
@@ -49704,6 +49902,15 @@
             ]
           ],
           "animation_total_frames": 53,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 264,
           "kind": "normal",
           "move_name": "3C",
@@ -49724,6 +49931,15 @@
             ]
           ],
           "animation_total_frames": 36,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 265,
           "kind": "normal",
           "move_name": "j.A",
@@ -49744,6 +49960,15 @@
             ]
           ],
           "animation_total_frames": 45,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 266,
           "kind": "normal",
           "move_name": "j.B",
@@ -49764,6 +49989,15 @@
             ]
           ],
           "animation_total_frames": 40,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 267,
           "kind": "normal",
           "move_name": "j.C",
@@ -49784,6 +50018,18 @@
             ]
           ],
           "animation_total_frames": 60,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "morrigan:j_b:chain:1",
+          "family_group_label": "j.B () Air L chain",
+          "family_key": "morrigan:j_b",
+          "family_link_label": "j.B () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
           "id": 268,
           "kind": "special",
           "move_name": "j.B (Second)",
@@ -49804,6 +50050,18 @@
             ]
           ],
           "animation_total_frames": 60,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "morrigan:j_c:chain:1",
+          "family_group_label": "j.C () Air L chain",
+          "family_key": "morrigan:j_c",
+          "family_link_label": "j.C () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
           "id": 269,
           "kind": "special",
           "move_name": "j.C (Second)",
@@ -49824,6 +50082,15 @@
             ]
           ],
           "animation_total_frames": 8,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 270,
           "kind": "normal",
           "move_name": "6B",
@@ -49856,6 +50123,15 @@
             ]
           ],
           "animation_total_frames": 13,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 271,
           "kind": "special",
           "move_name": "j.2C",
@@ -49892,6 +50168,15 @@
             ]
           ],
           "animation_total_frames": 9,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 273,
           "kind": "special",
           "move_name": "anim_0111",
@@ -49928,6 +50213,15 @@
             ]
           ],
           "animation_total_frames": 8,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 274,
           "kind": "special",
           "move_name": "anim_0112",
@@ -49948,6 +50242,15 @@
             ]
           ],
           "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 275,
           "kind": "special",
           "move_name": "anim_0113",
@@ -49968,6 +50271,18 @@
             ]
           ],
           "animation_total_frames": 37,
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "morrigan:j_b:chain:2",
+          "family_group_label": "j.B () Air M chain",
+          "family_key": "morrigan:j_b",
+          "family_link_label": "j.B () / Air M chain / Hit 2",
+          "family_phase": "Hit 2",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
           "id": 289,
           "kind": "special",
           "move_name": "j.B (second hit)",
@@ -49987,6 +50302,18 @@
               11
             ]
           ],
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "nearby-unnamed-linked",
+          "family_context": "Air",
+          "family_group_key": "morrigan:j_b:chain:2",
+          "family_group_label": "j.B () Air M chain",
+          "family_key": "morrigan:j_b",
+          "family_link_label": "j.B () / Air M chain / Linked section",
+          "family_phase": "Linked section",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
           "id": 290,
           "kind": "special",
           "move_name": "anim_0122",
@@ -50021,11 +50348,49 @@
             ]
           ],
           "animation_total_frames": 10,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Air",
+          "family_group_key": "morrigan:soul_fist",
+          "family_group_label": "Soul Fist",
+          "family_key": "morrigan:soul_fist",
+          "family_link_label": "Soul Fist / Air / C / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "C",
           "id": 292,
           "kind": "special",
           "move_name": "anim_0124",
           "move_name_source": "anim",
           "recovery": 7,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 4,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              4
+            ]
+          ],
+          "animation_total_frames": 65,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 293,
+          "kind": "special",
+          "move_name": "anim_0125",
+          "move_name_source": "anim",
+          "recovery": 61,
           "recovery_source": "mot_derived",
           "source": "strict"
         },
@@ -50057,6 +50422,15 @@
             ]
           ],
           "animation_total_frames": 65,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Air",
+          "family_group_key": "morrigan:soul_fist",
+          "family_group_label": "Soul Fist",
+          "family_key": "morrigan:soul_fist",
+          "family_link_label": "Soul Fist / Air / C / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "C",
           "id": 293,
           "kind": "special",
           "move_name": "anim_0125",
@@ -50077,6 +50451,15 @@
             ]
           ],
           "animation_total_frames": 80,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 300,
           "kind": "special",
           "move_name": "anim_012C",
@@ -50097,6 +50480,15 @@
             ]
           ],
           "animation_total_frames": 60,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:soul_fist",
+          "family_group_label": "Soul Fist",
+          "family_key": "morrigan:soul_fist",
+          "family_link_label": "Soul Fist / Ground / L / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "L",
           "id": 304,
           "kind": "special",
           "move_name": "Soul Fist L",
@@ -50117,6 +50509,15 @@
             ]
           ],
           "animation_total_frames": 90,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:soul_fist",
+          "family_group_label": "Soul Fist",
+          "family_key": "morrigan:soul_fist",
+          "family_link_label": "Soul Fist / Ground / M / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "M",
           "id": 305,
           "kind": "special",
           "move_name": "Soul Fist M",
@@ -50137,6 +50538,15 @@
             ]
           ],
           "animation_total_frames": 25,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:soul_fist",
+          "family_group_label": "Soul Fist",
+          "family_key": "morrigan:soul_fist",
+          "family_link_label": "Soul Fist / Ground / H / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "H",
           "id": 306,
           "kind": "special",
           "move_name": "Soul Fist H",
@@ -50157,6 +50567,15 @@
             ]
           ],
           "animation_total_frames": 50,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:vector_drain",
+          "family_group_label": "Vector Drain",
+          "family_key": "morrigan:vector_drain",
+          "family_link_label": "Vector Drain / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
           "id": 307,
           "kind": "special",
           "move_name": "Vector Drain A",
@@ -50177,6 +50596,15 @@
             ]
           ],
           "animation_total_frames": 66,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:vector_drain",
+          "family_group_label": "Vector Drain",
+          "family_key": "morrigan:vector_drain",
+          "family_link_label": "Vector Drain / Ground / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
           "id": 308,
           "kind": "special",
           "move_name": "Vector Drain B",
@@ -50197,6 +50625,15 @@
             ]
           ],
           "animation_total_frames": 66,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:vector_drain",
+          "family_group_label": "Vector Drain",
+          "family_key": "morrigan:vector_drain",
+          "family_link_label": "Vector Drain / Ground / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
           "id": 309,
           "kind": "special",
           "move_name": "Vector Drain C",
@@ -50216,6 +50653,15 @@
               13
             ]
           ],
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:shoryu",
+          "family_group_label": "Shoryu",
+          "family_key": "morrigan:shoryu",
+          "family_link_label": "Shoryu / Ground / L / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "L",
           "id": 310,
           "kind": "special",
           "move_name": "Shoryu L",
@@ -50241,6 +50687,15 @@
               8
             ]
           ],
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:shoryu",
+          "family_group_label": "Shoryu",
+          "family_key": "morrigan:shoryu",
+          "family_link_label": "Shoryu / Ground / M / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "M",
           "id": 311,
           "kind": "special",
           "move_name": "Shoryu M",
@@ -50275,6 +50730,15 @@
             ]
           ],
           "animation_total_frames": 70,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:shoryu",
+          "family_group_label": "Shoryu",
+          "family_key": "morrigan:shoryu",
+          "family_link_label": "Shoryu / Ground / H / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "H",
           "id": 312,
           "kind": "special",
           "move_name": "Shoryu H",
@@ -50295,6 +50759,15 @@
             ]
           ],
           "animation_total_frames": 70,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 313,
           "kind": "special",
           "move_name": "anim_0139",
@@ -50314,6 +50787,15 @@
               3
             ]
           ],
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "morrigan:soul_fist",
+          "family_group_label": "Soul Fist",
+          "family_key": "morrigan:soul_fist",
+          "family_link_label": "Soul Fist / Air / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
           "id": 322,
           "kind": "special",
           "move_name": "Air Soul Fist C",
@@ -50347,6 +50829,15 @@
               15
             ]
           ],
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Air",
+          "family_group_key": "morrigan:soul_fist",
+          "family_group_label": "Soul Fist",
+          "family_key": "morrigan:soul_fist",
+          "family_link_label": "Soul Fist / Air / C / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "C",
           "id": 323,
           "kind": "special",
           "move_name": "anim_0143",
@@ -50364,6 +50855,15 @@
               13
             ]
           ],
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "morrigan:shoryu",
+          "family_group_label": "Shoryu",
+          "family_key": "morrigan:shoryu",
+          "family_link_label": "Shoryu / Air / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
           "id": 326,
           "kind": "special",
           "move_name": "Air Shoryu A",
@@ -50389,6 +50889,15 @@
               8
             ]
           ],
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "morrigan:shoryu",
+          "family_group_label": "Shoryu",
+          "family_key": "morrigan:shoryu",
+          "family_link_label": "Shoryu / Air / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
           "id": 327,
           "kind": "special",
           "move_name": "Air Shoryu B",
@@ -50422,6 +50931,15 @@
               12
             ]
           ],
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "morrigan:shoryu",
+          "family_group_label": "Shoryu",
+          "family_key": "morrigan:shoryu",
+          "family_link_label": "Shoryu / Air / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
           "id": 328,
           "kind": "special",
           "move_name": "Air Shoryu C",
@@ -50439,6 +50957,15 @@
               12
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 329,
           "kind": "special",
           "move_name": "anim_0149",
@@ -50457,6 +50984,15 @@
             ]
           ],
           "animation_total_frames": 41,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 348,
           "kind": "special",
           "move_name": "anim_015C",
@@ -50477,6 +51013,15 @@
             ]
           ],
           "animation_total_frames": 95,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:finishing_shower",
+          "family_group_label": "Finishing Shower",
+          "family_key": "morrigan:finishing_shower",
+          "family_link_label": "Finishing Shower / Ground / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "",
           "id": 352,
           "kind": "special",
           "move_name": "Finishing Shower",
@@ -50497,6 +51042,15 @@
             ]
           ],
           "animation_total_frames": 20,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 354,
           "kind": "special",
           "move_name": "anim_0162",
@@ -50517,6 +51071,15 @@
             ]
           ],
           "animation_total_frames": 20,
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "morrigan:finishing_shower",
+          "family_group_label": "Finishing Shower",
+          "family_key": "morrigan:finishing_shower",
+          "family_link_label": "Finishing Shower / Air / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "",
           "id": 355,
           "kind": "special",
           "move_name": "Finishing Shower Air",
@@ -50536,6 +51099,18 @@
               16
             ]
           ],
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "morrigan:darkness_illusion:chain:1",
+          "family_group_label": "Darkness Illusion Air L chain",
+          "family_key": "morrigan:darkness_illusion",
+          "family_link_label": "Darkness Illusion / Air L chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
           "id": 369,
           "kind": "special",
           "move_name": "Air Darkness Illusion Start",
@@ -50553,6 +51128,15 @@
               31
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 370,
           "kind": "special",
           "move_name": "anim_0172",
@@ -50570,6 +51154,15 @@
               31
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 416,
           "kind": "special",
           "move_name": "Tag Out",
@@ -50587,6 +51180,15 @@
               31
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 417,
           "kind": "special",
           "move_name": "assist leave",
@@ -50604,6 +51206,15 @@
               31
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 418,
           "kind": "special",
           "move_name": "Tag In",
@@ -50621,6 +51232,15 @@
               31
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 419,
           "kind": "special",
           "move_name": "anim_01A3",
@@ -50638,6 +51258,15 @@
               17
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 420,
           "kind": "special",
           "move_name": "Cross Counter Tag out",
@@ -50655,6 +51284,15 @@
               17
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 421,
           "kind": "special",
           "move_name": "VAR",
@@ -50672,6 +51310,15 @@
               11
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 424,
           "kind": "special",
           "move_name": "assist taunt",
@@ -50689,6 +51336,15 @@
               31
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 425,
           "kind": "special",
           "move_name": "Tag In Taunt",
@@ -50706,6 +51362,15 @@
               11
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 426,
           "kind": "special",
           "move_name": "assist attack",
@@ -50723,6 +51388,15 @@
               11
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 427,
           "kind": "special",
           "move_name": "Cross Counter Tag in",
@@ -50740,6 +51414,15 @@
               31
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 430,
           "kind": "special",
           "move_name": "assist standby",
@@ -50757,6 +51440,18 @@
               15
             ]
           ],
+          "family_chain_index": 3,
+          "family_chain_label": "Ground H chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:match_leave:chain:3",
+          "family_group_label": "Match Leave Ground H chain",
+          "family_key": "morrigan:match_leave",
+          "family_link_label": "Match Leave / Ground H chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "H",
+          "family_strength_guess": "H",
           "id": 445,
           "kind": "special",
           "move_name": "Match Start Leave",
@@ -50774,6 +51469,47 @@
               15
             ]
           ],
+          "family_chain_index": 1,
+          "family_chain_label": "Ground L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:match_swap:chain:1",
+          "family_group_label": "Match Swap Ground L chain",
+          "family_key": "morrigan:match_swap",
+          "family_link_label": "Match Swap / Ground L chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 446,
+          "kind": "special",
+          "move_name": "Match Start Swap",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 2,
+          "family_chain_label": "Ground M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "morrigan:match_swap:chain:2",
+          "family_group_label": "Match Swap Ground M chain",
+          "family_key": "morrigan:match_swap",
+          "family_link_label": "Match Swap / Ground M chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
           "id": 446,
           "kind": "special",
           "move_name": "Match Start Swap",
@@ -50791,6 +51527,15 @@
               15
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 447,
           "kind": "special",
           "move_name": "Match Start Anchor",
@@ -50808,6 +51553,15 @@
               15
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 448,
           "kind": "special",
           "move_name": "Megacrash",
@@ -50825,6 +51579,15 @@
               15
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 449,
           "kind": "special",
           "move_name": "Crumple",
@@ -50842,6 +51605,15 @@
               15
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 450,
           "kind": "special",
           "move_name": "anim_01C2",
@@ -50859,6 +51631,15 @@
               20
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 451,
           "kind": "special",
           "move_name": "anim_01C3",
@@ -50876,6 +51657,15 @@
               20
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 452,
           "kind": "special",
           "move_name": "anim_01C4",
@@ -50893,6 +51683,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 453,
           "kind": "special",
           "move_name": "anim_01C5",
@@ -50910,6 +51709,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 465,
           "kind": "special",
           "move_name": "Forward Throw",
@@ -50927,6 +51735,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 466,
           "kind": "special",
           "move_name": "anim_01D2",
@@ -50944,6 +51761,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 467,
           "kind": "special",
           "move_name": "anim_01D3",
@@ -50961,6 +51787,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 468,
           "kind": "special",
           "move_name": "Back Throw",
@@ -50978,6 +51813,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 469,
           "kind": "special",
           "move_name": "anim_01D5",
@@ -50995,6 +51839,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 470,
           "kind": "special",
           "move_name": "anim_01D6",
@@ -51012,6 +51865,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 471,
           "kind": "special",
           "move_name": "Air Forward Throw",
@@ -51029,6 +51891,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 473,
           "kind": "special",
           "move_name": "anim_01D9",
@@ -51046,6 +51917,15 @@
               2
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 474,
           "kind": "special",
           "move_name": "Air Back Throw",
@@ -51063,6 +51943,15 @@
               4
             ]
           ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
           "id": 576,
           "kind": "special",
           "move_name": "anim_0240",
@@ -55289,7 +56178,2717 @@
           "recovery_source": "mot_derived"
         }
       ],
-      "table_signature": "83f9091c7b11b93d"
+      "table_signature": "83f9091c7b11b93d",
+      "timing_coverage": "all_actions_v3_family_variants",
+      "timing_moves": [
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "animation_total_frames": 25,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 17,
+          "kind": "special",
+          "move_name": "anim_0011",
+          "move_name_source": "anim",
+          "recovery": 5,
+          "recovery_source": "mot_derived",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": null,
+          "active_start": null,
+          "active_windows": [
+            [
+              8,
+              8
+            ]
+          ],
+          "animation_total_frames": 24,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 18,
+          "kind": "special",
+          "move_name": "Jump Cancel",
+          "move_name_source": "lookup",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 5,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              5
+            ]
+          ],
+          "animation_total_frames": 10,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 30,
+          "kind": "special",
+          "move_name": "landing",
+          "move_name_source": "lookup",
+          "recovery": 5,
+          "recovery_source": "mot_derived",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 2,
+          "active_end": null,
+          "active_start": null,
+          "active_windows": [
+            [
+              2,
+              4
+            ]
+          ],
+          "animation_total_frames": 6,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 32,
+          "kind": "special",
+          "move_name": "Turn Around",
+          "move_name_source": "lookup",
+          "recovery": 2,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 4,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              4
+            ]
+          ],
+          "animation_total_frames": 25,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 43,
+          "kind": "special",
+          "move_name": "anim_002B",
+          "move_name_source": "anim",
+          "recovery": 21,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 4,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              4
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 45,
+          "kind": "special",
+          "move_name": "anim_002D",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 4,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              4
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 47,
+          "kind": "special",
+          "move_name": "anim_002F",
+          "move_name_source": "anim",
+          "recovery": 46,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 102,
+          "kind": "special",
+          "move_name": "knocked down (face up)",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 154,
+          "kind": "special",
+          "move_name": "KO'd",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 155,
+          "kind": "special",
+          "move_name": "KO in slow motion",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 165,
+          "kind": "special",
+          "move_name": "Breakaway Recovery",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 17,
+          "active_start": 16,
+          "active_windows": [
+            [
+              16,
+              17
+            ]
+          ],
+          "animation_total_frames": 5,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 167,
+          "kind": "special",
+          "move_name": "Parry? what is this?",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 4,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              4
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 256,
+          "kind": "normal",
+          "move_name": "5A",
+          "move_name_source": "lookup",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 6,
+          "active_start": 5,
+          "active_windows": [
+            [
+              5,
+              6
+            ]
+          ],
+          "animation_total_frames": 28,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 257,
+          "kind": "normal",
+          "move_name": "5B",
+          "move_name_source": "lookup",
+          "recovery": 22,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 5,
+          "active2_start": 5,
+          "active_end": 16,
+          "active_start": 13,
+          "active_windows": [
+            [
+              13,
+              16
+            ]
+          ],
+          "animation_total_frames": 40,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 258,
+          "kind": "normal",
+          "move_name": "5C",
+          "move_name_source": "lookup",
+          "recovery": 24,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 4,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              4
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 259,
+          "kind": "normal",
+          "move_name": "2A",
+          "move_name_source": "lookup",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 9,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              9
+            ]
+          ],
+          "animation_total_frames": 31,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 260,
+          "kind": "normal",
+          "move_name": "2B",
+          "move_name_source": "lookup",
+          "recovery": 22,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 20,
+          "active_start": 8,
+          "active_windows": [
+            [
+              8,
+              20
+            ]
+          ],
+          "animation_total_frames": 35,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 261,
+          "kind": "normal",
+          "move_name": "2C",
+          "move_name_source": "lookup",
+          "recovery": 15,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 5,
+          "active2_start": 5,
+          "active_end": 16,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              16
+            ]
+          ],
+          "animation_total_frames": 35,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 262,
+          "kind": "normal",
+          "move_name": "6C",
+          "move_name_source": "lookup",
+          "recovery": 19,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 5,
+          "active2_start": 5,
+          "active_end": 16,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              16
+            ]
+          ],
+          "animation_total_frames": 40,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 263,
+          "kind": "special",
+          "move_name": "back throw",
+          "move_name_source": "lookup",
+          "recovery": 24,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 5,
+          "active2_start": 5,
+          "active_end": 16,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              16
+            ]
+          ],
+          "animation_total_frames": 36,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 264,
+          "kind": "normal",
+          "move_name": "3C",
+          "move_name_source": "lookup",
+          "recovery": 20,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 5,
+          "active2_start": 5,
+          "active_end": 6,
+          "active_start": 5,
+          "active_windows": [
+            [
+              5,
+              6
+            ]
+          ],
+          "animation_total_frames": 23,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 265,
+          "kind": "normal",
+          "move_name": "j.A",
+          "move_name_source": "lookup",
+          "recovery": 17,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 5,
+          "active2_start": 5,
+          "active_end": 14,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              14
+            ]
+          ],
+          "animation_total_frames": 32,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 266,
+          "kind": "normal",
+          "move_name": "j.B",
+          "move_name_source": "lookup",
+          "recovery": 18,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 8,
+          "active_start": 8,
+          "active_windows": [
+            [
+              8,
+              8
+            ],
+            [
+              13,
+              14
+            ],
+            [
+              18,
+              19
+            ]
+          ],
+          "animation_total_frames": 40,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 267,
+          "kind": "normal",
+          "move_name": "j.C",
+          "move_name_source": "lookup",
+          "recovery": 32,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 9,
+          "active2_start": 9,
+          "active_end": 13,
+          "active_start": 12,
+          "active_windows": [
+            [
+              12,
+              13
+            ]
+          ],
+          "animation_total_frames": 7,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:j_b:chain:1",
+          "family_group_label": "j.B () Air L chain",
+          "family_key": "viewtiful_joe:j_b",
+          "family_link_label": "j.B () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 268,
+          "kind": "special",
+          "move_name": "j.B (Second)",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 9,
+          "active2_start": 9,
+          "active_end": 13,
+          "active_start": 12,
+          "active_windows": [
+            [
+              12,
+              13
+            ]
+          ],
+          "animation_total_frames": 7,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:j_c:chain:1",
+          "family_group_label": "j.C () Air L chain",
+          "family_key": "viewtiful_joe:j_c",
+          "family_link_label": "j.C () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 269,
+          "kind": "special",
+          "move_name": "j.C (Second)",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 9,
+          "active2_start": 9,
+          "active_end": 13,
+          "active_start": 12,
+          "active_windows": [
+            [
+              12,
+              13
+            ]
+          ],
+          "animation_total_frames": 12,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 270,
+          "kind": "normal",
+          "move_name": "6B",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 9,
+          "active2_start": 9,
+          "active_end": 8,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              8
+            ]
+          ],
+          "animation_total_frames": 40,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 271,
+          "kind": "special",
+          "move_name": "Hero Taunt",
+          "move_name_source": "lookup",
+          "recovery": 31,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 9,
+          "active2_start": 9,
+          "active_end": 8,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              8
+            ]
+          ],
+          "animation_total_frames": 24,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 272,
+          "kind": "special",
+          "move_name": "anim_0110",
+          "move_name_source": "anim",
+          "recovery": 15,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 5,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              5
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              5,
+              7
+            ],
+            [
+              7,
+              9
+            ],
+            [
+              9,
+              11
+            ],
+            [
+              13,
+              17
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 277,
+          "kind": "special",
+          "move_name": "Filler?",
+          "move_name_source": "lookup",
+          "recovery": 12,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 17,
+          "active_start": 13,
+          "active_windows": [
+            [
+              4,
+              6
+            ],
+            [
+              5,
+              7
+            ],
+            [
+              7,
+              9
+            ],
+            [
+              9,
+              11
+            ],
+            [
+              13,
+              17
+            ]
+          ],
+          "animation_total_frames": 30,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 278,
+          "kind": "special",
+          "move_name": "Filler?",
+          "move_name_source": "lookup",
+          "recovery": 13,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 7,
+          "active_start": 5,
+          "active_windows": [
+            [
+              4,
+              6
+            ],
+            [
+              5,
+              7
+            ],
+            [
+              7,
+              9
+            ],
+            [
+              9,
+              11
+            ]
+          ],
+          "animation_total_frames": 24,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 279,
+          "kind": "special",
+          "move_name": "Filler?",
+          "move_name_source": "lookup",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 11,
+          "active_start": 9,
+          "active_windows": [
+            [
+              9,
+              11
+            ]
+          ],
+          "animation_total_frames": 27,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 280,
+          "kind": "special",
+          "move_name": "anim_0118",
+          "move_name_source": "anim",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 11,
+          "active_start": 9,
+          "active_windows": [
+            [
+              4,
+              6
+            ],
+            [
+              7,
+              9
+            ],
+            [
+              9,
+              11
+            ]
+          ],
+          "animation_total_frames": 27,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:desperado",
+          "family_group_label": "Desperado",
+          "family_key": "viewtiful_joe:desperado",
+          "family_link_label": "Desperado / Ground / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "",
+          "id": 280,
+          "kind": "special",
+          "move_name": "anim_0118",
+          "move_name_source": "anim",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 6,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              6
+            ]
+          ],
+          "animation_total_frames": 30,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 281,
+          "kind": "special",
+          "move_name": "anim_0119",
+          "move_name_source": "anim",
+          "recovery": 24,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 2,
+          "active_end": 6,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              6
+            ],
+            [
+              7,
+              9
+            ]
+          ],
+          "animation_total_frames": 30,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:desperado",
+          "family_group_label": "Desperado",
+          "family_key": "viewtiful_joe:desperado",
+          "family_link_label": "Desperado / Ground / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "",
+          "id": 281,
+          "kind": "special",
+          "move_name": "anim_0119",
+          "move_name_source": "anim",
+          "recovery": 24,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 2,
+          "active_end": 9,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              9
+            ]
+          ],
+          "animation_total_frames": 31,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 282,
+          "kind": "special",
+          "move_name": "Front Throw",
+          "move_name_source": "lookup",
+          "recovery": 22,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 2,
+          "active_end": null,
+          "active_start": null,
+          "active_windows": [
+            [
+              2,
+              4
+            ]
+          ],
+          "animation_total_frames": 110,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 283,
+          "kind": "special",
+          "move_name": "Air Front Throw",
+          "move_name_source": "lookup",
+          "recovery": 106,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 8,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              8
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:j_b:chain:2",
+          "family_group_label": "j.B () Air M chain",
+          "family_key": "viewtiful_joe:j_b",
+          "family_link_label": "j.B () / Air M chain / Hit 2",
+          "family_phase": "Hit 2",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 289,
+          "kind": "special",
+          "move_name": "j.B (second hit)",
+          "move_name_source": "lookup",
+          "recovery": 12,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 8,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              8
+            ]
+          ],
+          "animation_total_frames": 56,
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "nearby-unnamed-linked",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:j_b:chain:2",
+          "family_group_label": "j.B () Air M chain",
+          "family_key": "viewtiful_joe:j_b",
+          "family_link_label": "j.B () / Air M chain / Linked section",
+          "family_phase": "Linked section",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 290,
+          "kind": "special",
+          "move_name": "anim_0122",
+          "move_name_source": "anim",
+          "recovery": 48,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 6,
+          "active_start": 5,
+          "active_windows": [
+            [
+              5,
+              6
+            ],
+            [
+              11,
+              12
+            ],
+            [
+              17,
+              18
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:desperado",
+          "family_group_label": "Desperado",
+          "family_key": "viewtiful_joe:desperado",
+          "family_link_label": "Desperado / Air / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "",
+          "id": 293,
+          "kind": "special",
+          "move_name": "anim_0125",
+          "move_name_source": "anim",
+          "recovery": 14,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              19
+            ]
+          ],
+          "animation_total_frames": 14,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 294,
+          "kind": "special",
+          "move_name": "anim_0126",
+          "move_name_source": "anim",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              19
+            ]
+          ],
+          "animation_total_frames": 71,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 295,
+          "kind": "special",
+          "move_name": "anim_0127",
+          "move_name_source": "anim",
+          "recovery": 52,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 17,
+          "active_start": 16,
+          "active_windows": [
+            [
+              16,
+              17
+            ]
+          ],
+          "animation_total_frames": 48,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 297,
+          "kind": "special",
+          "move_name": "anim_0129",
+          "move_name_source": "anim",
+          "recovery": 31,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": 5,
+          "active2_start": 5,
+          "active_end": null,
+          "active_start": null,
+          "active_windows": [
+            [
+              5,
+              5
+            ]
+          ],
+          "animation_total_frames": 210,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 299,
+          "kind": "special",
+          "move_name": "anim_012B",
+          "move_name_source": "anim",
+          "recovery": 205,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 8,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              8
+            ]
+          ],
+          "animation_total_frames": 17,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:voomerang",
+          "family_group_label": "Voomerang",
+          "family_key": "viewtiful_joe:voomerang",
+          "family_link_label": "Voomerang / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
+          "id": 304,
+          "kind": "special",
+          "move_name": "Voomerang A",
+          "move_name_source": "lookup",
+          "recovery": 9,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "animation_total_frames": 38,
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:voomerang",
+          "family_group_label": "Voomerang",
+          "family_key": "viewtiful_joe:voomerang",
+          "family_link_label": "Voomerang / Air / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
+          "id": 322,
+          "kind": "special",
+          "move_name": "Air Voomerang C",
+          "move_name_source": "lookup",
+          "recovery": 18,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 5,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              5
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 326,
+          "kind": "special",
+          "move_name": "anim_0146",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 5,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              5
+            ]
+          ],
+          "animation_total_frames": 24,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 327,
+          "kind": "special",
+          "move_name": "anim_0147",
+          "move_name_source": "anim",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 5,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              5
+            ],
+            [
+              5,
+              7
+            ],
+            [
+              9,
+              11
+            ],
+            [
+              13,
+              17
+            ]
+          ],
+          "animation_total_frames": 180,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 328,
+          "kind": "special",
+          "move_name": "anim_0148",
+          "move_name_source": "anim",
+          "recovery": 172,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 5,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              5
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              5,
+              7
+            ],
+            [
+              9,
+              11
+            ],
+            [
+              13,
+              17
+            ]
+          ],
+          "animation_total_frames": 252,
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:joe",
+          "family_group_label": "Joe",
+          "family_key": "viewtiful_joe:joe",
+          "family_link_label": "Joe / Air / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
+          "id": 331,
+          "kind": "special",
+          "move_name": "Air Joe B",
+          "move_name_source": "lookup",
+          "recovery": 244,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 5,
+          "active_start": 4,
+          "active_windows": [
+            [
+              4,
+              5
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              5,
+              7
+            ],
+            [
+              7,
+              9
+            ],
+            [
+              9,
+              11
+            ],
+            [
+              13,
+              17
+            ]
+          ],
+          "animation_total_frames": 252,
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:joe",
+          "family_group_label": "Joe",
+          "family_key": "viewtiful_joe:joe",
+          "family_link_label": "Joe / Air / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
+          "id": 332,
+          "kind": "special",
+          "move_name": "Air Joe c",
+          "move_name_source": "lookup",
+          "recovery": 244,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 2,
+          "active_end": 9,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              9
+            ]
+          ],
+          "animation_total_frames": 120,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 333,
+          "kind": "special",
+          "move_name": "anim_014D",
+          "move_name_source": "anim",
+          "recovery": 111,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 2,
+          "active_end": 9,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              9
+            ]
+          ],
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:desperado",
+          "family_group_label": "Desperado",
+          "family_key": "viewtiful_joe:desperado",
+          "family_link_label": "Desperado / Ground / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "",
+          "id": 352,
+          "kind": "special",
+          "move_name": "Desperado",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              19
+            ]
+          ],
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "viewtiful_joe:desperado",
+          "family_group_label": "Desperado",
+          "family_key": "viewtiful_joe:desperado",
+          "family_link_label": "Desperado / Air / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "",
+          "id": 354,
+          "kind": "special",
+          "move_name": "Air Desperado",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 17,
+          "active_start": 16,
+          "active_windows": [
+            [
+              16,
+              17
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 369,
+          "kind": "special",
+          "move_name": "anim_0171",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 17,
+          "active_start": 16,
+          "active_windows": [
+            [
+              16,
+              17
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 416,
+          "kind": "special",
+          "move_name": "Tag Out",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 417,
+          "kind": "special",
+          "move_name": "assist leave",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 418,
+          "kind": "special",
+          "move_name": "Tag In",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              19
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 419,
+          "kind": "special",
+          "move_name": "anim_01A3",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              19
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 420,
+          "kind": "special",
+          "move_name": "Cross Counter Tag out",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              19
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 421,
+          "kind": "special",
+          "move_name": "VAR",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 424,
+          "kind": "special",
+          "move_name": "assist taunt",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 425,
+          "kind": "special",
+          "move_name": "Tag In Taunt",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 426,
+          "kind": "special",
+          "move_name": "assist attack",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 427,
+          "kind": "special",
+          "move_name": "Cross Counter Tag in",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 428,
+          "kind": "special",
+          "move_name": "DHC Hop in",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 429,
+          "kind": "special",
+          "move_name": "anim_01AD",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 430,
+          "kind": "special",
+          "move_name": "assist standby",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 20,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              20
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 431,
+          "kind": "special",
+          "move_name": "anim_01AF",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 1,
+          "family_chain_label": "Ground L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:match_leave:chain:1",
+          "family_group_label": "Match Leave Ground L chain",
+          "family_key": "viewtiful_joe:match_leave",
+          "family_link_label": "Match Leave / Ground L chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 445,
+          "kind": "special",
+          "move_name": "Match Start Leave",
+          "move_name_source": "lookup",
+          "source": "cmd_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 3,
+          "family_chain_label": "Ground H chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:match_leave:chain:3",
+          "family_group_label": "Match Leave Ground H chain",
+          "family_key": "viewtiful_joe:match_leave",
+          "family_link_label": "Match Leave / Ground H chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "H",
+          "family_strength_guess": "H",
+          "id": 445,
+          "kind": "special",
+          "move_name": "Match Start Leave",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 1,
+          "family_chain_label": "Ground L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:match_swap:chain:1",
+          "family_group_label": "Match Swap Ground L chain",
+          "family_key": "viewtiful_joe:match_swap",
+          "family_link_label": "Match Swap / Ground L chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 446,
+          "kind": "special",
+          "move_name": "Match Start Swap",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 2,
+          "family_chain_label": "Ground M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "viewtiful_joe:match_swap:chain:2",
+          "family_group_label": "Match Swap Ground M chain",
+          "family_key": "viewtiful_joe:match_swap",
+          "family_link_label": "Match Swap / Ground M chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 446,
+          "kind": "special",
+          "move_name": "Match Start Swap",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 447,
+          "kind": "special",
+          "move_name": "Match Start Anchor",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 448,
+          "kind": "special",
+          "move_name": "Megacrash",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 449,
+          "kind": "special",
+          "move_name": "Crumple",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 450,
+          "kind": "special",
+          "move_name": "anim_01C2",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 451,
+          "kind": "special",
+          "move_name": "anim_01C3",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 452,
+          "kind": "special",
+          "move_name": "anim_01C4",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 453,
+          "kind": "special",
+          "move_name": "anim_01C5",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 464,
+          "kind": "special",
+          "move_name": "anim_01D0",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 465,
+          "kind": "special",
+          "move_name": "Forward Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 466,
+          "kind": "special",
+          "move_name": "anim_01D2",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 467,
+          "kind": "special",
+          "move_name": "anim_01D3",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 468,
+          "kind": "special",
+          "move_name": "Back Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 469,
+          "kind": "special",
+          "move_name": "anim_01D5",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 470,
+          "kind": "special",
+          "move_name": "anim_01D6",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 471,
+          "kind": "special",
+          "move_name": "Air Forward Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 472,
+          "kind": "special",
+          "move_name": "anim_01D8",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 473,
+          "kind": "special",
+          "move_name": "anim_01D9",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 474,
+          "kind": "special",
+          "move_name": "Air Back Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 475,
+          "kind": "special",
+          "move_name": "anim_01DB",
+          "move_name_source": "anim",
+          "source": "table"
+        }
+      ]
     },
     "id_18_volnutt": {
       "char_id": 18,

@@ -112,3 +112,46 @@ tdp-modules/data/overlay/hud_overlay_data.json.tmp
 tdp-modules/data/training/mission_mode_state.json
 tdp-modules/data/training/mission_overlay_data.json
 tdp-modules/data/training/mission_progress.json
+
+# BEGIN CONTINUO GITHUB CLEANUP
+
+# Python environments and caches
+.venv/
+venv/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+**/.pytest_cache/
+
+# Build outputs
+/tdp-modules/build/
+/tdp-modules/dist*/
+
+# Memory and diagnostic captures
+/tdp-modules/memory_dumps/
+/tdp-modules/code_dumps/
+/tdp-modules/char_test_traces/
+/tdp-modules/chrsel_yami_cmn_icon_backups/
+/tdp-modules/data/runtime/stage_select_probe/
+
+# Personal music and player state
+/tdp-modules/data/continuo/music/
+/tdp-modules/data/continuo/music_history.json
+/tdp-modules/data/continuo/music_settings.json
+
+# Generated exports
+/tdp-modules/exports/
+/tdp-modules/data/exports/
+
+# Temporary files and backups
+*.tmp
+*.log
+*.bak
+*.before-*
+*.previous.csv
+
+# Explicitly preserve the recompilation archive
+!/TvC_Recomp Package.zip
+
+# END CONTINUO GITHUB CLEANUP

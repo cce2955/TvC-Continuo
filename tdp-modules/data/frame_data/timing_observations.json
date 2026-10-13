@@ -631,18 +631,29 @@
             "damage": {
               "confidence": "single",
               "matches": 1,
-              "sample_count": 1,
+              "sample_count": 2,
               "samples": [
-                1120
+                1120,
+                2400
               ],
               "value": 1120
             },
-            "hitstun": {
+            "hitstop": {
               "confidence": "single",
               "matches": 1,
               "sample_count": 1,
               "samples": [
-                16
+                3
+              ],
+              "value": 3
+            },
+            "hitstun": {
+              "confidence": "single",
+              "matches": 1,
+              "sample_count": 2,
+              "samples": [
+                16,
+                21
               ],
               "value": 16
             }
@@ -2934,30 +2945,37 @@
             "damage": {
               "confidence": "confirmed",
               "matches": 3,
-              "sample_count": 4,
+              "sample_count": 7,
               "samples": [
                 800,
                 800,
                 800,
-                2455
+                2455,
+                1600,
+                1600,
+                1600
               ],
               "value": 800
             },
             "hitstop": {
               "confidence": "single",
               "matches": 1,
-              "sample_count": 2,
+              "sample_count": 3,
               "samples": [
                 1,
-                12
+                12,
+                10
               ],
               "value": 1
             },
             "hitstun": {
               "confidence": "confirmed",
-              "matches": 4,
-              "sample_count": 4,
+              "matches": 7,
+              "sample_count": 7,
               "samples": [
+                21,
+                21,
+                21,
                 21,
                 21,
                 21,
@@ -4427,34 +4445,33 @@
             },
             "damage": {
               "confidence": "confirmed",
-              "matches": 6,
+              "matches": 10,
               "sample_count": 16,
               "samples": [
-                500,
-                500,
-                5000,
-                3768,
-                46000,
-                46000,
-                48000,
-                46000,
-                46000,
-                48000,
-                46000,
-                48000,
-                48000,
-                46000,
-                48000,
-                48000
+                4400,
+                4400,
+                4400,
+                4400,
+                4800,
+                4400,
+                4400,
+                4400,
+                4400,
+                4400,
+                4400,
+                2000,
+                2000,
+                10000,
+                4000,
+                19200
               ],
-              "value": 46000
+              "value": 4400
             },
             "hitstop": {
               "confidence": "confirmed",
               "matches": 3,
               "sample_count": 16,
               "samples": [
-                12,
                 11,
                 12,
                 11,
@@ -4469,33 +4486,34 @@
                 12,
                 44,
                 84,
-                1
+                1,
+                34
               ],
-              "value": 12
+              "value": 11
             },
             "hitstun": {
               "confidence": "confirmed",
-              "matches": 12,
+              "matches": 16,
               "sample_count": 16,
               "samples": [
                 21,
                 21,
                 21,
                 21,
-                12,
-                12,
-                12,
-                12,
-                12,
-                12,
-                12,
-                12,
-                12,
-                12,
-                12,
-                12
+                21,
+                21,
+                21,
+                21,
+                21,
+                21,
+                21,
+                21,
+                21,
+                21,
+                21,
+                21
               ],
-              "value": 12
+              "value": 21
             }
           }
         },
@@ -9901,13 +9919,9 @@
             },
             "damage": {
               "confidence": "confirmed",
-              "matches": 10,
+              "matches": 6,
               "sample_count": 16,
               "samples": [
-                500,
-                500,
-                500,
-                500,
                 500,
                 800,
                 500,
@@ -9919,17 +9933,19 @@
                 500,
                 6800,
                 4600,
-                4600
+                4600,
+                46304,
+                4600,
+                9200,
+                4800
               ],
               "value": 500
             },
             "hitstop": {
-              "confidence": "matched",
-              "matches": 2,
+              "confidence": "confirmed",
+              "matches": 3,
               "sample_count": 16,
               "samples": [
-                6,
-                8,
                 15,
                 15,
                 8,
@@ -9943,9 +9959,11 @@
                 3,
                 5,
                 9,
-                11
+                11,
+                12,
+                13
               ],
-              "value": 6
+              "value": 12
             },
             "hitstun": {
               "confidence": "confirmed",
@@ -12727,11 +12745,9 @@
           "fields": {
             "damage": {
               "confidence": "confirmed",
-              "matches": 3,
+              "matches": 4,
               "sample_count": 16,
               "samples": [
-                6041,
-                4000,
                 1000,
                 8400,
                 6000,
@@ -12745,7 +12761,9 @@
                 4800,
                 10800,
                 4000,
-                8400
+                8400,
+                8400,
+                500
               ],
               "value": 8400
             },
@@ -12775,10 +12793,10 @@
             },
             "hitstun": {
               "confidence": "confirmed",
-              "matches": 15,
+              "matches": 16,
               "sample_count": 16,
               "samples": [
-                7,
+                21,
                 21,
                 21,
                 21,
@@ -14795,7 +14813,6 @@
               "matches": 11,
               "sample_count": 16,
               "samples": [
-                21,
                 12,
                 21,
                 21,
@@ -14810,6 +14827,7 @@
                 15,
                 16,
                 3,
+                21,
                 21
               ],
               "value": 21
@@ -19122,15 +19140,9 @@
             },
             "damage": {
               "confidence": "confirmed",
-              "matches": 4,
+              "matches": 5,
               "sample_count": 16,
               "samples": [
-                800,
-                4600,
-                500,
-                4600,
-                4800,
-                500,
                 500,
                 6800,
                 500,
@@ -19140,9 +19152,15 @@
                 4800,
                 4800,
                 6800,
-                14048
+                14048,
+                4600,
+                4800,
+                4600,
+                4800,
+                9200,
+                14400
               ],
-              "value": 4600
+              "value": 4800
             },
             "hitstop": {
               "confidence": "confirmed",

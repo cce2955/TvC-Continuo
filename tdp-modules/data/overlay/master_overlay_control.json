@@ -1,5 +1,5 @@
 {
-  "show_hud": false,
+  "show_hud": true,
   "show_hitboxes": false,
   "show_hurtboxes": false,
   "show_debug": false,
