@@ -351,7 +351,7 @@ Resets the trainer's current trigger/cooldown state. It does not erase unrelated
 Assist Setup
 Inspect and change the assist profile used by loaded fighters and quick-assist buttons.
 
-Stage Control
+Extra Stages
 Reads or changes the current stage selection while the in-game stage carousel is available.
 
 Extra Characters

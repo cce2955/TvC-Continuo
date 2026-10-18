@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 import types
 from pathlib import Path
@@ -51,7 +52,9 @@ def _gesture(interpreter, slot: str, start_ns: int, *, char_id: int = 4, base: i
     interpreter.on_sample(slot, _sample(0x0C00, pressed=0x0C00, ns=start_ns + 4 * step, char_id=char_id, base=base))
 
 
-def test_shortcut_reopens_after_menu_select() -> None:
+def test_shortcut_reopens_after_menu_select(tmp_path, monkeypatch) -> None:
+    menu = importlib.import_module("tvcgui.runtime.mission_menu_input")
+    monkeypatch.setattr(menu, "MISSION_MENU_VISUAL_FILE", str(tmp_path / "visual.json"))
     from tvcgui.runtime.mission_menu_input import (
         MISSION_MENU_OPEN,
         MISSION_MENU_SELECT,
@@ -59,6 +62,7 @@ def test_shortcut_reopens_after_menu_select() -> None:
     )
 
     interpreter = MissionMenuInputInterpreter()
+    interpreter.set_enabled(True)
     _gesture(interpreter, "P1-C1", 1_000_000_000)
     commands = interpreter.drain_commands()
     assert [command.kind for command in commands] == [MISSION_MENU_OPEN]
@@ -79,13 +83,46 @@ def test_shortcut_reopens_after_menu_select() -> None:
     assert [command.kind for command in commands] == [MISSION_MENU_OPEN]
 
 
-def test_tag_moves_shortcut_to_new_native_point_slot() -> None:
+def test_navigation_publishes_cursor_before_manager_drains_commands(tmp_path, monkeypatch) -> None:
+    menu = importlib.import_module("tvcgui.runtime.mission_menu_input")
+    visual_file = tmp_path / "menu_visual.json"
+    monkeypatch.setattr(menu, "MISSION_MENU_VISUAL_FILE", str(visual_file))
+    interpreter = menu.MissionMenuInputInterpreter()
+    interpreter.set_enabled(True)
+    interpreter.on_sample("P1-C1", _sample(0, ns=1_000_000_000))
+    interpreter.set_menu_open("P1", "P1-C1")
+    interpreter.configure_menu("P1-C1", 5, 2)
+    interpreter.on_sample("P1-C1", _sample(0x08, pressed=0x08, ns=1_020_000_000))
+    assert json.loads(visual_file.read_text(encoding="utf-8"))["index"] == 3
+    assert [command.kind for command in interpreter.drain_commands()] == [menu.MISSION_MENU_NEXT]
+
+
+def test_right_locks_and_left_unlocks_highlighted_mission(tmp_path, monkeypatch) -> None:
+    menu = importlib.import_module("tvcgui.runtime.mission_menu_input")
+    monkeypatch.setattr(menu, "MISSION_MENU_VISUAL_FILE", str(tmp_path / "visual.json"))
+    interpreter = menu.MissionMenuInputInterpreter()
+    interpreter.set_enabled(True)
+    interpreter.on_sample("P1-C1", _sample(0, ns=1_000_000_000))
+    interpreter.set_menu_open("P1", "P1-C1")
+    interpreter.configure_menu("P1-C1", 4, 1)
+    interpreter.on_sample("P1-C1", _sample(0x01, pressed=0x01, ns=1_020_000_000))
+    interpreter.on_sample("P1-C1", _sample(0x02, pressed=0x02, ns=1_040_000_000))
+    assert [command.kind for command in interpreter.drain_commands()] == [
+        menu.MISSION_MENU_LOCK, menu.MISSION_MENU_UNLOCK,
+    ]
+    assert json.loads((tmp_path / "visual.json").read_text(encoding="utf-8"))["index"] == 1
+
+
+def test_tag_moves_shortcut_to_new_native_point_slot(tmp_path, monkeypatch) -> None:
+    menu = importlib.import_module("tvcgui.runtime.mission_menu_input")
+    monkeypatch.setattr(menu, "MISSION_MENU_VISUAL_FILE", str(tmp_path / "visual.json"))
     from tvcgui.runtime.mission_menu_input import (
         MISSION_MENU_OPEN,
         MissionMenuInputInterpreter,
     )
 
     interpreter = MissionMenuInputInterpreter()
+    interpreter.set_enabled(True)
     interpreter.on_sample("P1-C1", _sample(0, point=True, ns=1_000_000_000))
     interpreter.on_sample("P1-C1", _sample(0, point=False, ns=1_100_000_000))
     interpreter.on_sample(
@@ -143,11 +180,15 @@ def test_mission_manager_only_consumes_menu_commands(monkeypatch) -> None:
         def set_menu_open(self, *_args):
             pass
 
+        def configure_menu(self, *_args):
+            pass
+
         def close_menu(self, *_args):
             pass
 
     queue = Queue()
     manager.set_menu_input_interpreter(queue)
+    manager.active_slot = "P1-C1"
     snaps = {
         "P1-C1": {
             "base": 0x90000000,

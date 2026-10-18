@@ -327,41 +327,6 @@
           "label": "That one combo from the JP Nico nico video I have to transcribe it again, if you see this I forgot to put it in"
         }
       ]
-    },
-    {
-      "mission_id": "joe_the_condor_008",
-      "name": "VAR Science Ninpo",
-      "notes": "",
-      "steps": [
-        {
-          "label": "VAR"
-        },
-        {
-          "label": "j.A"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "Air Shuriken A"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "Air Shuriken A"
-        },
-        {
-          "label": "Air Science Ninpo"
-        },
-        {
-          "label": "Wild Lasso A",
-          "input": "46A"
-        }
-      ]
     }
   ]
 }

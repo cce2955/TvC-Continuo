@@ -122,6 +122,7 @@ class _SlotState:
     special_reaction: bool = False
     megacrash: bool = False
     recovery_idle: bool = False
+    pending_idle_damage_ns: int = 0
     point_active: bool = False
     hitstun_remaining: int = 0
     untech_remaining: int = 0
@@ -296,10 +297,16 @@ class MissionEventStream:
         # milliseconds apart. Suppress only same-ID near-duplicates; a genuine
         # same-ID repeat cannot begin inside this sub-frame window.
         last_emit = self._last_action_emit.get(slot)
+        restarted = bool(
+            action_id == prior_action
+            and action_frame < int(state.action_frame)
+            and (not state.combat_sample_ns or sample_ns >= state.combat_sample_ns)
+        )
         duplicate = bool(
             last_emit
             and int(last_emit[0]) == action_id
             and abs(sample_ns - int(last_emit[1])) <= self._ACTION_DEDUPE_NS
+            and not restarted
         )
 
         packet = self._state_packet(state, edge)
@@ -515,7 +522,10 @@ class MissionEventStream:
                     state.action_id = action_id
                     state.action_frame = action_frame
 
-                if hp > 0 and previous.current_hp > 0 and hp < previous.current_hp:
+                # Zero is a valid final HP value. Dropping that edge made a
+                # finishing blow invisible to route and damage-goal missions.
+                damaged = previous.current_hp > 0 and 0 <= hp < previous.current_hp
+                if damaged:
                     self._append(
                         kind=EVENT_DAMAGE,
                         slot=slot,
@@ -540,6 +550,24 @@ class MissionEventStream:
                     self._append(kind=EVENT_MEGACRASH_END, slot=slot, packet=packet)
                 if recovery_idle and not previous.recovery_idle:
                     self._append(kind=EVENT_RECOVERY_IDLE, slot=slot, packet=packet)
+
+                # A very short reaction can fall entirely between complete
+                # combat samples: HP drops while the defender still reads idle.
+                # In that case there is no idle transition edge. Confirm the
+                # persistent idle state after two game frames before emitting
+                # the recovery boundary for Mission Mode.
+                if not recovery_idle:
+                    state.pending_idle_damage_ns = 0
+                elif recovery_idle and not previous.recovery_idle:
+                    state.pending_idle_damage_ns = 0
+                elif damaged:
+                    state.pending_idle_damage_ns = packet_ns
+                elif (
+                    state.pending_idle_damage_ns
+                    and packet_ns - state.pending_idle_damage_ns >= 2 * (1_000_000_000 // 60)
+                ):
+                    self._append(kind=EVENT_RECOVERY_IDLE, slot=slot, packet=packet)
+                    state.pending_idle_damage_ns = 0
 
                 state.fighter_base = int(packet.get("base", 0) or state.fighter_base)
                 state.char_id = int(packet.get("char_id", 0) or state.char_id)

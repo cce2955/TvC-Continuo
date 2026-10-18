@@ -13,7 +13,7 @@ import threading
 FORMAT = "tvc-continuo-session"
 VERSION = 1
 MAX_FRAMES = 3600  # the latest minute at 60 FPS
-MAX_EVENTS = 4000
+MAX_EVENTS = 24000  # 240 Hz mission edges must cover the full recorded minute
 MAX_SESSION_BYTES = 30_000_000
 FIGHTER_FIELDS = ("id", "name", "cur", "max", "aux", "meter", "attA", "attB", "x", "y")
 

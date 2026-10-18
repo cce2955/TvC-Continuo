@@ -352,35 +352,6 @@
       }
     },
     {
-      "mission_id": "alex_012",
-      "name": "Challenge",
-      "notes": "Some moves are missing, fill in the blank.",
-      "steps": [
-        {
-          "label": "Slash Elbow M",
-          "input": "[4]6X"
-        },
-        {
-          "label": "j.C"
-        },
-        {
-          "label": "VAR",
-          "pass": true
-        },
-        {
-          "label": "j.C"
-        },
-        {
-          "label": "Slash Elbow H",
-          "input": "[4]6X"
-        },
-        {
-          "label": "Wild Stomp C",
-          "input": "[2]8X"
-        }
-      ]
-    },
-    {
       "mission_id": "alex_013",
       "name": "Challenge 2",
       "notes": "A hit after stungun always produces an airborne hit, but what if there was a way to cancel it out? Some moves are missing, fill in the blanks.",
@@ -422,22 +393,6 @@
         "type": "combo_damage",
         "damage": 45000
       }
-    },
-    {
-      "mission_id": "alex_016",
-      "name": "VAR Powerbomb",
-      "notes": "This mission starts with your non-Alex character. Use VAR to bring Alex in, then complete the route.",
-      "steps": [
-        {
-          "label": "VAR"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "Air Powerbomb"
-        }
-      ]
     },
     {
       "mission_id": "alex_017",

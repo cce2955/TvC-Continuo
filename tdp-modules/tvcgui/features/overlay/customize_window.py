@@ -41,7 +41,7 @@ def _show(root):
     win = tk.Toplevel(root)
     _WINDOW = win
     win.title("Continuo | Overlay Customizer")
-    win.geometry("550x610")
+    win.geometry("550x650")
     win.configure(bg="#0a111c")
     fg, bg, panel = "#e8f0f8", "#0a111c", "#122138"
     tk.Label(win, text="Overlay Customizer", bg=bg, fg=fg,
@@ -112,6 +112,12 @@ def _show(root):
     tk.Checkbutton(win, text="Edit positions: drag P1 and P2 on the game screen", variable=edit_var,
                    command=toggle_edit, bg=bg, fg="#35aadc", selectcolor=panel,
                    activebackground=bg, activeforeground=fg).pack(anchor="w", padx=18, pady=(7, 4))
+
+    motion_var = tk.BooleanVar(value=data["reduce_mission_motion"])
+    checks["reduce_mission_motion"] = motion_var
+    tk.Checkbutton(win, text="Reduce Mission Mode motion", variable=motion_var,
+                   command=save, bg=bg, fg=fg, selectcolor=panel,
+                   activebackground=bg, activeforeground=fg).pack(anchor="w", padx=18, pady=(2, 4))
 
     row = tk.Frame(win, bg=bg)
     row.pack(anchor="w", padx=18, pady=(4, 0))

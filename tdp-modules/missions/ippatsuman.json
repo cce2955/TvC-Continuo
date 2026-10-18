@@ -323,38 +323,6 @@
           "label": "Final Reversal Breaker"
         }
       ]
-    },
-    {
-      "mission_id": "ippatsuman_008",
-      "name": "VAR Reversal Breaker",
-      "notes": "",
-      "steps": [
-        {
-          "label": "VAR"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "Air Rainball B"
-        },
-        {
-          "label": "Baroque cancel"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "Air Quick Upper A",
-          "grace": 80
-        },
-        {
-          "label": "Final Reversal Breaker"
-        }
-      ],
-      "setup_debug_flags": {
-        "BaroquePct": 1
-      }
     }
   ]
 }

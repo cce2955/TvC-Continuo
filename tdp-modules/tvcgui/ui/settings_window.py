@@ -144,7 +144,7 @@ def _show_window(root):
     tk.Frame(win, height=1, bg="#2b3b4d").pack(fill="x", padx=18, pady=15)
     tk.Label(win, text="Recorded session", bg=BG, fg=TEXT,
              font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=18)
-    tk.Label(win, text="Records HUD snapshots and music transitions. Replay is read-only.",
+    tk.Label(win, text="Records HUD snapshots, music changes, and stage route diagnostics. Replay is read-only.",
              bg=BG, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w", padx=18, pady=(2, 8))
     status = tk.StringVar(value="")
     buttons = tk.Frame(win, bg=BG)
@@ -170,7 +170,7 @@ def _show_window(root):
         try:
             count = recorder.save(Path(selected))
             messagebox.showinfo("Session saved",
-                                f"Saved {count} frames and {len(recorder.events())} music events.",
+                                f"Saved {count} frames and {len(recorder.events())} events.",
                                 parent=win)
         except Exception as error:
             messagebox.showerror("Save failed", str(error), parent=win)

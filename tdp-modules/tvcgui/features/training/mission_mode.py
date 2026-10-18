@@ -600,13 +600,14 @@ def _get_char_progress_node(progress: Dict[str, Any], character_name: str) -> Di
     if not isinstance(completed, dict):
         legacy_completed = {
             k: v for k, v in node.items()
-            if isinstance(k, str) and k != "selected_mission_id"
+            if isinstance(k, str) and k not in {"selected_mission_id", "locked_mission_id"}
         }
         completed = legacy_completed
 
     return {
         "completed": completed,
         "selected_mission_id": node.get("selected_mission_id"),
+        "locked_mission_id": node.get("locked_mission_id"),
     }
 
 
@@ -615,6 +616,7 @@ def _set_char_progress_node(progress: Dict[str, Any], character_name: str, node:
     progress[char_key] = {
         "completed": dict(node.get("completed", {})),
         "selected_mission_id": node.get("selected_mission_id"),
+        "locked_mission_id": node.get("locked_mission_id"),
     }
     return progress
 
@@ -633,6 +635,13 @@ def mark_mission_complete(progress: Dict[str, Any], character_name: str, mission
     return _set_char_progress_node(progress, character_name, node)
 
 
+def clear_character_completions(progress: Dict[str, Any], character_name: str) -> Dict[str, Any]:
+    """Clear only this character's completion marks; keep the selected trial."""
+    node = _get_char_progress_node(progress, character_name)
+    node["completed"] = {}
+    return _set_char_progress_node(progress, character_name, node)
+
+
 def get_selected_mission_id(progress: Dict[str, Any], character_name: str) -> Optional[str]:
     node = _get_char_progress_node(progress, character_name)
     mission_id = node.get("selected_mission_id")
@@ -642,6 +651,18 @@ def get_selected_mission_id(progress: Dict[str, Any], character_name: str) -> Op
 def set_selected_mission_id(progress: Dict[str, Any], character_name: str, mission_id: Optional[str]) -> Dict[str, Any]:
     node = _get_char_progress_node(progress, character_name)
     node["selected_mission_id"] = mission_id
+    return _set_char_progress_node(progress, character_name, node)
+
+
+def get_locked_mission_id(progress: Dict[str, Any], character_name: str) -> Optional[str]:
+    node = _get_char_progress_node(progress, character_name)
+    mission_id = node.get("locked_mission_id")
+    return str(mission_id).strip() if mission_id else None
+
+
+def set_locked_mission_id(progress: Dict[str, Any], character_name: str, mission_id: Optional[str]) -> Dict[str, Any]:
+    node = _get_char_progress_node(progress, character_name)
+    node["locked_mission_id"] = mission_id
     return _set_char_progress_node(progress, character_name, node)
 
 
@@ -724,6 +745,7 @@ def build_overlay_payload(character_name: str) -> Dict[str, Any]:
     progress = load_progress()
     active = pick_default_mission(pack, progress)
     selected_id = get_selected_mission_id(progress, pack.character)
+    locked_id = get_locked_mission_id(progress, pack.character)
 
     return {
         "character": pack.character,
@@ -752,6 +774,7 @@ def build_overlay_payload(character_name: str) -> Dict[str, Any]:
         "active_mission_setup_meter_refill": bool(active.setup_meter_refill) if active else False,
         "active_mission_setup_megacrash_trainer": dict(active.setup_megacrash_trainer) if active else {},
         "selected_mission_id": selected_id,
+        "locked_mission_id": locked_id,
         "missions": [
             {
                 "mission_id": mission.mission_id,
@@ -759,6 +782,7 @@ def build_overlay_payload(character_name: str) -> Dict[str, Any]:
                 "notes": mission.notes,
                 "completed": is_mission_complete(progress, pack.character, mission.mission_id),
                 "selected": mission.mission_id == selected_id,
+                "locked": mission.mission_id == locked_id,
                 "steps": [
 {
     "labels": step.labels,

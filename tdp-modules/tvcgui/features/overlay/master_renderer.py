@@ -36,7 +36,7 @@ import pygame
 import win32con
 import win32gui
 
-from tvcgui.core.paths import user_data_path
+from tvcgui.core.paths import resource_path, user_data_path
 
 
 TARGET_FPS = 60
@@ -48,6 +48,7 @@ BASE_H = 720
 MASTER_CONTROL_FILE = user_data_path("overlay", "master_overlay_control.json")
 MISSION_MODE_FILE = user_data_path("training", "mission_mode_state.json")
 MISSION_OVERLAY_FILE = user_data_path("training", "mission_overlay_data.json")
+MISSION_MENU_VISUAL_FILE = user_data_path("training", "mission_menu_visual.json")
 MISSION_SELECT_FILE = user_data_path("training", "mission_select_command.json")
 MISSION_CELEBRATE_ACK_FILE = user_data_path("training", "mission_celebrate_ack.json")
 CRASH_LOG_FILE = user_data_path("runtime", "master_overlay_crash.log")
@@ -55,6 +56,16 @@ YAMI_NAME_OVERLAY_FILE = user_data_path("character_select", "yami_name_overlay.j
 
 def _ensure_parent(path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
+
+
+def _mission_tint(base: tuple[int, int, int], fighter: tuple[int, int, int], amount: float) -> tuple[int, int, int]:
+    """Blend a neutral UI color toward the fighter without changing status colors."""
+    amount = max(0.0, min(1.0, amount))
+    return tuple(int(round(channel + (accent - channel) * amount)) for channel, accent in zip(base, fighter))
+
+
+def _mission_fighter_accent(fighter: tuple[int, int, int]) -> tuple[int, int, int]:
+    return tuple(min(245, int(channel * 0.7 + 70)) for channel in fighter)
 
 
 def _mission_completion_ease(value: float) -> float:
@@ -180,7 +191,7 @@ def _mission_complete_plate_progress(phase: float) -> tuple[float, float, float]
     return alpha, lock, sheen
 
 
-MISSION_COMPLETE_HOLD_FRAMES = 90
+MISSION_COMPLETE_HOLD_FRAMES = 42
 MISSION_COMPLETE_MIN_BODY_HEIGHT = 96
 
 
@@ -504,6 +515,7 @@ class MasterControl:
     p2_color: str = "#5aa0ff"
     positions: dict | None = None
     edit_mode: bool = False
+    reduce_mission_motion: bool = False
 
 
 class Renderer(Protocol):
@@ -664,6 +676,18 @@ class MasterOverlay:
         self._mission_hold_frames: int = 0
         self._mission_hold_data: dict = {}
         self._mission_hold_duration_frames: int = MISSION_COMPLETE_HOLD_FRAMES
+        self._mission_menu_visual_start_ns = time.time_ns()
+        self._mission_menu_visual_mtime = 0
+        self._mission_menu_visual: dict = {}
+        self._mission_selector_last_data: dict = {}
+        self._mission_selector_open_phase = 0.0
+        self._mission_selector_last_index = -1
+        self._mission_selector_move_age = 1.0
+        self._mission_selector_move_direction = 0
+        self._mission_selector_shell_key = None
+        self._mission_selector_shell = None
+        self._mission_portrait_files: dict[str, str] | None = None
+        self._mission_portrait_cache: dict[tuple[str, int], pygame.Surface | None] = {}
 
         # Lightweight mission polish state
         self._toast_phase: float = 0.0
@@ -841,6 +865,53 @@ class MasterOverlay:
             return (255, 120, 190)     # pink
 
         return (170, 120, 255)
+
+    def _mission_portrait_watermark(self, character: str, size: int) -> pygame.Surface | None:
+        """Cache a feathered, low-opacity portrait for mission nameplates."""
+        key = re.sub(r"[^a-z0-9]", "", str(character or "").lower())
+        cache_key = (key, int(size))
+        if cache_key in self._mission_portrait_cache:
+            return self._mission_portrait_cache[cache_key]
+
+        if self._mission_portrait_files is None:
+            directory = resource_path("assets", "portraits")
+            try:
+                self._mission_portrait_files = {
+                    re.sub(r"[^a-z0-9]", "", os.path.splitext(filename)[0].lower()): os.path.join(directory, filename)
+                    for filename in os.listdir(directory)
+                    if filename.lower().endswith(".png")
+                    and filename.lower() not in {"icon.png", "placeholder.png"}
+                }
+            except OSError:
+                self._mission_portrait_files = {}
+
+        path = self._mission_portrait_files.get(key)
+        if not path:
+            self._mission_portrait_cache[cache_key] = None
+            return None
+        try:
+            source = pygame.transform.smoothscale(pygame.image.load(path), (size, size))
+            portrait = pygame.Surface((size, size), pygame.SRCALPHA)
+            center = (size - 1) / 2.0
+            radius = max(1.0, center)
+            for y in range(size):
+                dy = (y - center) / radius
+                for x in range(size):
+                    dx = (x - center) / radius
+                    feather = max(0.0, 1.0 - dx * dx - dy * dy) ** 1.4
+                    if feather <= 0.0:
+                        continue
+                    r, g, b, source_alpha = source.get_at((x, y))
+                    chroma = max(r, g, b) - min(r, g, b)
+                    shade = (r + g + b) / 3.0
+                    detail = max(min(1.0, chroma / 75.0), min(0.65, max(0.0, (100.0 - shade) / 100.0)))
+                    alpha = int(source_alpha * feather * (0.025 + 0.60 * detail))
+                    if alpha:
+                        portrait.set_at((x, y), (r, g, b, alpha))
+        except (OSError, pygame.error, ValueError):
+            portrait = None
+        self._mission_portrait_cache[cache_key] = portrait
+        return portrait
     def _wrap_text_lines(self, text: str, font: pygame.font.Font, max_width: int) -> list[str]:
         """Wrap text to a pixel width, including unusually long single tokens."""
         if not text:
@@ -1098,6 +1169,30 @@ class MasterOverlay:
         except Exception:
             pass
 
+    def _read_mission_menu_visual_file(self) -> None:
+        try:
+            modified = os.stat(MISSION_MENU_VISUAL_FILE).st_mtime_ns
+            if modified == self._mission_menu_visual_mtime:
+                return
+            with open(MISSION_MENU_VISUAL_FILE, "r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+            if isinstance(payload, dict):
+                self._mission_menu_visual = payload
+                self._mission_menu_visual_mtime = modified
+        except (OSError, ValueError):
+            pass
+
+    def _mission_menu_display_data(self, data: dict) -> dict:
+        display = dict(data or {})
+        visual = self._mission_menu_visual
+        if (
+            int(visual.get("updated_ns", 0) or 0) >= self._mission_menu_visual_start_ns
+            and str(visual.get("slot") or "") == str(display.get("slot") or "")
+        ):
+            display["selector_open"] = bool(visual.get("open"))
+            display["selector_index"] = int(visual.get("index", 0) or 0)
+        return display
+
     def on_resize(self, w: int, h: int) -> None:
         if w <= 0 or h <= 0:
             return
@@ -1186,9 +1281,9 @@ class MasterOverlay:
                         if rect.collidepoint(event.pos):
                             if mission_id:
                                 self._write_mission_select_command({
-                                    "action": "select",
+                                    "action": "clear_completed" if mission_id == "__clear_completed__" else "select",
                                     "slot": self.mission_slot,
-                                    "mission_id": mission_id,
+                                    "mission_id": None if mission_id == "__clear_completed__" else mission_id,
                                 })
                             return
                 elif self.mission_overlay_data.get("selector_open"):
@@ -1421,7 +1516,7 @@ class MasterOverlay:
         if not self._celebrate_active or self.screen is None:
             return
 
-        CELEBRATE_DURATION = 3.0
+        CELEBRATE_DURATION = 1.4
         # Only fire lightning in first ~2.4s
         if self._celebrate_phase > 0.8:
             return
@@ -1529,7 +1624,7 @@ class MasterOverlay:
         if not self._celebrate_active:
             return
 
-        CELEBRATE_DURATION = 3.0
+        CELEBRATE_DURATION = 1.4
         self._celebrate_phase += dt
         if self._celebrate_phase >= CELEBRATE_DURATION:
             self._celebrate_active = False
@@ -1552,6 +1647,8 @@ class MasterOverlay:
 
         phase = self._celebrate_phase
         plate_alpha_f, bracket_lock, sheen_progress = _mission_complete_plate_progress(phase)
+        if self.control.reduce_mission_motion:
+            plate_alpha_f, bracket_lock, sheen_progress = 1.0, 1.0, 1.0
         if plate_alpha_f <= 0.0:
             return
         plate_alpha = int(255 * plate_alpha_f)
@@ -1648,7 +1745,7 @@ class MasterOverlay:
         self.screen.blit(plate, (plate_x, plate_y))
 
         # Restrained streak particles around the plate, not a full-screen explosion.
-        for particle in self._celebrate_particles:
+        for particle in (() if self.control.reduce_mission_motion else self._celebrate_particles):
             fade = max(0.0, min(1.0, particle["life"] / max(0.001, particle["max_life"])))
             if fade <= 0.0:
                 continue
@@ -1694,7 +1791,28 @@ class MasterOverlay:
 
     def update_mission_animations(self, dt: float) -> None:
         """Drive per-step metallic gradient animations each frame and fire celebration on final-step completion."""
-        self._update_mission_transition(dt)
+        reduce_motion = bool(self.control.reduce_mission_motion)
+        self._update_mission_transition(1.0 if reduce_motion else dt)
+        if reduce_motion and self._mission_transition_state == "in":
+            self._update_mission_transition(1.0)
+        menu_data = self._mission_menu_display_data(self.mission_overlay_data or {})
+        menu_open = bool(menu_data.get("selector_open"))
+        if menu_open:
+            self._mission_selector_last_data = menu_data
+            index = int(menu_data.get("selector_index", 0) or 0)
+            if index != self._mission_selector_last_index:
+                self._mission_selector_move_direction = 1 if index > self._mission_selector_last_index else -1
+                self._mission_selector_move_age = 0.0
+                self._mission_selector_last_index = index
+        self._mission_selector_move_age = 1.0 if reduce_motion else min(1.0, self._mission_selector_move_age + max(0.0, dt))
+        target = 1.0 if menu_open else 0.0
+        speed = 1.0 / (0.14 if menu_open else 0.11)
+        if reduce_motion:
+            self._mission_selector_open_phase = target
+        elif self._mission_selector_open_phase < target:
+            self._mission_selector_open_phase = min(target, self._mission_selector_open_phase + dt * speed)
+        elif self._mission_selector_open_phase > target:
+            self._mission_selector_open_phase = max(target, self._mission_selector_open_phase - dt * speed)
         live_data = self.mission_overlay_data or {}
         display_data = self._mission_display_payload()
         holding = self._mission_hold_frames > 0
@@ -1702,6 +1820,7 @@ class MasterOverlay:
 
         steps = data.get("active_mission_steps") or []
         completed_count = int(data.get("completed_step_count", 0))
+        confirmed_count = max(0, min(completed_count, int(data.get("confirmed_step_count", completed_count) or 0)))
         current_idx = int(data.get("current_step_index", 0))
         mission_id = str(data.get("active_mission_id") or "")
         self._update_mission_scroll_state(dt, current_idx, len(steps), mission_id)
@@ -1717,6 +1836,8 @@ class MasterOverlay:
                 self._mission_intro_generation += 1
             else:
                 self._mission_intro_phase = min(2.0, self._mission_intro_phase + max(0.0, dt))
+            if reduce_motion:
+                self._mission_intro_phase = 2.0
             self._mission_intro_was_active = True
         else:
             self._mission_intro_was_active = False
@@ -1724,7 +1845,9 @@ class MasterOverlay:
 
         hint_target = 1.0 if self.mission_show_hint and self.mission_active else 0.0
         hint_speed = 7.5
-        if self._mission_hint_fold < hint_target:
+        if reduce_motion:
+            self._mission_hint_fold = hint_target
+        elif self._mission_hint_fold < hint_target:
             self._mission_hint_fold = min(
                 hint_target,
                 self._mission_hint_fold + max(0.0, dt) * hint_speed,
@@ -1818,6 +1941,10 @@ class MasterOverlay:
                 1.0,
                 self._mission_strip_complete_sheen_phase + max(0.0, dt) * 0.9,
             )
+        if reduce_motion:
+            self._mission_pip_sheen_index = -1
+            self._mission_pip_sheen_phase = 1.0
+            self._mission_strip_complete_sheen_phase = 1.0
 
         ANIM_SPEED = 4.0
 
@@ -1826,7 +1953,9 @@ class MasterOverlay:
             if t is None:
                 t = 1.0 if idx == current_idx else 0.0
 
-            if idx < completed_count:
+            if reduce_motion:
+                t = 1.0 if idx == current_idx and idx >= completed_count else 0.0
+            elif idx < completed_count:
                 t = max(0.0, t - dt * ANIM_SPEED)
             elif idx == current_idx:
                 t = min(1.0, t + dt * ANIM_SPEED)
@@ -1840,10 +1969,12 @@ class MasterOverlay:
             if self._mission_hold_frames <= 0:
                 self._mission_hold_data = {}
 
-        if completed_count > self._last_completed_for_bump:
-            for done_idx in range(self._last_completed_for_bump, completed_count):
+        if not reduce_motion and confirmed_count > self._last_completed_for_bump:
+            for done_idx in range(self._last_completed_for_bump, confirmed_count):
                 self._row_bump[done_idx] = 1.0
-        self._last_completed_for_bump = completed_count
+        self._last_completed_for_bump = confirmed_count
+        if reduce_motion:
+            self._row_bump.clear()
 
         for bump_idx in list(self._row_bump):
             self._row_bump[bump_idx] = max(0.0, self._row_bump[bump_idx] - dt * 5.5)
@@ -2342,22 +2473,23 @@ class MasterOverlay:
         self.mission_panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
 
         panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        fighter_accent = _mission_fighter_accent(theme_color)
         cut = 10
         panel_points = [
             (cut, 0), (panel_w - cut, 0), (panel_w, cut),
             (panel_w, panel_h - cut), (panel_w - cut, panel_h),
             (cut, panel_h), (0, panel_h - cut), (0, cut),
         ]
-        pygame.draw.polygon(panel, (7, 14, 27, 238), panel_points)
-        pygame.draw.polygon(panel, (58, 72, 101, 235), panel_points, 1)
-        pygame.draw.line(panel, (75, 138, 225, 220), (cut + 16, 3), (panel_w // 2 - 8, 3), 2)
-        pygame.draw.line(panel, (104, 77, 171, 205), (panel_w // 2 + 8, 3), (panel_w - cut - 16, 3), 2)
+        pygame.draw.polygon(panel, (*_mission_tint((7, 14, 27), theme_color, 0.10), 238), panel_points)
+        pygame.draw.polygon(panel, (*_mission_tint((58, 72, 101), theme_color, 0.26), 235), panel_points, 1)
+        pygame.draw.line(panel, (*fighter_accent, 250), (cut + 8, 4), (panel_w - cut - 9, 4), 5)
+        pygame.draw.line(panel, (*_mission_tint((31, 45, 67), theme_color, 0.35), 170), (cut + 8, 8), (panel_w - cut - 9, 8), 1)
 
         # Styled character identity and compact completion status.
         progress_value = self.font.render(
             f"{completed_count}/{total_steps}",
             True,
-            (115, 187, 255),
+            fighter_accent,
         )
         progress_status = (
             "TRACKING"
@@ -2386,20 +2518,20 @@ class MasterOverlay:
         )
         pygame.draw.rect(
             progress_chip_layer,
-            (9, 24, 42, 235),
+            (*_mission_tint((9, 24, 42), theme_color, 0.16), 235),
             progress_chip_layer.get_rect(),
             border_radius=6,
         )
         pygame.draw.rect(
             progress_chip_layer,
-            (69, 125, 194),
+            _mission_tint((69, 125, 194), theme_color, 0.35),
             progress_chip_layer.get_rect(),
             1,
             border_radius=6,
         )
         pygame.draw.rect(
             progress_chip_layer,
-            (91, 172, 246),
+            fighter_accent,
             (0, 3, 3, progress_chip_rect.height - 6),
             border_radius=2,
         )
@@ -2460,8 +2592,8 @@ class MasterOverlay:
             theme_color,
         )
         character_chip_w = min(
-            max(74, character_surf.get_width() + 20),
-            max(74, reserved_left_w),
+            max(110, character_surf.get_width() + 20),
+            max(110, reserved_left_w),
         )
         character_chip_rect = pygame.Rect(
             pad,
@@ -2479,6 +2611,12 @@ class MasterOverlay:
             character_chip_layer.get_rect(),
             border_radius=6,
         )
+        portrait = self._mission_portrait_watermark(character, 68)
+        if portrait is not None:
+            character_chip_layer.blit(
+                portrait,
+                (character_chip_w - portrait.get_width() + 8, (header_chip_h - portrait.get_height()) // 2),
+            )
         pygame.draw.rect(
             character_chip_layer,
             theme_color,
@@ -2931,6 +3069,8 @@ class MasterOverlay:
                 hold_elapsed_frames,
                 self._mission_hold_duration_frames,
             )
+            if self.control.reduce_mission_motion:
+                badge_alpha, slide_progress, title_lock, sheen_progress = 1.0, 1.0, 1.0, 1.0
             complete_rect = pygame.Rect(
                 pad,
                 list_y,
@@ -3056,7 +3196,7 @@ class MasterOverlay:
             # Small deterministic glints add impact without turning into confetti.
             glint_phase = min(1.0, max(0.0, (hold_elapsed_frames - 10.0) / 16.0))
             glint_alpha = int(150 * badge_alpha * glint_phase)
-            for index, x_frac in enumerate((0.18, 0.32, 0.68, 0.82)):
+            for index, x_frac in enumerate(() if self.control.reduce_mission_motion else (0.18, 0.32, 0.68, 0.82)):
                 gx = int(complete_layer.get_width() * x_frac)
                 gy = 15 + (index % 2) * max(6, complete_layer.get_height() - 34)
                 pygame.draw.circle(complete_layer, (175, 220, 255, glint_alpha), (gx, gy), 2)
@@ -3111,20 +3251,20 @@ class MasterOverlay:
                     "yellow": (201, 174, 88),
                     "green": (85, 190, 137),
                     "blue": (78, 139, 225),
-                }.get(step_color_name, (90, 119, 170))
+                }.get(step_color_name, fighter_accent)
 
                 if is_done:
-                    row_fill = (9, 20, 31, 236)
-                    border = (49, 77, 87)
+                    row_fill = (*_mission_tint((9, 20, 31), theme_color, 0.07), 236)
+                    border = _mission_tint((49, 77, 87), theme_color, 0.14)
                 elif is_predicted:
-                    row_fill = (20, 20, 47, 238)
-                    border = (102, 87, 174)
+                    row_fill = (*_mission_tint((20, 20, 47), theme_color, 0.08), 238)
+                    border = _mission_tint((102, 87, 174), theme_color, 0.12)
                 elif is_current:
-                    row_fill = (13, 29, 52, 242)
-                    border = (91, 84, 159)
+                    row_fill = (*_mission_tint((13, 29, 52), theme_color, 0.20), 242)
+                    border = _mission_tint((91, 84, 159), theme_color, 0.30)
                 else:
-                    row_fill = (10, 19, 33, 224)
-                    border = (43, 56, 79)
+                    row_fill = (*_mission_tint((10, 19, 33), theme_color, 0.10), 224)
+                    border = _mission_tint((43, 56, 79), theme_color, 0.18)
 
                 pygame.draw.rect(row_layer, row_fill, row_layer.get_rect(), border_radius=4)
                 pygame.draw.rect(row_layer, border, row_layer.get_rect(), 1, border_radius=4)
@@ -3198,6 +3338,14 @@ class MasterOverlay:
                     pygame.draw.rect(row_layer, (84, 72, 140), chip, 1, border_radius=4)
                     row_layer.blit(current, (chip.x + 9, chip.centery - current.get_height() // 2))
 
+                # Brief confirmation outline, using the fighter's accent even
+                # when the authored step has its own input notation color.
+                pulse = self._row_bump.get(idx, 0.0) if is_done and not self.control.reduce_mission_motion else 0.0
+                if pulse > 0.0:
+                    inset = 1 + int((1.0 - pulse) * 3)
+                    pulse_rect = row_layer.get_rect().inflate(-2 * inset, -2 * inset)
+                    pygame.draw.rect(row_layer, (*fighter_accent, int(230 * pulse)), pulse_rect, 2, border_radius=4)
+
                 row_layer.set_alpha(int(255 * row_intro))
                 panel.blit(row_layer, (pad + row_shift, row_y))
 
@@ -3235,19 +3383,35 @@ class MasterOverlay:
         self.mission_toggle_rect = None
         self.mission_hint_rect = None
 
+        # The selected mission can stay armed while its fighter leaves memory.
+        # Follow the live fighter snapshot, including during completion holds.
+        live_payload = self.mission_overlay_data or {}
+        if (
+            not live_payload.get("character")
+            or live_payload.get("active") is False
+            or live_payload.get("fighter_loaded") is False
+        ):
+            return
+
+        display_payload = self._mission_menu_display_data(self._mission_display_payload())
         holding_completion = bool(
-            self._mission_hold_frames > 0 and self._mission_hold_data
+            self._mission_hold_frames > 0
+            and self._mission_hold_data
+            and not display_payload.get("selector_open")
+            and self._mission_selector_open_phase <= 0.0
         )
         if not holding_completion and (not self.mission_active or not self.mission_slot):
             return
         if self.screen is None or self.font is None or self.smallfont is None:
             return
 
-        display_payload = self._mission_display_payload()
         data = self._mission_hold_data if holding_completion else display_payload
+        if not bool(data.get("selector_open")) and self._mission_selector_open_phase > 0.0:
+            data = self._mission_selector_last_data or data
         display_slot = str(data.get("slot") or self.mission_slot or "")
         character = data.get("character") or "Unknown"
         theme_color = self._char_theme_color(character)
+        fighter_accent = _mission_fighter_accent(theme_color)
         mission_name = data.get("active_mission_name") or "No mission loaded"
         mission_notes = data.get("active_mission_notes") or ""
         steps = data.get("active_mission_steps") or []
@@ -3279,7 +3443,7 @@ class MasterOverlay:
 
         pad = 10
 
-        if selector_open:
+        if selector_open or self._mission_selector_open_phase > 0.0:
             # Mission Select uses the same neutral broadcast language as the
             # compact HUD instead of the old terminal/debug presentation.
             mission_count = len(missions)
@@ -3290,7 +3454,7 @@ class MasterOverlay:
             controls_h = max(26, self.smallfont.get_height() + 10)
             row_h = max(31, self.smallfont.get_height() + 13)
             row_gap = 4
-            footer_h = max(22, self.smallfont.get_height() + 7)
+            footer_h = max(38, self.smallfont.get_height() + 22)
 
             # Give mission names breathing room, but keep the selector compact
             # enough to stay out of the match itself.
@@ -3311,29 +3475,38 @@ class MasterOverlay:
                 y = max(12, self.h - box_h - 12)
             self.mission_panel_rect = pygame.Rect(x, y, box_w, box_h)
 
-            panel = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
-            panel_rect = panel.get_rect()
-            radius = 8
-
-            # Neutral shell with a quiet top-light and character accent rail.
-            pygame.draw.rect(panel, (10, 14, 20, 238), panel_rect, border_radius=radius)
-            for yy in range(max(1, box_h)):
-                t = yy / max(1, box_h - 1)
-                shade = int(24 - 10 * t)
-                pygame.draw.line(panel, (shade, shade + 4, shade + 10, 72), (1, yy), (box_w - 2, yy), 1)
-            pygame.draw.rect(panel, (70, 82, 102, 210), panel_rect, 1, border_radius=radius)
-            pygame.draw.line(panel, (238, 243, 250, 48), (radius + 2, 1), (box_w - radius - 3, 1), 1)
-            accent_w = max(3, int(4 * min(1.25, self.w / 1600.0)))
-            pygame.draw.rect(panel, (*theme_color, 235), (0, radius, accent_w, max(1, box_h - radius * 2)))
+            shell_key = (box_w, box_h, theme_color)
+            if shell_key != self._mission_selector_shell_key:
+                shell = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+                panel_rect = shell.get_rect()
+                radius = 8
+                pygame.draw.rect(shell, (*_mission_tint((10, 14, 20), theme_color, 0.09), 238), panel_rect, border_radius=radius)
+                for yy in range(max(1, box_h)):
+                    t = yy / max(1, box_h - 1)
+                    shade = int(24 - 10 * t)
+                    pygame.draw.line(shell, (*_mission_tint((shade, shade + 4, shade + 10), theme_color, 0.10), 72), (1, yy), (box_w - 2, yy), 1)
+                pygame.draw.rect(shell, (*_mission_tint((70, 82, 102), theme_color, 0.27), 210), panel_rect, 1, border_radius=radius)
+                pygame.draw.line(shell, (*fighter_accent, 250), (radius + 7, 4), (box_w - radius - 8, 4), 5)
+                pygame.draw.line(shell, (*_mission_tint((31, 45, 67), theme_color, 0.35), 170), (radius + 7, 8), (box_w - radius - 8, 8), 1)
+                accent_w = max(3, int(4 * min(1.25, self.w / 1600.0)))
+                pygame.draw.rect(shell, (*fighter_accent, 235), (0, radius, accent_w, max(1, box_h - radius * 2)))
+                self._mission_selector_shell = shell
+                self._mission_selector_shell_key = shell_key
+            panel = self._mission_selector_shell.copy()
 
             # Header.
             content_x = panel_pad
             header_y = panel_pad - 1
-            kicker = self.smallfont.render("MISSION SELECT", True, tuple(min(255, int(c * 0.92 + 30)) for c in theme_color))
-            panel.blit(kicker, (content_x, header_y))
-
+            kicker = self.smallfont.render("MISSION SELECT", True, fighter_accent)
             char_label = f"{character}  ·  {display_slot}"
             char_surf = self.font.render(char_label, True, (239, 243, 250))
+            portrait = self._mission_portrait_watermark(character, 92)
+            if portrait is not None:
+                old_clip = panel.get_clip()
+                panel.set_clip(pygame.Rect(content_x, header_y, box_w - panel_pad * 2, header_h))
+                panel.blit(portrait, (content_x + 24, header_y - 8))
+                panel.set_clip(old_clip)
+            panel.blit(kicker, (content_x, header_y))
             panel.blit(char_surf, (content_x, header_y + kicker.get_height() + 2))
 
             progress_text = f"{completed_missions}/{mission_count} CLEAR"
@@ -3356,8 +3529,8 @@ class MasterOverlay:
             pygame.draw.rect(panel, (52, 64, 82, 150), controls_rect, 1, border_radius=5)
             control_parts = [
                 ("↑/↓", "MOVE"),
+                ("←/→", "UNLOCK/LOCK"),
                 ("TAUNT", "SELECT"),
-                ("MOUSE", "CLICK"),
             ]
             cx = controls_rect.x + 10
             for ci, (key_text, action_text) in enumerate(control_parts):
@@ -3384,10 +3557,13 @@ class MasterOverlay:
 
             for visible_pos, idx in enumerate(range(first_visible, last_visible)):
                 mission = missions[idx]
-                row_y = rows_top + visible_pos * (row_h + row_gap)
+                scroll_phase = _mission_scroll_ease(min(1.0, self._mission_selector_move_age / 0.14))
+                scroll_offset = int(-self._mission_selector_move_direction * 9 * (1.0 - scroll_phase))
+                row_y = rows_top + visible_pos * (row_h + row_gap) + scroll_offset
 
                 selected = idx == selector_index
                 completed = bool(mission.get("completed", False))
+                locked = bool(mission.get("locked", False))
                 mission_id = mission.get("mission_id")
                 name = str(mission.get("name") or mission_id or f"Mission {idx + 1}")
                 row = pygame.Rect(panel_pad, row_y, box_w - panel_pad * 2, row_h)
@@ -3397,27 +3573,30 @@ class MasterOverlay:
 
                 # Selection is strong but not loud. Hover is intentionally weaker.
                 if selected:
-                    fill = tuple(int(c * 0.16) for c in theme_color)
+                    fill = _mission_tint((20, 26, 35), theme_color, 0.28)
                     pygame.draw.rect(panel, (*fill, 245), row, border_radius=5)
-                    pygame.draw.rect(panel, (*theme_color, 235), row, 1, border_radius=5)
-                    pygame.draw.rect(panel, (*theme_color, 245), (row.x, row.y + 4, 3, row.height - 8), border_radius=2)
+                    pygame.draw.rect(panel, (*fighter_accent, 235), row, 1, border_radius=5)
+                    pygame.draw.rect(panel, (*fighter_accent, 245), (row.x, row.y + 4, 3, row.height - 8), border_radius=2)
                 elif hovered:
-                    pygame.draw.rect(panel, (31, 39, 51, 225), row, border_radius=5)
-                    pygame.draw.rect(panel, (81, 96, 119, 175), row, 1, border_radius=5)
+                    pygame.draw.rect(panel, (*_mission_tint((31, 39, 51), theme_color, 0.15), 225), row, border_radius=5)
+                    pygame.draw.rect(panel, (*_mission_tint((81, 96, 119), theme_color, 0.23), 175), row, 1, border_radius=5)
                 else:
-                    pygame.draw.rect(panel, (20, 26, 35, 205), row, border_radius=5)
-                    pygame.draw.rect(panel, (49, 60, 77, 125), row, 1, border_radius=5)
+                    pygame.draw.rect(panel, (*_mission_tint((20, 26, 35), theme_color, 0.10), 205), row, border_radius=5)
+                    pygame.draw.rect(panel, (*_mission_tint((49, 60, 77), theme_color, 0.18), 125), row, 1, border_radius=5)
 
                 # Number chip.
                 num_text = f"{idx + 1:02d}"
-                num_s = self.smallfont.render(num_text, True, (245, 248, 252) if selected else (151, 165, 185))
+                num_color = (151, 165, 185)
+                if selected:
+                    num_color = (19, 27, 38) if sum(fighter_accent) > 540 else (245, 248, 252)
+                num_s = self.smallfont.render(num_text, True, num_color)
                 num_w = max(30, num_s.get_width() + 10)
                 num_r = pygame.Rect(row.x + 8, row.centery - max(18, num_s.get_height() + 6) // 2, num_w, max(18, num_s.get_height() + 6))
                 if selected:
-                    pygame.draw.rect(panel, (*theme_color, 190), num_r, border_radius=4)
+                    pygame.draw.rect(panel, (*fighter_accent, 190), num_r, border_radius=4)
                 else:
-                    pygame.draw.rect(panel, (32, 41, 54, 220), num_r, border_radius=4)
-                    pygame.draw.rect(panel, (67, 80, 101, 150), num_r, 1, border_radius=4)
+                    pygame.draw.rect(panel, (*_mission_tint((32, 41, 54), theme_color, 0.12), 220), num_r, border_radius=4)
+                    pygame.draw.rect(panel, (*_mission_tint((67, 80, 101), theme_color, 0.18), 150), num_r, 1, border_radius=4)
                 panel.blit(num_s, (num_r.centerx - num_s.get_width() // 2, num_r.centery - num_s.get_height() // 2))
 
                 # Completion chip reserves width only when needed.
@@ -3426,9 +3605,11 @@ class MasterOverlay:
                 if completed:
                     clear_s = self.smallfont.render("CLEAR", True, (118, 224, 161))
                     clear_w = clear_s.get_width() + 18
+                lock_s = self.smallfont.render("LOCK", True, (245, 209, 122)) if locked else None
+                lock_w = lock_s.get_width() + 18 if lock_s is not None else 0
 
                 name_x = num_r.right + 10
-                name_right = row.right - 10 - clear_w
+                name_right = row.right - 10 - clear_w - lock_w
                 shown_name = name
                 max_name_w = max(40, name_right - name_x)
                 while self.smallfont.size(shown_name)[0] > max_name_w and len(shown_name) > 4:
@@ -3442,6 +3623,11 @@ class MasterOverlay:
                     pygame.draw.rect(panel, (12, 43, 34, 220), clear_r, border_radius=4)
                     pygame.draw.rect(panel, (48, 112, 83, 175), clear_r, 1, border_radius=4)
                     panel.blit(clear_s, (clear_r.centerx - clear_s.get_width() // 2, clear_r.centery - clear_s.get_height() // 2))
+                if lock_s is not None:
+                    lock_r = pygame.Rect(row.right - clear_w - lock_w - 7, row.centery - max(19, lock_s.get_height() + 6) // 2, lock_w, max(19, lock_s.get_height() + 6))
+                    pygame.draw.rect(panel, (54, 41, 20, 220), lock_r, border_radius=4)
+                    pygame.draw.rect(panel, (150, 116, 51, 175), lock_r, 1, border_radius=4)
+                    panel.blit(lock_s, (lock_r.centerx - lock_s.get_width() // 2, lock_r.centery - lock_s.get_height() // 2))
 
                 if selected:
                     # Tiny one-shot-looking highlight line gives selection some
@@ -3455,7 +3641,7 @@ class MasterOverlay:
             if missions and 0 <= selector_index < len(missions):
                 selected_mission = missions[selector_index]
                 selected_name = str(selected_mission.get("name") or selected_mission.get("mission_id") or "")
-            footer_position = f"{selector_index + 1 if mission_count else 0} OF {mission_count}"
+            footer_position = f"{selector_index + 1 if mission_count else 0} OF {mission_count + 1}"
             if mission_count > visible_row_capacity:
                 footer_position += f"  ·  SHOWING {first_visible + 1}-{last_visible}"
             footer_left = self.smallfont.render(
@@ -3463,11 +3649,23 @@ class MasterOverlay:
                 True,
                 (124, 140, 162),
             )
-            footer_right = self.smallfont.render("TAUNT TO START", True, tuple(min(255, int(c * 0.78 + 46)) for c in theme_color))
+            clear_selected = selector_index == mission_count
+            clear_text = "CLEAR COMPLETED" if completed_missions else "NO COMPLETIONS"
+            footer_right = self.smallfont.render(clear_text, True, (255, 202, 142) if clear_selected else (176, 190, 209))
+            clear_rect = pygame.Rect(box_w - panel_pad - footer_right.get_width() - 14, footer_y + 2, footer_right.get_width() + 14, footer_h - 4)
+            if clear_selected:
+                pygame.draw.rect(panel, (93, 53, 31, 225), clear_rect, border_radius=5)
+                pygame.draw.rect(panel, (243, 175, 104, 220), clear_rect, 1, border_radius=5)
+            self.mission_click_rects.append((clear_rect.move(x, y), "__clear_completed__"))
             panel.blit(footer_left, (panel_pad, footer_y + (footer_h - footer_left.get_height()) // 2))
             panel.blit(footer_right, (box_w - panel_pad - footer_right.get_width(), footer_y + (footer_h - footer_right.get_height()) // 2))
 
-            self.screen.blit(panel, (x, y))
+            opening = _mission_intro_ease(self._mission_selector_open_phase)
+            panel.set_alpha(int(255 * opening))
+            open_offset = int((1.0 - opening) * 18)
+            self.screen.blit(panel, (x, y + open_offset))
+            self.mission_panel_rect.move_ip(0, open_offset)
+            self.mission_click_rects = [(rect.move(0, open_offset), item) for rect, item in self.mission_click_rects]
 
         else:
             self._draw_active_mission_panel(
@@ -3526,6 +3724,7 @@ class MasterOverlay:
                 self._read_customization()
                 self._read_mission_mode_file()
                 self._read_mission_overlay_file()
+                self._read_mission_menu_visual_file()
                 self._read_yami_name_overlay_file()
                 self.handle_events()
 
@@ -3559,11 +3758,10 @@ class MasterOverlay:
                     self.hitbox_renderer.on_resize(self.w, self.h)
                 perf_hit_update += time.perf_counter() - stage_start
 
-                # Overlay OFF is the global visual master switch. Keep the
-                # compositor process and live model state running so all user
-                # layer selections return unchanged on Overlay ON, but present
-                # a fully transparent frame without drawing ANY HUD component.
+                # Mission Mode has its own visibility. Overlay OFF only hides
+                # the regular HUD layers and hitbox visuals.
                 if not self.control.show_hud:
+                    self.draw_mission_overlay()
                     self.present()
                     continue
 

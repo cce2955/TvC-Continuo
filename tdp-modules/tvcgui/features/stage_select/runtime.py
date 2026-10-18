@@ -1,18 +1,11 @@
-"""Direct live stage-code controls.
-
-This is intentionally the small, proven part of the stage work: read and
-write the raw carousel code.  There is no FPK work, no stage-row patching, no
-sequence scan, and no hard validation gate that can lock the controls out.
-
-The static cursor mirror is always safe to read/write.  When the in-game stage
-carousel is currently live, a small self-consistency check also finds the
-second runtime mirror and writes it in the same one-shot action.
-"""
+"""Direct live stage-code controls and the Workshop-to-Yami arena route."""
 from __future__ import annotations
 
 import threading
 import time
 from typing import Any
+
+from tvcgui.runtime.session_recording import recorder as session_recorder
 
 try:
     from tvcgui.platform.dolphin import rd32, wd32
@@ -42,17 +35,18 @@ TEST_CODE_MIN = 0
 TEST_CODE_MAX = 0xFFFFFFFF
 RAW_CODE_DEFAULT = 0
 
-# Slot-2 replacement route.  The Stage Control UI remains a raw-ID tool: it
-# still writes exactly the requested cursor ID.  The only added behavior is
-# that applying ID 2 while the live carousel exists also prepares the resolved
-# load result for Yami's arena.  The selected tile remains the normal ID-2
-# tile; the substitution happens only at confirmation/load time.
+# The verified Workshop handoff uses cursor 2 and carries arena ID 15 through
+# character selection and match loading.
 YAMI_REPLACEMENT_SLOT = 2
 STAGE_RESULT_ID = 0x803EB8F4
 YAMI_STAGE_ASSET_ID = 0x0000000F
 YAMI_SLOT_ARM_TIMEOUT_SEC = 45.0
-YAMI_SLOT_HOLD_SEC = 2.25
-YAMI_SLOT_POLL_SEC = 0.006
+YAMI_CHARACTER_SELECT_TIMEOUT_SEC = 600.0
+YAMI_MATCH_SETTLE_SEC = 2.0
+YAMI_SLOT_POLL_SEC = 0.03
+NATIVE_BATTLE_PTR = 0x803EFB4C
+SELECT_SCENE_GLOBAL = 0x809BCECC
+CHARACTER_UI_STATE_OFF = 0x70
 
 _STATE: dict[str, Any] = {
     "last_action": "Ready. Grab or apply a raw stage ID.",
@@ -62,12 +56,18 @@ _STATE: dict[str, Any] = {
     "worker_busy": False,
     "runtime_hint": None,
     "runtime_hint_at": 0.0,
+    "last_resolved_stage_id": None,
     "slot2_yami": {
         "active": False,
+        "source_code": YAMI_REPLACEMENT_SLOT,
         "phase": "idle",
         "baseline": None,
         "runtime": None,
         "writes": 0,
+        "write_failures": 0,
+        "last_write_failure": "",
+        "global_overridden": False,
+        "battle_phase": None,
         "detail": "",
     },
 }
@@ -134,11 +134,12 @@ def _slot2_yami_snapshot() -> dict[str, Any]:
 
 
 def _finish_slot2_yami(*, detail: str, error: str = "") -> None:
+    source_code = int(_slot2_yami_snapshot().get("source_code") or YAMI_REPLACEMENT_SLOT)
     _set_slot2_yami_state(active=False, phase="idle", detail=str(detail))
     with _LOCK:
         if error:
             _STATE["last_error"] = str(error)
-            _STATE["last_action"] = "ID 2 Yami route stopped."
+            _STATE["last_action"] = f"ID {source_code} Yami route stopped."
         else:
             _STATE["last_error"] = ""
             _STATE["last_action"] = str(detail)
@@ -149,9 +150,76 @@ def _restore_slot2_baseline(baseline: int | None) -> bool:
     if baseline is None or wd32 is None:
         return False
     try:
-        return bool(wd32(STAGE_RESULT_ID, int(baseline))) and _u32(STAGE_RESULT_ID) == int(baseline)
+        # The game may already have resolved the newly highlighted stage.
+        # Only undo the value this route actually owns.
+        if _u32(STAGE_RESULT_ID) != YAMI_STAGE_ASSET_ID:
+            return False
+        tile_source = int(_slot2_yami_snapshot().get("source_code") or YAMI_REPLACEMENT_SLOT) == 15
+        return _stage_write32(STAGE_RESULT_ID, int(baseline), tile_source=tile_source) and _u32(STAGE_RESULT_ID) == int(baseline)
     except Exception:
         return False
+
+
+def _native_battle_phase() -> int | None:
+    ptr = _u32(NATIVE_BATTLE_PTR)
+    if ptr is None or not (0x80000000 <= ptr < 0x81800000 or _in_mem2(ptr)):
+        return None
+    phase = _u32(ptr + 12)
+    return phase if phase is not None and 0 <= phase <= 12 else None
+
+
+def _stage_write32(address: int, value: int, *, tile_source: bool = False) -> bool:
+    if wd32 is None:
+        return False
+    if tile_source:
+        try:
+            return bool(wd32(address, value, bypass_quarantine=True))
+        except TypeError:  # test memory fakes
+            pass
+    return bool(wd32(address, value))
+
+
+def _write_verified(address: int, value: int, *, tile_source: bool = False) -> bool:
+    if wd32 is None:
+        return False
+    try:
+        return _stage_write32(address, value, tile_source=tile_source) and _u32(address) == value
+    except Exception:
+        return False
+
+
+def _restore_pending_yami(baseline: int | None, *, global_overridden: bool) -> None:
+    if global_overridden and _u32(STAGE_GLOBAL_SELECTION) == YAMI_STAGE_ASSET_ID:
+        source_code = int(_slot2_yami_snapshot().get("source_code") or YAMI_REPLACEMENT_SLOT)
+        _write_verified(STAGE_GLOBAL_SELECTION, source_code, tile_source=source_code == 15)
+    _restore_slot2_baseline(baseline)
+
+
+def _record_stage_route(*, observed_global: int | None, observed_result: int | None,
+                        carousel_live: bool | None = None) -> None:
+    """Preserve the handoff evidence in Settings > Recorded session."""
+    state = _slot2_yami_snapshot()
+    with _LOCK:
+        last_error = str(_STATE.get("last_error") or "")
+    root = _u32(STAGE_RUNTIME_PTR)
+    session_recorder.capture_event(time.monotonic(), "stage_route", {
+        "phase": state.get("phase"),
+        "detail": state.get("detail"),
+        "writes": state.get("writes"),
+        "write_failures": state.get("write_failures"),
+        "last_write_failure": state.get("last_write_failure"),
+        "last_error": last_error,
+        "observed_global": observed_global,
+        "observed_result": observed_result,
+        "after_global": _u32(STAGE_GLOBAL_SELECTION),
+        "after_result": _u32(STAGE_RESULT_ID),
+        "carousel_root": root,
+        "carousel_cursor": _u32(root + RUNTIME_SELECTION_OFF) if _in_mem2(root) else None,
+        "scene_state": _u32(SELECT_SCENE_GLOBAL),
+        "ui_state": _u32(root + CHARACTER_UI_STATE_OFF) if _in_mem2(root) else None,
+        "carousel_live": carousel_live,
+        "battle_phase": _native_battle_phase(),
+    })
 
 
 def _run_slot2_yami_override(
@@ -159,193 +227,227 @@ def _run_slot2_yami_override(
     starting_runtime: int,
     baseline_value: int | None,
     cancel_event: threading.Event,
+    source_code: int = YAMI_REPLACEMENT_SLOT,
 ) -> None:
-    """Convert the normal ID-2 selection into Yami's resolved arena at load.
+    """Carry a selected Yami route into the resolved arena at load.
 
-    The raw cursor is deliberately left alone.  The worker waits quietly while
-    ID 2 is highlighted, then catches the game's normal result write at
-    confirmation and holds the observed Yami result ID only across the short
-    loader handoff.  Moving off ID 2 before confirming restores the pre-arm
-    value and leaves no route active.
+    Stage selection precedes character selection. Keep the chosen arena in
+    both selection and result fields after the carousel closes, until the
+    native battle object reports a live match. Writes occur only on drift.
     """
     global _SLOT2_YAMI_CANCEL
     started = time.monotonic()
-    deadline = started + YAMI_SLOT_ARM_TIMEOUT_SEC
-    hold_deadline: float | None = None
-    writes = 0
+    select_deadline = started + YAMI_SLOT_ARM_TIMEOUT_SEC
+    match_deadline: float | None = None
+    live_since: float | None = None
+    writes = 1  # verified pre-arm write
+    write_failures = 0
+    last_write_failure = ""
+    global_overridden = False
     phase = "waiting_for_confirm"
+    last_sample: tuple | None = None
     _set_slot2_yami_state(
         active=True,
+        source_code=source_code,
         phase=phase,
         baseline=baseline_value,
         runtime=starting_runtime,
         writes=writes,
-        detail="ID 2 selected. Yami stage route is armed for the next normal confirm.",
+        write_failures=0,
+        last_write_failure="",
+        global_overridden=False,
+        battle_phase=None,
+        detail=f"ID {source_code} selected. Yami stage route is armed for the next normal confirm.",
     )
     with _LOCK:
         _STATE["last_error"] = ""
-        _STATE["last_action"] = "Applied raw stage ID 2. Yami stage route is armed for the next confirm."
+        _STATE["last_action"] = f"Applied raw stage ID {source_code}. Yami stage route is armed for the next confirm."
 
     try:
         while not cancel_event.is_set():
             now = time.monotonic()
             raw_code = _u32(STAGE_GLOBAL_SELECTION)
-            runtime = _live_runtime()
+            root = _u32(STAGE_RUNTIME_PTR)
+            carousel_live = (
+                root == starting_runtime
+                and _u32(starting_runtime + RUNTIME_ENTRY_COUNT_OFF) == 15
+                and _u32(starting_runtime + RUNTIME_SELF_PTR_OFF) == starting_runtime
+                and _u32(SELECT_SCENE_GLOBAL) == 0
+                and _u32(starting_runtime + CHARACTER_UI_STATE_OFF) == 0
+            )
             current_result = _u32(STAGE_RESULT_ID)
-            runtime_left = runtime is None or int(runtime) != int(starting_runtime)
+            battle_phase = _native_battle_phase()
+            with _LOCK:
+                _STATE["last_resolved_stage_id"] = current_result
+                _STATE["slot2_yami"]["battle_phase"] = battle_phase
 
-            if hold_deadline is None:
-                # User kept browsing instead of confirming ID 2.  Restore the
-                # field immediately so no later selection inherits this route.
-                if raw_code != YAMI_REPLACEMENT_SLOT and not runtime_left:
-                    restored = _restore_slot2_baseline(baseline_value)
-                    _finish_slot2_yami(
-                        detail=(
-                            "ID 2 Yami route cancelled because the cursor moved away from ID 2."
-                            + (" Pre-arm value restored." if restored else "")
-                        )
-                    )
+            if phase == "waiting_for_confirm":
+                if carousel_live and raw_code != source_code:
+                    _restore_pending_yami(baseline_value, global_overridden=False)
+                    _finish_slot2_yami(detail=f"ID {source_code} Yami route cancelled: stage cursor moved away.")
                     return
-
-                # A normal stage confirmation overwrites the pre-arm value.
-                # Once that happens, or the stage menu tears down with ID 2
-                # still selected, keep Yami's resource ID alive only through
-                # the brief stage-loader transition.
-                if current_result is not None and current_result != YAMI_STAGE_ASSET_ID:
-                    hold_deadline = now + YAMI_SLOT_HOLD_SEC
-                    phase = "holding_after_confirm"
-                    _set_slot2_yami_state(
-                        phase=phase,
-                        detail="ID 2 confirmed. Replacing the resolved load stage with Yami's arena.",
-                    )
-                    with _LOCK:
-                        _STATE["last_action"] = "ID 2 confirmed. Holding Yami's arena through the load handoff."
-                elif runtime_left:
-                    hold_deadline = now + YAMI_SLOT_HOLD_SEC
-                    phase = "holding_after_confirm"
-                    _set_slot2_yami_state(
-                        phase=phase,
-                        detail="Stage menu left with ID 2 armed. Holding Yami's arena through the load handoff.",
-                    )
-                    with _LOCK:
-                        _STATE["last_action"] = "Stage menu left with ID 2 armed. Holding Yami's arena through the load handoff."
-                elif now >= deadline:
-                    restored = _restore_slot2_baseline(baseline_value)
-                    _finish_slot2_yami(
-                        detail=(
-                            "ID 2 Yami route timed out without a confirm."
-                            + (" Pre-arm value restored." if restored else "")
-                        )
-                    )
+                if not carousel_live or (current_result is not None and current_result != YAMI_STAGE_ASSET_ID):
+                    phase = "awaiting_match"
+                    match_deadline = now + YAMI_CHARACTER_SELECT_TIMEOUT_SEC
+                    _set_slot2_yami_state(phase=phase, detail="Stage confirmed; waiting through character select for match load.")
+                elif now >= select_deadline:
+                    _restore_pending_yami(baseline_value, global_overridden=False)
+                    _finish_slot2_yami(detail=f"ID {source_code} Yami route timed out at stage select.")
                     return
 
-            if hold_deadline is not None:
-                if wd32 is None:
+            if phase in {"awaiting_match", "match_live"}:
+                if phase == "awaiting_match" and carousel_live and raw_code != source_code:
+                    _restore_pending_yami(baseline_value, global_overridden=global_overridden)
+                    _finish_slot2_yami(detail=f"Yami route cancelled: returned to stage select and moved off ID {source_code}.")
+                    return
+                if battle_phase == 4:
+                    if live_since is None:
+                        live_since = now
+                        phase = "match_live"
+                        _set_slot2_yami_state(phase=phase, detail="Live match detected; settling Yami stage route.")
+                elif phase == "match_live":
+                    live_since = None
+                    phase = "awaiting_match"
+                    _set_slot2_yami_state(phase=phase, detail="Match load still changing; waiting for live battle.")
+
+                # The selected tile needs its raw cursor until the stage
+                # menu closes. Afterward, the game may copy that cursor into
+                # the result during character select or the later loader.
+                if not carousel_live and raw_code != YAMI_STAGE_ASSET_ID:
+                    if not _write_verified(STAGE_GLOBAL_SELECTION, YAMI_STAGE_ASSET_ID,
+                                           tile_source=source_code == 15):
+                        write_failures += 1
+                        last_write_failure = f"Selection ID 15 did not hold; read {_fmt(_u32(STAGE_GLOBAL_SELECTION))}."
+                    else:
+                        writes += 1
+                        global_overridden = True
+                if current_result != YAMI_STAGE_ASSET_ID:
+                    if not _write_verified(STAGE_RESULT_ID, YAMI_STAGE_ASSET_ID,
+                                           tile_source=source_code == 15):
+                        write_failures += 1
+                        last_write_failure = f"Result ID 15 did not hold; read {_fmt(_u32(STAGE_RESULT_ID))}."
+                    else:
+                        writes += 1
+                        with _LOCK:
+                            _STATE["last_resolved_stage_id"] = YAMI_STAGE_ASSET_ID
+                _set_slot2_yami_state(writes=writes, write_failures=write_failures,
+                                      last_write_failure=last_write_failure,
+                                      global_overridden=global_overridden)
+
+                if live_since is not None and now - live_since >= YAMI_MATCH_SETTLE_SEC:
+                    final_result = _u32(STAGE_RESULT_ID)
                     _finish_slot2_yami(
-                        detail="ID 2 Yami route stopped.",
-                        error="Dolphin write support is unavailable.",
+                        detail=(f"Match became live with result ID {_fmt(final_result)}; "
+                                f"{writes} verified writes, {write_failures} failed attempts. Confirm arena visually."),
+                        error=("Yami result ID 15 was not held at live match."
+                               if final_result != YAMI_STAGE_ASSET_ID else ""),
                     )
                     return
-                try:
-                    ok = bool(wd32(STAGE_RESULT_ID, YAMI_STAGE_ASSET_ID))
-                    after = _u32(STAGE_RESULT_ID)
-                except Exception as exc:
-                    _finish_slot2_yami(
-                        detail="ID 2 Yami route stopped.",
-                        error=f"Yami result write failed: {exc!r}",
-                    )
-                    return
-                writes += 1
-                _set_slot2_yami_state(writes=writes)
-                if not ok or after != YAMI_STAGE_ASSET_ID:
-                    _finish_slot2_yami(
-                        detail="ID 2 Yami route stopped.",
-                        error="Yami resolved-stage write did not verify.",
-                    )
-                    return
-                if now >= hold_deadline:
-                    _finish_slot2_yami(
-                        detail=f"ID 2 Yami route finished after {writes} verified loader writes.",
-                    )
+                if match_deadline is not None and now >= match_deadline:
+                    _restore_pending_yami(baseline_value, global_overridden=global_overridden)
+                    _finish_slot2_yami(detail="Yami route timed out before a live match; previous stage result restored.")
                     return
 
+            sample = (phase, raw_code, current_result, _u32(STAGE_GLOBAL_SELECTION),
+                      _u32(STAGE_RESULT_ID), carousel_live, battle_phase, writes,
+                      last_write_failure)
+            if sample != last_sample:
+                _record_stage_route(observed_global=raw_code,
+                                    observed_result=current_result,
+                                    carousel_live=carousel_live)
+                last_sample = sample
             time.sleep(YAMI_SLOT_POLL_SEC)
     except Exception as exc:  # pragma: no cover
         _finish_slot2_yami(
-            detail="ID 2 Yami route stopped.",
-            error=f"ID 2 Yami route failed: {exc!r}",
+            detail=f"ID {source_code} Yami route stopped.",
+            error=f"ID {source_code} Yami route failed: {exc!r}",
         )
     finally:
+        _record_stage_route(observed_global=_u32(STAGE_GLOBAL_SELECTION),
+                            observed_result=_u32(STAGE_RESULT_ID))
         with _SLOT2_YAMI_LOCK:
             if _SLOT2_YAMI_CANCEL is cancel_event:
                 _SLOT2_YAMI_CANCEL = None
 
 
-def _arm_slot2_yami_override(runtime: int | None) -> tuple[bool, str]:
-    """Pre-arm the Yami load substitution for a verified ID-2 cursor write."""
+def _arm_slot2_yami_override(runtime: int | None, *, source_code: int = YAMI_REPLACEMENT_SLOT) -> tuple[bool, str]:
+    """Pre-arm the Yami load substitution for a verified stage cursor."""
     global _SLOT2_YAMI_CANCEL
     if runtime is None:
-        return False, "ID 2 was written, but the live carousel is not present so no Yami route was armed."
+        return False, f"ID {source_code} was selected, but the live carousel is not present so no Yami route was armed."
+    if _u32(SELECT_SCENE_GLOBAL) != 0 or _u32(runtime + CHARACTER_UI_STATE_OFF) != 0:
+        return False, "The Yami route must be armed while the stage carousel is visible."
     if wd32 is None:
-        return False, "ID 2 was written, but Dolphin write support is unavailable for the Yami route."
+        return False, f"ID {source_code} was selected, but Dolphin write support is unavailable for the Yami route."
 
     with _SLOT2_YAMI_LOCK:
         existing = _SLOT2_YAMI_CANCEL
         existing_state = _slot2_yami_snapshot()
         if existing is not None and not existing.is_set():
-            if existing_state.get("runtime") == int(runtime):
-                return True, "ID 2 remains armed for Yami's stage."
+            if existing_state.get("runtime") == int(runtime) and int(existing_state.get("source_code") or YAMI_REPLACEMENT_SLOT) == source_code:
+                return True, f"ID {source_code} remains armed for Yami's stage."
             existing.set()
 
         baseline = _u32(STAGE_RESULT_ID)
         try:
-            prearm_ok = bool(wd32(STAGE_RESULT_ID, YAMI_STAGE_ASSET_ID))
+            prearm_ok = _stage_write32(STAGE_RESULT_ID, YAMI_STAGE_ASSET_ID,
+                                       tile_source=source_code == 15)
             prearm_value = _u32(STAGE_RESULT_ID)
         except Exception as exc:
-            return False, f"ID 2 was written, but Yami pre-arm failed: {exc!r}"
+            return False, f"ID {source_code} was selected, but Yami pre-arm failed: {exc!r}"
         if not prearm_ok or prearm_value != YAMI_STAGE_ASSET_ID:
-            return False, "ID 2 was written, but the Yami stage-result pre-arm did not verify."
+            return False, f"ID {source_code} was selected, but the Yami stage-result pre-arm did not verify."
+        with _LOCK:
+            _STATE["last_resolved_stage_id"] = prearm_value
 
         cancel_event = threading.Event()
         _SLOT2_YAMI_CANCEL = cancel_event
         _set_slot2_yami_state(
             active=True,
+            source_code=source_code,
             phase="starting",
             baseline=baseline,
             runtime=int(runtime),
             writes=1,
-            detail="ID 2 selected. Starting Yami stage route.",
+            detail=f"ID {source_code} selected. Starting Yami stage route.",
         )
+        _record_stage_route(observed_global=_u32(STAGE_GLOBAL_SELECTION),
+                            observed_result=baseline, carousel_live=True)
         threading.Thread(
             target=_run_slot2_yami_override,
             kwargs={
                 "starting_runtime": int(runtime),
                 "baseline_value": baseline,
                 "cancel_event": cancel_event,
+                "source_code": source_code,
             },
-            name="StageId2YamiRoute",
+            name=f"StageId{source_code}YamiRoute",
             daemon=True,
         ).start()
-    return True, "ID 2 selected. Yami stage route is armed for the next confirm."
+    return True, f"ID {source_code} selected. Yami stage route is armed for the next confirm."
 
 
-def _cancel_slot2_yami_if_active(*, restore: bool) -> None:
-    """Disarm a pending ID-2 route when a different raw cursor is applied."""
+def _cancel_slot2_yami_if_active(*, restore: bool) -> bool:
+    """Disarm a pending Yami route when another stage is selected."""
     global _SLOT2_YAMI_CANCEL
     with _SLOT2_YAMI_LOCK:
         event = _SLOT2_YAMI_CANCEL
         _SLOT2_YAMI_CANCEL = None
     if event is None:
-        return
+        return False
     record = _slot2_yami_snapshot()
     event.set()
-    restored = _restore_slot2_baseline(record.get("baseline")) if restore else False
+    pending = record.get("phase") in {"starting", "waiting_for_confirm", "awaiting_match"}
+    if restore and pending:
+        _restore_pending_yami(record.get("baseline"), global_overridden=bool(record.get("global_overridden")))
+    restored = bool(restore and pending)
     _set_slot2_yami_state(
         active=False,
         phase="idle",
-        detail="ID 2 Yami route cancelled by a different raw stage ID."
+        detail=f"ID {int(record.get('source_code') or YAMI_REPLACEMENT_SLOT)} Yami route cancelled."
                + (" Pre-arm value restored." if restored else ""),
     )
+    return True
 
 
 def _snapshot() -> dict[str, Any]:
@@ -353,6 +455,9 @@ def _snapshot() -> dict[str, Any]:
     root = _u32(STAGE_RUNTIME_PTR)
     runtime = _live_runtime()
     runtime_code = _u32(runtime + RUNTIME_SELECTION_OFF) if runtime is not None else None
+    resolved_stage_id = _u32(STAGE_RESULT_ID)
+    with _LOCK:
+        _STATE["last_resolved_stage_id"] = resolved_stage_id
     return {
         "global_code": global_code,
         "runtime_code": runtime_code,
@@ -410,7 +515,7 @@ def request_stage_probe() -> dict[str, Any]:
     return _run_worker("Grabbing the live stage ID", read_stage_selection)
 
 
-def set_stage_selection(code: int, *, label: str | None = None) -> dict[str, Any]:
+def set_stage_selection(code: int, *, label: str | None = None, arm_yami: bool = False) -> dict[str, Any]:
     try:
         target = int(code)
     except Exception:
@@ -492,7 +597,7 @@ def set_stage_selection(code: int, *, label: str | None = None) -> dict[str, Any
     # Stage Control itself is intentionally unchanged.  This is the sole
     # conditional add-on: applying a verified ID 2 on a live carousel arms the
     # known Yami result ID for that selection's normal confirm.
-    if verified and target == YAMI_REPLACEMENT_SLOT:
+    if verified and target == YAMI_REPLACEMENT_SLOT and arm_yami:
         armed, detail = _arm_slot2_yami_override(after.get("runtime"))
         with _LOCK:
             if armed:
@@ -504,10 +609,10 @@ def set_stage_selection(code: int, *, label: str | None = None) -> dict[str, Any
     return get_stage_probe_state()
 
 
-def request_stage_selection(code: int, *, label: str | None = None) -> dict[str, Any]:
+def request_stage_selection(code: int, *, label: str | None = None, arm_yami: bool = False) -> dict[str, Any]:
     return _run_worker(
         f"Applying raw stage ID {int(code) if isinstance(code, int) else code}",
-        lambda: set_stage_selection(code, label=label),
+        lambda: set_stage_selection(code, label=label, arm_yami=arm_yami),
     )
 
 
@@ -531,19 +636,19 @@ def get_stage_probe_state(*, refresh: bool = False) -> dict[str, Any]:
             "test_code_min": TEST_CODE_MIN,
             "test_code_max": TEST_CODE_MAX,
             "slot2_yami": dict(_STATE.get("slot2_yami") or {}),
+            "resolved_stage_id": _STATE.get("last_resolved_stage_id"),
         }
 
 
-# Compatibility shims for old imports.  The Stage Select window intentionally
-# exposes only raw ID grab/apply controls until that route is solid again.
 def request_arm_yami_stage() -> dict[str, Any]:
-    with _LOCK:
-        _STATE["last_error"] = "Yami arming is intentionally disabled in the raw-ID build."
-        _STATE["last_action"] = "Use the raw stage ID controls first."
-    return get_stage_probe_state()
+    return request_stage_selection(YAMI_REPLACEMENT_SLOT, label="Yami handoff test", arm_yami=True)
 
 
 def cancel_stage_result_override() -> dict[str, Any]:
+    if not _cancel_slot2_yami_if_active(restore=True):
+        with _LOCK:
+            _STATE["last_action"] = "No Yami arena route is armed."
+            _STATE["last_error"] = ""
     return get_stage_probe_state()
 
 
@@ -552,7 +657,7 @@ def select_stage_code_then_arm_yami(code: int, *, label: str | None = None) -> d
 
 
 def select_yami_stage_slot() -> dict[str, Any]:
-    return set_stage_selection(16, label="raw stage ID 16")
+    return set_stage_selection(YAMI_REPLACEMENT_SLOT, label="Yami handoff test", arm_yami=True)
 
 
 def move_to_stage_code(code: int) -> dict[str, Any]:
@@ -560,7 +665,8 @@ def move_to_stage_code(code: int) -> dict[str, Any]:
 
 
 def tick_stage_probe() -> None:
-    return None
+    from . import yami_tile
+    yami_tile.ensure_running()
 
 
 def tick_stage_test() -> None:

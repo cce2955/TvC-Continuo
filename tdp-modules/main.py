@@ -482,6 +482,7 @@ from tvcgui.ui.components import (
     draw_status_rail,
     get_top_dock_height,
     draw_top_command_dock,
+    character_select_visuals_hit_test,
 )
 
 def _char_test_active_for_dock() -> bool:
@@ -3971,6 +3972,12 @@ def legacy_main():
                     print(f"[extra chars] toggle queued: {result}", flush=True)
                 else:
                     print("[extra chars] toggle unavailable", flush=True)
+                mouse_clicked_pos = None
+                continue
+
+            elif character_select_visuals_hit_test((mx, my)):
+                if toggle_extra_characters is not None:
+                    toggle_extra_characters()
                 mouse_clicked_pos = None
                 continue
 

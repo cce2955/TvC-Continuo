@@ -29,6 +29,7 @@ from typing import Any
 
 from tvcgui.platform.dolphin import wd8
 from tvcgui.runtime import input_monitor
+from tvcgui.runtime.session_recording import recorder as session_recorder
 from tvcgui.runtime.mission_reaction_policy import (
     MISSION_CROUCH_REACTION_STATES,
     MISSION_REACTION_STATES,
@@ -51,10 +52,12 @@ from tvcgui.runtime.mission_events import (
 )
 from tvcgui.runtime.mission_menu_input import (
     MISSION_MENU_CLOSE,
+    MISSION_MENU_LOCK,
     MISSION_MENU_NEXT,
     MISSION_MENU_OPEN,
     MISSION_MENU_PREVIOUS,
     MISSION_MENU_SELECT,
+    MISSION_MENU_UNLOCK,
     MissionMenuCommand,
 )
 from tvcgui.core.paths import user_data_path
@@ -63,7 +66,10 @@ from tvcgui.features.training.mission_mode import (
     load_progress,
     save_progress,
     mark_mission_complete,
+    clear_character_completions,
+    get_locked_mission_id,
     set_selected_mission_id,
+    set_locked_mission_id,
 )
 from tvcgui.features.training.mission_runtime_v2 import MissionRuntimeV2, RuntimeResult
 
@@ -72,7 +78,7 @@ MISSION_OVERLAY_FILE       = user_data_path("training", "mission_overlay_data.js
 MISSION_SELECT_FILE        = user_data_path("training", "mission_select_command.json")
 MISSION_CELEBRATE_ACK_FILE = user_data_path("training", "mission_celebrate_ack.json")
 
-MISSION_COMMAND_POLL_INTERVAL = 0.10
+MISSION_COMMAND_POLL_INTERVAL = 0.03
 
 # ---------------------------------------------------------------------------
 # Sets / constants (same values as in the old main)
@@ -127,7 +133,7 @@ MISSION_SELF_VAR_MISSIONS = {"alex_011"}
 
 # Legacy fallback for existing mission packs. New missions should use
 # setup_meter_refill=true in their JSON instead of adding another ID here.
-MISSION_METER_REFILL_MISSIONS = {"ryu_008", "saki_009", "alex_017"}
+MISSION_METER_REFILL_MISSIONS = {"ryu_008", "alex_017"}
 
 MISSION_INPUT_DIRECTION_MASK = 0x0F
 MISSION_SELECTOR_DOWN_MASK = 0x08
@@ -404,6 +410,8 @@ class MissionManager:
             "char_id": 0,
             "name": "",
         }
+        self._point_switch_candidate: tuple[str, int] | None = None
+        self._point_switch_seen: int = 0
 
         # Selector state
         self._selector: dict = {
@@ -433,6 +441,9 @@ class MissionManager:
             "mission_key": None,
             "saved_p1meter_flag": None,
             "saved_baroque_flag": None,
+            "attempt_key": None,
+            "last_step_index": -1,
+            "served_shell_steps": set(),
         }
 
         # Frame index, updated each call to update().
@@ -460,6 +471,7 @@ class MissionManager:
         self._last_overlay_file_seq: int = 0
         self._last_overlay_mission_id: str = ""
         self._last_overlay_mission_cursor: int = 0
+        self._last_overlay_mission_revision: int = 0
         self._pending_overlay_payload: dict | None = None
         self._overlay_writer_stop = False
         self._overlay_writer_thread = threading.Thread(
@@ -505,6 +517,7 @@ class MissionManager:
         self._mission_realtime_context_generation: int = 0
         self._mission_realtime_result: RuntimeResult | None = None
         self._mission_realtime_result_key: tuple[str, str, str] | None = None
+        self._mission_realtime_result_revision: int = 0
         self._mission_realtime_result_signature: tuple = ()
         self._mission_realtime_stop = threading.Event()
         self._mission_realtime_wake = threading.Event()
@@ -818,6 +831,7 @@ class MissionManager:
             self._mission_realtime_result = None
             self._mission_realtime_result_key = None
             self._mission_realtime_result_signature = ()
+            self._mission_realtime_result_revision += 1
             self._mission_realtime_context_generation += 1
         self._mission_realtime_wake.set()
 
@@ -847,12 +861,13 @@ class MissionManager:
         with self._mission_realtime_lock:
             previous = dict(self._mission_realtime_context or {})
             previous_key = tuple(previous.get("key") or ())
-            previous_floor = int(previous.get("event_floor", -1) or -1)
+            previous_floor = int(previous.get("event_floor", -1))
             if previous_key != key or previous_floor != context["event_floor"]:
                 self._mission_realtime_context_generation += 1
                 self._mission_realtime_result = None
                 self._mission_realtime_result_key = None
                 self._mission_realtime_result_signature = ()
+                self._mission_realtime_result_revision += 1
             self._mission_realtime_context = context
         self._mission_realtime_wake.set()
         return key
@@ -886,10 +901,19 @@ class MissionManager:
         steps: list,
         event_floor: int,
     ) -> RuntimeResult:
+        result, _revision = self._realtime_result_with_revision_for_key(key, steps, event_floor)
+        return result
+
+    def _realtime_result_with_revision_for_key(
+        self,
+        key: tuple[str, str, str],
+        steps: list,
+        event_floor: int,
+    ) -> tuple[RuntimeResult, int]:
         with self._mission_realtime_lock:
             if self._mission_realtime_result_key == key and self._mission_realtime_result is not None:
-                return self._mission_realtime_result
-        return self._initial_realtime_result(steps, event_floor)
+                return self._mission_realtime_result, self._mission_realtime_result_revision
+            return self._initial_realtime_result(steps, event_floor), self._mission_realtime_result_revision
 
     def _allocate_overlay_publish_seq(self) -> int:
         with self._overlay_file_lock:
@@ -932,7 +956,10 @@ class MissionManager:
         with self._mission_realtime_lock:
             if signature == self._mission_realtime_result_signature:
                 return
+            if self._mission_realtime_result_key != key or self._mission_realtime_result != result:
+                return
             packet = dict(self._last_overlay_payload or {})
+            result_revision = self._mission_realtime_result_revision
 
         # The worker can outrun the first GUI payload by a millisecond. Do not
         # consume the signature until the matching mission packet exists; the
@@ -944,6 +971,8 @@ class MissionManager:
 
         with self._mission_realtime_lock:
             if signature == self._mission_realtime_result_signature:
+                return
+            if self._mission_realtime_result_key != key or self._mission_realtime_result != result:
                 return
             self._mission_realtime_result_signature = signature
 
@@ -970,6 +999,7 @@ class MissionManager:
             "goal_needed_damage": int(result.goal_damage_needed),
             "goal_current_hits": int(result.goal_hits),
             "goal_max_hits": int(result.goal_max_hits),
+            "__mission_result_revision": result_revision,
         })
         publish_seq = self._allocate_overlay_publish_seq()
         packet["__publish_seq"] = publish_seq
@@ -983,6 +1013,7 @@ class MissionManager:
         """Continuously consume Mission V2 events independently of GUI cadence."""
         local_generation = -1
         cursor = 0
+        last_recorded_signature = None
         while not self._mission_realtime_stop.is_set():
             with self._mission_realtime_lock:
                 provider = self._event_provider
@@ -996,6 +1027,7 @@ class MissionManager:
 
             if generation != local_generation:
                 local_generation = generation
+                last_recorded_signature = None
                 cursor = max(0, int(context.get("event_floor", 0) or 0))
                 with self._mission_realtime_lock:
                     self._mission_runtime_v2.reset_all(cursor)
@@ -1030,6 +1062,8 @@ class MissionManager:
                         now_ns=time.monotonic_ns(),
                         newest_sequence=newest,
                     )
+                    if idle_result != self._mission_realtime_result:
+                        self._mission_realtime_result_revision += 1
                     self._mission_realtime_result = idle_result
                     self._mission_realtime_result_key = tuple(context.get("key") or ())
                 self._publish_mission_realtime_result(context, idle_result)
@@ -1038,6 +1072,42 @@ class MissionManager:
                 continue
 
             char_id_hint = max(0, int(context.get("char_id", 0) or 0))
+            recording = bool(session_recorder.status()[0])
+            if recording:
+                for mission_event in events:
+                    session_recorder.capture_event(
+                        mission_event.timestamp_ns / 1_000_000_000.0,
+                        "mission_event",
+                        {
+                            "mission": str(context.get("mission_id") or ""),
+                            "route_slot": str(context.get("route_slot") or ""),
+                            "seq": int(mission_event.sequence),
+                            "sample_seq": int(mission_event.sample_sequence),
+                            "timestamp_ns": int(mission_event.timestamp_ns),
+                            "kind": str(mission_event.kind),
+                            "slot": str(mission_event.slot),
+                            "fighter_base": int(mission_event.fighter_base),
+                            "char_id": int(mission_event.char_id),
+                            "action_id": int(mission_event.action_id),
+                            "labels": " | ".join(self._action_label_candidates(
+                                int(mission_event.action_id),
+                                int(context.get("char_id", 0) or mission_event.char_id or 0),
+                            )) if mission_event.kind == EVENT_ACTION else "",
+                            "previous_action_id": int(mission_event.previous_action_id),
+                            "action_frame": int(mission_event.action_frame),
+                            "held": int(mission_event.held),
+                            "pressed": int(mission_event.pressed),
+                            "released": int(mission_event.released),
+                            "damage": int(mission_event.damage),
+                            "hp": int(mission_event.current_hp),
+                            "combo": int(mission_event.combo_count),
+                            "hitstun": int(mission_event.hitstun_remaining),
+                            "untech": int(mission_event.untech_remaining),
+                            "blockstun": int(mission_event.blockstun_remaining),
+                            "reaction_timer": int(mission_event.reaction_timer_remaining),
+                            "point_active": mission_event.point_active,
+                        },
+                    )
 
             def _resolve_action(event: MissionEvent) -> list[str]:
                 event_action = int(getattr(event, "action_id", 0) or 0) & 0x7FFF
@@ -1068,6 +1138,12 @@ class MissionManager:
                     return 0
                 return int(frames * (1_000_000_000 / 60.0))
 
+            def _action_startup_frames(action_id: int) -> int:
+                info = self._mission_timing_by_action.get(
+                    (int(char_id_hint or 0), int(action_id or 0) & 0x7FFF)
+                )
+                return max(0, int(info.get("startup", 0) or 0)) if isinstance(info, dict) else 2
+
             with self._mission_realtime_lock:
                 result = self._mission_runtime_v2.consume(
                     events,
@@ -1076,11 +1152,42 @@ class MissionManager:
                     action_label_resolver=_resolve_action,
                     jump_cancel_checker=_jump_cancel_allowed,
                     action_timeout_resolver=_action_timeout_ns,
+                    action_startup_resolver=_action_startup_frames,
                     newest_sequence=newest,
                 )
+                if result != self._mission_realtime_result:
+                    self._mission_realtime_result_revision += 1
                 self._mission_realtime_result = result
                 self._mission_realtime_result_key = tuple(context.get("key") or ())
+                diagnostics = self._mission_runtime_v2.diagnostics() if recording else {}
             cursor = max(cursor, int(result.event_cursor))
+            result_signature = (
+                str(context.get("mission_id") or ""), int(result.attempt_id),
+                int(result.progress_index), int(result.ready_progress_index),
+                bool(result.prediction_active), bool(result.cleared),
+                str(result.last_restart_reason or ""), int(result.clear_count),
+                tuple(diagnostics.values()),
+            )
+            if recording and result_signature != last_recorded_signature:
+                session_recorder.capture_event(
+                    time.monotonic(),
+                    "mission_result",
+                    {
+                        "mission": str(context.get("mission_id") or ""),
+                        "attempt": int(result.attempt_id),
+                        "step": int(result.progress_index),
+                        "ready_step": int(result.ready_progress_index),
+                        "pending": bool(result.prediction_active),
+                        "current": str(result.current_step_label or ""),
+                        "cleared": bool(result.cleared),
+                        "clear_count": int(result.clear_count),
+                        "last_cleared_attempt": int(result.last_cleared_attempt),
+                        "restart": str(result.last_restart_reason or ""),
+                        "cursor": int(result.event_cursor),
+                        **diagnostics,
+                    },
+                )
+                last_recorded_signature = result_signature
             self._publish_mission_realtime_result(context, result)
 
     def _events_for_consumer(
@@ -1207,8 +1314,10 @@ class MissionManager:
         self._frame_idx = frame_idx
         self._now = now
         self._render_snap_by_slot = render_snap_by_slot
+        self._live_snaps_by_slot = snaps
         self._ensure_mission_owner(render_snap_by_slot)
         self._drain_event_state()
+        self._follow_native_point_tag(render_snap_by_slot)
         if not callable(self._event_provider):
             self._sample_health_deltas(render_snap_by_slot, frame_idx)
         self._consume_menu_input_commands(snaps, now)
@@ -1283,6 +1392,15 @@ class MissionManager:
             self._close_selector()
             return
 
+        if action == "clear_completed":
+            if not self._selector.get("open") or cmd.get("slot") != self._active_slot:
+                return
+            character_name = self._mission_owner_name(getattr(self, "_render_snap_by_slot", {}))
+            if character_name:
+                save_progress(clear_character_completions(load_progress(), character_name))
+                self.write_overlay_data(force=True)
+            return
+
         if action != "select":
             return
 
@@ -1331,8 +1449,24 @@ class MissionManager:
     def _queue_overlay_payload(self, payload: dict) -> None:
         with self._overlay_write_condition:
             incoming = dict(payload or {})
+            pending = self._pending_overlay_payload or {}
+            incoming_mission = str(incoming.get("active_mission_id") or "")
+            pending_mission = str(pending.get("active_mission_id") or "")
+            if incoming_mission and incoming_mission == pending_mission:
+                incoming_revision = int(incoming.get("__mission_result_revision", 0) or 0)
+                pending_revision = int(pending.get("__mission_result_revision", 0) or 0)
+                if incoming_revision < pending_revision:
+                    return
+                incoming_cursor = int(incoming.get("mission_event_cursor", 0) or 0)
+                pending_cursor = int(pending.get("mission_event_cursor", 0) or 0)
+                # A GUI render can begin before the realtime worker advances,
+                # then queue its stale snapshot after the worker's newer one.
+                # Never let latest-only coalescing discard the newer combat
+                # result before the file writer gets a chance to see it.
+                if incoming_cursor < pending_cursor:
+                    return
             incoming_seq = int(incoming.get("__publish_seq", 0) or 0)
-            pending_seq = int((self._pending_overlay_payload or {}).get("__publish_seq", 0) or 0)
+            pending_seq = int(pending.get("__publish_seq", 0) or 0)
             if self._pending_overlay_payload is None or incoming_seq >= pending_seq:
                 self._pending_overlay_payload = incoming
             self._overlay_write_condition.notify()
@@ -1345,6 +1479,7 @@ class MissionManager:
         """
         packet = dict(payload or {})
         publish_seq = int(packet.pop("__publish_seq", 0) or 0)
+        result_revision = int(packet.pop("__mission_result_revision", 0) or 0)
         mission_id = str(packet.get("active_mission_id") or "")
         mission_cursor = max(0, int(packet.get("mission_event_cursor", 0) or 0))
         try:
@@ -1354,6 +1489,12 @@ class MissionManager:
         with self._overlay_file_lock:
             if publish_seq > 0 and publish_seq < int(self._last_overlay_file_seq or 0):
                 return
+            if (
+                mission_id
+                and mission_id == self._last_overlay_mission_id
+                and result_revision < self._last_overlay_mission_revision
+            ):
+                return
             # A GUI frame can begin before the realtime worker advances and
             # finish afterward. Publish sequence alone would then let the later
             # stale GUI write roll the mission pips backward. Event cursor is
@@ -1361,7 +1502,6 @@ class MissionManager:
             if (
                 mission_id
                 and mission_id == self._last_overlay_mission_id
-                and mission_cursor > 0
                 and mission_cursor < int(self._last_overlay_mission_cursor or 0)
             ):
                 return
@@ -1369,6 +1509,7 @@ class MissionManager:
                 self._last_overlay_file_seq = max(self._last_overlay_file_seq, publish_seq)
                 self._last_overlay_mission_id = mission_id or self._last_overlay_mission_id
                 self._last_overlay_mission_cursor = max(self._last_overlay_mission_cursor, mission_cursor)
+                self._last_overlay_mission_revision = max(self._last_overlay_mission_revision, result_revision)
                 return
             try:
                 tmp = f"{MISSION_OVERLAY_FILE}.tmp"
@@ -1384,9 +1525,11 @@ class MissionManager:
                     else:
                         self._last_overlay_mission_cursor = max(self._last_overlay_mission_cursor, mission_cursor)
                     self._last_overlay_mission_id = mission_id
+                    self._last_overlay_mission_revision = result_revision
                 elif not packet.get("active"):
                     self._last_overlay_mission_id = ""
                     self._last_overlay_mission_cursor = 0
+                    self._last_overlay_mission_revision = 0
             except Exception:
                 pass
 
@@ -1420,12 +1563,19 @@ class MissionManager:
                 payload["active"] = True
                 payload["slot"] = self._active_slot
                 payload["point_slot"] = point_slot
+                live_snaps = getattr(self, "_live_snaps_by_slot", snaps) or {}
+                live_snap = live_snaps.get(point_slot) if isinstance(live_snaps, dict) else None
+                fighter_loaded = self._mission_owner_matches_snap(live_snap)
+                payload["fighter_loaded"] = fighter_loaded
                 payload = self._augment_payload_with_runtime(payload, snaps)
+                payload["fighter_loaded"] = fighter_loaded
                 payload["selector_open"] = bool(self._selector["open"])
                 payload["selector_index"] = int(self._selector["selected_index"])
                 payload["selector_hint"] = "Mission Mode: Down, Down, Taunt opens Mission Select"
-                payload["selector_controls"] = "Down: Move  Taunt: Select  Mouse still works"
+                payload["selector_controls"] = "Up/Down: Move  Right: Lock  Left: Unlock  Taunt: Select"
                 payload["scanlines"] = True
+
+        self._update_meter_refill(payload, str(payload.get("point_slot") or ""), snaps)
 
         self._sync_debug_overrides(payload)
         self._last_overlay_payload = dict(payload or {})
@@ -1481,6 +1631,8 @@ class MissionManager:
 
     def toggle_active_slot(self, slot_label: str) -> None:
         disabling = self._active_slot == slot_label
+        self._point_switch_candidate = None
+        self._point_switch_seen = 0
         if disabling:
             self._restore_debug_overrides(force_cpu_idle=True)
             self._restore_meter_refill_overrides()
@@ -1663,8 +1815,22 @@ class MissionManager:
         self._setup_state["idle_mission_key"] = mission_key
 
     def _mission_meter_refill_enabled(self, payload: dict) -> bool:
+        if (payload or {}).get("active") is False or (payload or {}).get("fighter_loaded") is False:
+            return False
         mission_id = str((payload or {}).get("active_mission_id") or "")
-        return bool((payload or {}).get("active_mission_setup_meter_refill")) or mission_id in MISSION_METER_REFILL_MISSIONS
+        return (
+            bool((payload or {}).get("active_mission_setup_meter_refill"))
+            or mission_id in MISSION_METER_REFILL_MISSIONS
+            or bool(self._saki_shell_step_indices(payload))
+        )
+
+    def _saki_shell_step_indices(self, payload: dict) -> tuple[int, ...]:
+        if str((payload or {}).get("character") or "").strip().lower() != "saki":
+            return ()
+        return tuple(
+            index for index, step in enumerate((payload or {}).get("active_mission_steps") or [])
+            if any(self._is_saki_shell_label(label) for label in self._step_labels(step))
+        )
 
     def _restore_meter_refill_overrides(self) -> None:
         state = self._meter_refill_state
@@ -1677,6 +1843,9 @@ class MissionManager:
         state["mission_key"] = None
         state["saved_p1meter_flag"] = None
         state["saved_baroque_flag"] = None
+        state["attempt_key"] = None
+        state["last_step_index"] = -1
+        state["served_shell_steps"] = set()
 
     def _sync_meter_refill_mission(self, payload: dict) -> bool:
         enabled = self._mission_meter_refill_enabled(payload)
@@ -1691,9 +1860,44 @@ class MissionManager:
         if mission_key is not None:
             state["mission_key"] = mission_key
             state["saved_p1meter_flag"] = int(self._read_debug_flag("P1Meter") or 0)
-            state["saved_baroque_flag"] = int(self._read_debug_flag("BaroquePct") or 0)
+            state["saved_baroque_flag"] = (
+                None if self._saki_shell_step_indices(payload)
+                else int(self._read_debug_flag("BaroquePct") or 0)
+            )
 
         return enabled
+
+    def _update_meter_refill(self, payload: dict, route_slot: str, snaps_dict: dict) -> None:
+        """Refill mission meter outside hitstun, stopping at each route's target."""
+        if not self._sync_meter_refill_mission(payload):
+            return
+        snap = (snaps_dict or {}).get(route_slot) or {}
+        meter = int(snap.get("meter", 0) or 0)
+        shell_steps = self._saki_shell_step_indices(payload)
+        if shell_steps:
+            state = self._meter_refill_state
+            attempt_key = (payload.get("mission_attempt_id"), payload.get("mission_event_floor"))
+            step_index = max(0, int(payload.get("current_step_index", 0) or 0))
+            if attempt_key != state.get("attempt_key") or step_index < state.get("last_step_index", -1):
+                state["served_shell_steps"] = set()
+            state["attempt_key"] = attempt_key
+            state["last_step_index"] = step_index
+            served = state["served_shell_steps"]
+            if step_index in shell_steps and meter >= 10000:
+                served.add(step_index)
+            desired = int(
+                step_index in shell_steps
+                and step_index not in served
+                and meter < 10000
+                and not self._opponent_in_hitstun(route_slot, snaps_dict)
+            )
+            writes = (("P1Meter", desired),)
+        else:
+            desired = int(meter < 50000 and not self._opponent_in_hitstun(route_slot, snaps_dict))
+            writes = (("BaroquePct", 1), ("P1Meter", desired))
+        for name, value in writes:
+            if self._read_debug_flag(name) != value:
+                self._write_debug_flag(name, value)
 
     def _sync_debug_overrides(self, payload: dict) -> None:
         mission_key = self._mission_debug_key(payload)
@@ -1726,9 +1930,13 @@ class MissionManager:
             self._setup_state["completed_mission_key"] = None
             self._setup_state["idle_mission_key"] = None
 
+            # Training defaults for dummy behavior are explicit. Restoring a
+            # previous mission's saved bytes may revive guard or pushblock.
+            for name in ("CpuAction", "CpuGuard", "CpuPushblock"):
+                if name not in overrides and self._read_debug_flag(name) != 0:
+                    self._write_debug_flag(name, 0)
+
             if "CpuAction" not in overrides:
-                if self._read_debug_flag("CpuAction") != 0:
-                    self._write_debug_flag("CpuAction", 0)
                 self._setup_state["idle_mission_key"] = mission_key
 
             if not overrides:
@@ -1756,6 +1964,10 @@ class MissionManager:
         for name, wanted in (self._setup_state.get("applied_debug_values") or {}).items():
             if self._read_debug_flag(name) != wanted:
                 self._write_debug_flag(name, wanted)
+
+        for name in ("CpuGuard", "CpuPushblock"):
+            if name not in overrides and self._read_debug_flag(name) != 0:
+                self._write_debug_flag(name, 0)
 
         # Unless this mission explicitly owns CpuAction, idle is the permanent
         # mission default rather than a one-frame cleanup write.
@@ -1813,6 +2025,7 @@ class MissionManager:
         if interpreter is not None and slot:
             try:
                 interpreter.set_menu_open("P2" if slot.startswith("P2") else "P1", slot)
+                interpreter.configure_menu(slot, len(missions) + 1, idx)
             except Exception:
                 pass
 
@@ -1851,6 +2064,51 @@ class MissionManager:
             return c1 if c1_is_point else c2
 
         return self._team_active_slot(slot_label, snaps_dict)
+
+    def _follow_native_point_tag(self, snaps_dict: dict) -> None:
+        """Activate the tagged fighter's missions after a stable native point flip."""
+        if not self._active_slot or not isinstance(snaps_dict, dict):
+            self._point_switch_candidate = None
+            self._point_switch_seen = 0
+            return
+        team = "P1" if str(self._active_slot).startswith("P1") else "P2"
+        slots = (f"{team}-C1", f"{team}-C2")
+        flagged = [
+            slot for slot in slots
+            if isinstance(snaps_dict.get(slot), dict)
+            and bool(snaps_dict[slot].get("damage_point_active", snaps_dict[slot].get("damage_is_point")))
+        ]
+        if len(flagged) != 1:
+            self._point_switch_candidate = None
+            self._point_switch_seen = 0
+            return
+        point_slot = flagged[0]
+        point_snap = snaps_dict[point_slot]
+        if self._mission_owner_matches_snap(point_snap):
+            self._point_switch_candidate = None
+            self._point_switch_seen = 0
+            return
+        point_base = int(point_snap.get("base", 0) or 0)
+        if not point_base or not str(point_snap.get("name") or "").strip():
+            return
+        candidate = (point_slot, point_base)
+        if candidate == self._point_switch_candidate:
+            self._point_switch_seen += 1
+        else:
+            self._point_switch_candidate = candidate
+            self._point_switch_seen = 1
+        if self._point_switch_seen < 2:
+            return
+
+        if self._selector.get("open"):
+            self._close_selector(rearm=True)
+        self._active_slot = point_slot
+        self._capture_mission_owner(point_slot, snaps_dict)
+        self._set_selector_source_slot(point_slot)
+        self._sync_input_cursors_to_latest(point_slot, point_snap)
+        self._runtime = self._fresh_runtime(slot=point_slot)
+        self._point_switch_candidate = None
+        self._point_switch_seen = 0
 
     def _selector_source_slot(self, snaps_dict: dict) -> str | None:
         if not self._active_slot:
@@ -1948,6 +2206,8 @@ class MissionManager:
 
         all_snaps = dict(getattr(self, "_render_snap_by_slot", {}) or {})
         all_snaps.update(snaps_dict or {})
+        cached_character = ""
+        cached_missions: list[dict] = []
 
         for command in commands or ():
             if not isinstance(command, MissionMenuCommand):
@@ -1989,6 +2249,8 @@ class MissionManager:
                 self._set_selector_source_slot(slot)
                 character_name = self._mission_owner_name(all_snaps)
                 payload = build_overlay_payload(character_name) if character_name else {}
+                cached_character = character_name
+                cached_missions = list(payload.get("missions") or [])
                 if not (payload.get("missions") or []):
                     self._close_selector()
                     continue
@@ -2002,8 +2264,11 @@ class MissionManager:
                 continue
 
             character_name = self._mission_owner_name(all_snaps)
-            payload = build_overlay_payload(character_name) if character_name else {}
-            missions = list(payload.get("missions") or [])
+            if character_name != cached_character:
+                payload = build_overlay_payload(character_name) if character_name else {}
+                cached_missions = list(payload.get("missions") or [])
+                cached_character = character_name
+            missions = cached_missions
             if not missions:
                 self._close_selector()
                 continue
@@ -2011,7 +2276,7 @@ class MissionManager:
             if kind == MISSION_MENU_NEXT:
                 self._selector["selected_index"] = (
                     int(self._selector.get("selected_index", 0)) + 1
-                ) % len(missions)
+                ) % (len(missions) + 1)
                 self._selector["opened_at"] = float(now)
                 self._selector["hint_until"] = float(now) + 8.0
                 continue
@@ -2019,13 +2284,39 @@ class MissionManager:
             if kind == MISSION_MENU_PREVIOUS:
                 self._selector["selected_index"] = (
                     int(self._selector.get("selected_index", 0)) - 1
-                ) % len(missions)
+                ) % (len(missions) + 1)
                 self._selector["opened_at"] = float(now)
                 self._selector["hint_until"] = float(now) + 8.0
                 continue
 
+            if kind in (MISSION_MENU_LOCK, MISSION_MENU_UNLOCK):
+                self._selector["opened_at"] = float(now)
+                self._selector["hint_until"] = float(now) + 8.0
+                idx = int(self._selector.get("selected_index", 0)) % (len(missions) + 1)
+                if idx < len(missions):
+                    mission_id = missions[idx].get("mission_id")
+                    if mission_id:
+                        progress = load_progress()
+                        if kind == MISSION_MENU_LOCK:
+                            progress = set_locked_mission_id(progress, character_name, mission_id)
+                            progress = set_selected_mission_id(progress, character_name, mission_id)
+                            self._prepare_selected_mission(character_name, mission_id)
+                            self._runtime = self._fresh_runtime(slot=self._active_slot)
+                        elif get_locked_mission_id(progress, character_name) == mission_id:
+                            progress = set_locked_mission_id(progress, character_name, None)
+                        save_progress(progress)
+                        cached_character = ""
+                        self.write_mode_state(force=True)
+                continue
+
             if kind == MISSION_MENU_SELECT:
-                idx = int(self._selector.get("selected_index", 0)) % len(missions)
+                idx = int(self._selector.get("selected_index", 0)) % (len(missions) + 1)
+                if idx == len(missions):
+                    save_progress(clear_character_completions(load_progress(), character_name))
+                    self._selector["opened_at"] = float(now)
+                    interpreter.set_menu_open(command.teamtag, slot)
+                    interpreter.configure_menu(slot, len(missions) + 1, idx)
+                    continue
                 mission_id = missions[idx].get("mission_id")
                 if mission_id:
                     progress = load_progress()
@@ -3336,6 +3627,19 @@ class MissionManager:
         generic = MISSION_GENERIC_ACTION_LABELS.get(action)
         if generic and generic not in labels:
             labels.append(generic)
+        # Ryu's second air-normal phases use the shared 0x10C/0x10D IDs.
+        # The generic fallback calls them j.6C/j.4C, but his move table
+        # identifies them as the later j.B/j.C hit phases. Preserve the
+        # authored normal's identity until its damage edge is sampled.
+        if int(char_id or 0) == 12:
+            ryu_air_phase = {0x10C: "j.B", 0x10D: "j.C"}.get(action)
+            if ryu_air_phase and ryu_air_phase not in labels:
+                labels.append(ryu_air_phase)
+        if int(char_id or 0) == 13 and action == 0x10C:
+            # Chun-Li's second j.C hit has its own native action. Authored
+            # routes call both hits j.C, including Legs Cancel/Corner Loop.
+            if "j.C" not in labels:
+                labels.append("j.C")
         return labels
 
     def _record_mission_action_sample(
@@ -4529,10 +4833,6 @@ class MissionManager:
         steps = list(payload.get("active_mission_steps") or [])
         mission_goal = dict(payload.get("active_mission_goal") or {})
 
-        # Setup helpers remain manager-owned because they intentionally write
-        # debug flags. Runtime V2 is read-only with respect to game state.
-        self._sync_meter_refill_mission(payload)
-
         if not payload.get("active") or not slot or not mission_id or (not steps and not mission_goal):
             self._mission_runtime_v2.reset_all(
                 int(self._event_state.get("latest_sequence", 0) or 0)
@@ -4554,7 +4854,6 @@ class MissionManager:
         newest_stream_sequence = int(self._event_state.get("latest_sequence", 0) or 0)
         mission_arm_floor = int(
             self._runtime.get("mission_event_floor_sequence", newest_stream_sequence)
-            or newest_stream_sequence
         )
         self._mission_runtime_v2.configure(
             slot=route_slot,
@@ -4580,7 +4879,8 @@ class MissionManager:
         # The realtime worker owns event consumption. The GUI frame only reads
         # its newest immutable result, so scanner/render stalls cannot batch
         # several mission steps together.
-        result = self._realtime_result_for_key(realtime_key, steps, mission_arm_floor)
+        result, result_revision = self._realtime_result_with_revision_for_key(realtime_key, steps, mission_arm_floor)
+        payload["__mission_result_revision"] = result_revision
 
         def _clear_v2(final_count: int, final_idx: int, final_label: str | None) -> dict:
             if character_name and mission_id:
@@ -4595,6 +4895,7 @@ class MissionManager:
             cp = build_overlay_payload(character_name or "")
             cp.update({
                 "active": True,
+                "__mission_result_revision": result_revision,
                 "slot": slot,
                 "point_slot": route_slot,
                 "just_cleared": True,
@@ -4608,7 +4909,7 @@ class MissionManager:
                 "current_step_index": final_idx,
                 "current_step_label": final_label,
                 "mission_runtime_version": 2,
-                "mission_attempt_id": result.attempt_id,
+                "mission_attempt_id": int(result.last_cleared_attempt or result.attempt_id),
                 "mission_restart_count": result.restart_count,
                 "mission_last_restart_reason": result.last_restart_reason,
                 "mission_event_cursor": result.event_cursor,
@@ -4622,11 +4923,13 @@ class MissionManager:
             self._runtime["celebrate_token"] = next_token
             self._runtime["celebrate_pending"] = True
             self._runtime["celebrate_acked_token"] = 0
-            self._runtime["v2_clear_latched_attempt"] = int(result.attempt_id)
+            self._runtime["v2_clear_latched_attempt"] = int(result.last_cleared_attempt or result.attempt_id)
+            self._runtime["v2_clear_handled_count"] = int(result.clear_count)
             return cp
 
         total_steps = len(steps) if steps else 1
-        if result.cleared:
+        new_buffered_clear = int(result.clear_count) > int(self._runtime.get("v2_clear_handled_count", 0) or 0)
+        if result.cleared or new_buffered_clear:
             final_idx = max(0, total_steps - 1)
             final_label = result.current_step_label
             if steps:
@@ -4639,7 +4942,8 @@ class MissionManager:
             # Celebrate/persist exactly once, but hold the completed route on
             # screen while the defender is still in hitstun/knockdown.
             latched_attempt = int(self._runtime.get("v2_clear_latched_attempt", 0) or 0)
-            if latched_attempt == int(result.attempt_id):
+            cleared_attempt = int(result.last_cleared_attempt or result.attempt_id)
+            if result.cleared and latched_attempt == cleared_attempt and not new_buffered_clear:
                 payload.update({
                     "just_cleared": False,
                     "clear_seq": int(self._runtime.get("clear_seq", 0) or 0),
@@ -4662,11 +4966,33 @@ class MissionManager:
                 return payload
             return _clear_v2(total_steps, final_idx, final_label)
 
-        # Recovery starts a new attempt. Drop the old clear latch only after the
-        # realtime runtime has actually crossed that defender boundary.
-        if int(self._runtime.get("v2_clear_latched_attempt", 0) or 0):
-            if int(self._runtime.get("v2_clear_latched_attempt", 0) or 0) != int(result.attempt_id):
+        # Move to the next trial after both the clear animation and the
+        # defender's recovery. The lock belongs to the selected mission, so
+        # replaying a locked trial still records its CLEAR without moving on.
+        cleared_attempt = int(self._runtime.get("v2_clear_latched_attempt", 0) or 0)
+        if cleared_attempt and cleared_attempt != int(result.attempt_id):
+            clear_token = int(self._runtime.get("celebrate_token", 0) or 0)
+            if clear_token > 0 and int(self._runtime.get("celebrate_acked_token", 0) or 0) == clear_token:
                 self._runtime.pop("v2_clear_latched_attempt", None)
+                progress = load_progress()
+                if get_locked_mission_id(progress, character_name) != mission_id:
+                    missions = list(payload.get("missions") or [])
+                    ids = [str(item.get("mission_id") or "") for item in missions]
+                    if mission_id in ids and len(ids) > 1:
+                        next_id = ids[(ids.index(mission_id) + 1) % len(ids)]
+                        progress = set_selected_mission_id(progress, character_name, next_id)
+                        save_progress(progress)
+                        self._prepare_selected_mission(character_name, next_id)
+                        self._runtime = self._fresh_runtime(
+                            slot=slot,
+                            clear_seq=int(self._runtime.get("clear_seq", 0) or 0),
+                            celebrate_token=clear_token,
+                            celebrate_pending=False,
+                            celebrate_acked_token=clear_token,
+                        )
+                        next_payload = build_overlay_payload(character_name)
+                        next_payload.update({"active": True, "slot": slot, "point_slot": route_slot})
+                        return next_payload
 
         confirmed = max(0, int(result.progress_index))
         ready_progress = confirmed
@@ -4715,8 +5041,6 @@ class MissionManager:
         mission_goal = dict(payload.get("active_mission_goal") or {})
         character_name = payload.get("character")
         frame_idx = self._frame_idx
-        meter_refill_enabled = self._sync_meter_refill_mission(payload)
-
         def _clear_payload(final_count, final_idx, final_label):
             print(f"[mission clear] slot={slot} mission_id={mission_id} character={character_name!r}")
             if character_name and mission_id:
@@ -4840,16 +5164,6 @@ class MissionManager:
             snap.get("baroque_cancel_raw")
             or realtime_inputs.get("baroque", False)
         )
-
-        # Declarative five-bar setup. Preserve the old reliable behavior,
-        # but enable it from mission JSON for any character.
-        if meter_refill_enabled:
-            meter_val = int(snap.get("meter", 0) or 0)
-            self._write_debug_flag("BaroquePct", 1)
-            if opponent_in_hitstun:
-                self._write_debug_flag("P1Meter", 0)
-            else:
-                self._write_debug_flag("P1Meter", 1 if meter_val < 50000 else 0)
 
         progress_index = int(self._runtime.get("progress_index", 0))
         starting_progress_index = progress_index
@@ -5386,6 +5700,7 @@ class MissionManager:
             "slot": self._active_slot,
             "point_slot": self._mission_owner.get("slot") if hasattr(self, "_mission_owner") else self._active_slot,
             "character": None,
+            "fighter_loaded": False,
             "mission_count": 0,
             "active_mission_id": None,
             "active_mission_name": None,
@@ -5404,7 +5719,7 @@ class MissionManager:
             "selector_open": False,
             "selector_index": 0,
             "selector_hint": "Mission Mode: Down, Down, Taunt opens Mission Select",
-            "selector_controls": "Up/Down: Move  Taunt: Select  Mouse still works",
+            "selector_controls": "Up/Down: Move  Right: Lock  Left: Unlock  Taunt: Select",
             "scanlines": True,
             "goal_progress_type": None,
             "goal_target_state": None,

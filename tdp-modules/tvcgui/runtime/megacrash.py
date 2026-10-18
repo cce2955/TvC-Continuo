@@ -1461,6 +1461,21 @@ def _start_megacrash_trainer_pulse(state: dict, vic_snap: dict, now: float, reas
     return wrote_any
 
 
+def _megacrash_schedule_due(pending: dict, now: float, frame_idx: int) -> bool:
+    """Use elapsed time for frame delays when GUI ticks are slower than 60 Hz."""
+    try:
+        fire_time = float(pending.get("fire_time") or 0.0)
+    except (TypeError, ValueError):
+        fire_time = 0.0
+    if fire_time > 0.0:
+        return now >= fire_time
+    try:
+        fire_frame = int(pending.get("fire_frame") or 0)
+    except (TypeError, ValueError):
+        fire_frame = 0
+    return bool(fire_frame and frame_idx >= fire_frame)
+
+
 def _tick_megacrash_trainer(state: dict, snaps: dict, now: float, frame_idx: int | None = None) -> dict:
     if not isinstance(state, dict):
         state = {}
@@ -1609,16 +1624,7 @@ def _tick_megacrash_trainer(state: dict, snaps: dict, now: float, frame_idx: int
             scheduled.pop(base, None)
             continue
 
-        try:
-            fire_frame = int(pending.get("fire_frame", 0) or 0)
-        except Exception:
-            fire_frame = 0
-        try:
-            fire_time = float(pending.get("fire_time", 0.0) or 0.0)
-        except Exception:
-            fire_time = 0.0
-
-        due = bool(frame_idx >= fire_frame if fire_frame else now >= fire_time)
+        due = _megacrash_schedule_due(pending, now, frame_idx)
         if not due:
             continue
 

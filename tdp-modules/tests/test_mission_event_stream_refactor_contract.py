@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
+import threading
+import time
 import types
 
 
@@ -22,6 +25,7 @@ from tvcgui.runtime.mission_events import (
     EVENT_DAMAGE,
     EVENT_HITSTUN_BEGIN,
     EVENT_HITSTUN_END,
+    EVENT_RECOVERY_IDLE,
     MissionEvent,
     MissionEventStream,
 )
@@ -29,6 +33,111 @@ from tvcgui.runtime.mission_events import (
 
 module = importlib.import_module("tvcgui.features.training.mission_manager")
 MissionManager = module.MissionManager
+
+
+def test_overlay_queue_keeps_newer_combat_progress_over_late_gui_frame() -> None:
+    manager = object.__new__(MissionManager)
+    manager._overlay_write_condition = threading.Condition()
+    manager._pending_overlay_payload = None
+
+    manager._queue_overlay_payload({
+        "active_mission_id": "route_a",
+        "mission_event_cursor": 42,
+        "completed_step_count": 2,
+        "__publish_seq": 10,
+    })
+    manager._queue_overlay_payload({
+        "active_mission_id": "route_a",
+        "mission_event_cursor": 41,
+        "completed_step_count": 1,
+        "__publish_seq": 11,
+    })
+
+    assert manager._pending_overlay_payload["mission_event_cursor"] == 42
+    assert manager._pending_overlay_payload["completed_step_count"] == 2
+
+    manager._queue_overlay_payload({
+        "active_mission_id": "route_a",
+        "mission_event_cursor": 42,
+        "completed_step_count": 13,
+        "__mission_result_revision": 8,
+        "__publish_seq": 12,
+    })
+    manager._queue_overlay_payload({
+        "active_mission_id": "route_a",
+        "mission_event_cursor": 42,
+        "completed_step_count": 0,
+        "__mission_result_revision": 7,
+        "__publish_seq": 13,
+    })
+    assert manager._pending_overlay_payload["completed_step_count"] == 13
+
+
+def test_overlay_file_rejects_zero_cursor_and_older_revision(tmp_path, monkeypatch) -> None:
+    manager = object.__new__(MissionManager)
+    manager._overlay_file_lock = threading.RLock()
+    manager._last_overlay_file_seq = 0
+    manager._last_overlay_mission_id = ""
+    manager._last_overlay_mission_cursor = 0
+    manager._last_overlay_mission_revision = 0
+    manager._last_overlay_serialized = ""
+    overlay_file = tmp_path / "mission.json"
+    monkeypatch.setattr(module, "MISSION_OVERLAY_FILE", str(overlay_file))
+
+    manager._write_overlay_payload_file({
+        "active": True,
+        "active_mission_id": "route_a",
+        "mission_event_cursor": 42,
+        "completed_step_count": 13,
+        "__mission_result_revision": 8,
+        "__publish_seq": 10,
+    })
+    manager._write_overlay_payload_file({
+        "active": True,
+        "active_mission_id": "route_a",
+        "mission_event_cursor": 0,
+        "completed_step_count": 0,
+        "__mission_result_revision": 7,
+        "__publish_seq": 11,
+    })
+
+    saved = json.loads(overlay_file.read_text(encoding="utf-8"))
+    assert saved["completed_step_count"] == 13
+    assert "__mission_result_revision" not in saved
+
+
+def test_ryu_air_chain_final_jc_phase_can_confirm_mission_step() -> None:
+    from tvcgui.features.training.mission_runtime_v2 import MissionRuntimeV2
+
+    manager = MissionManager({}, {}, {}, lambda: [], lambda *_args: "")
+    runtime = MissionRuntimeV2()
+    runtime.configure(
+        slot="P1-C1",
+        character="Ryu",
+        mission_id="ryu_air_chain",
+        raw_steps=[{"label": "j.B"}, {"label": "j.C"}],
+        goal={},
+        event_floor=0,
+    )
+    try:
+        assert "j.C" in manager._action_label_candidates(0x10D, 12)
+        result = runtime.consume(
+            [
+                MissionEvent(1, 1, 100_000_000, EVENT_ACTION, "P1-C1", char_id=12, action_id=0x10A),
+                MissionEvent(2, 2, 150_000_000, EVENT_ACTION, "P1-C1", char_id=12, action_id=0x10B, action_frame=1),
+                MissionEvent(3, 3, 160_000_000, EVENT_DAMAGE, "P2-C1", damage=100),
+                MissionEvent(4, 4, 180_000_000, EVENT_ACTION, "P1-C1", char_id=12, action_id=0x10D),
+                MissionEvent(5, 5, 300_000_000, EVENT_DAMAGE, "P2-C1", damage=100),
+            ],
+            owner_slot="P1-C1",
+            label_matcher=manager._mission_label_matches,
+            action_label_resolver=lambda event: manager._action_label_candidates(event.action_id, 12),
+            newest_sequence=5,
+        )
+        assert result.cleared
+        assert result.progress_index == 2
+    finally:
+        manager.close()
 
 
 def _packet(
@@ -115,6 +224,45 @@ def test_repeated_native_action_frame_reset_is_a_new_event() -> None:
     assert [event.action_id for event in actions] == [0x100, 0x100]
 
 
+def test_finishing_hit_emits_damage_edge() -> None:
+    stream = MissionEventStream(capacity=256)
+    base = 0x91000000
+    stream.on_sample("P2-C1", _packet(
+        seq=1, ns=1, base=base, char_id=13,
+        action=0, frame=0, hp=500, combo=0,
+    ))
+    stream.on_sample("P2-C1", _packet(
+        seq=2, ns=2, base=base, char_id=13,
+        action=48, frame=1, hp=0, combo=1, hitstun=8,
+    ))
+
+    damage = [event for event in stream.snapshot() if event.kind == EVENT_DAMAGE]
+    assert len(damage) == 1
+    assert damage[0].damage == 500
+    assert damage[0].current_hp == 0
+
+
+def test_damage_while_idle_emits_delayed_recovery_when_idle_persists() -> None:
+    stream = MissionEventStream(capacity=256)
+    base = 0x91000000
+    for seq, ns, hp in (
+        (1, 10_000_000, 10000),
+        (2, 20_000_000, 9500),
+        (3, 40_000_000, 9500),
+        (4, 60_000_000, 9500),
+        (5, 90_000_000, 9500),
+    ):
+        stream.on_sample("P2-C1", _packet(
+            seq=seq, ns=ns, base=base, char_id=13,
+            action=1, frame=seq, hp=hp, combo=0,
+        ))
+    events = stream.snapshot()
+    assert sum(event.kind == EVENT_DAMAGE for event in events) == 1
+    assert sum(event.kind == EVENT_RECOVERY_IDLE for event in events) == 1
+    recovery = next(event for event in events if event.kind == EVENT_RECOVERY_IDLE)
+    assert recovery.timestamp_ns > next(event for event in events if event.kind == EVENT_DAMAGE).timestamp_ns
+
+
 def test_overlay_consumes_cache_without_reading_dolphin() -> None:
     from pathlib import Path
 
@@ -167,7 +315,7 @@ def test_realtime_sampler_cache_and_event_consumers_are_independent() -> None:
     assert any(event.kind == EVENT_ACTION for event in events_a)
     sampler.close()
 
-def test_one_mission_update_drains_an_entire_buffered_combo(monkeypatch) -> None:
+def test_realtime_worker_drains_buffered_combo_without_new_samples(monkeypatch) -> None:
     stream = MissionEventStream(capacity=512)
     p1 = 0x90000000
     p2 = 0x91000000
@@ -277,9 +425,16 @@ def test_one_mission_update_drains_an_entire_buffered_combo(monkeypatch) -> None
         "active_mission_goal": {},
     }
 
+    deadline = time.monotonic() + 2.0
     result = manager._augment_payload_with_runtime(payload, snaps)
+    while not result.get("just_cleared") and time.monotonic() < deadline:
+        time.sleep(0.01)
+        result = manager._augment_payload_with_runtime(payload, snaps)
 
-    assert result["just_cleared"] is True
+    assert result["just_cleared"] is True, (
+        result.get("completed_step_count"), result.get("current_step_label"),
+        manager._mission_realtime_result,
+    )
     assert result["completed_step_count"] == 3
     assert manager._runtime["progress_index"] == 0
     manager.close()

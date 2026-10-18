@@ -235,28 +235,10 @@
       }
     },
     {
-      "mission_id": "ryu_006",
-      "name": "VAR Air Series",
-      "notes": "The other character starts, VARs in Ryu, then Ryu finishes with j.A j.B j.C.",
-      "steps": [
-        {
-          "label": "VAR"
-        },
-        {
-          "label": "j.A"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "j.C"
-        }
-      ]
-    },
-    {
       "mission_id": "ryu_007",
       "name": "Challenge",
       "notes": "",
+      "setup_meter_refill": true,
       "steps": [
         {
           "label": "5A"
@@ -304,6 +286,7 @@
       "mission_id": "ryu_008",
       "name": "Challenge",
       "notes": "Some moves are missing, can you figure out which? 5 Bar Starter.",
+      "setup_meter_refill": true,
       "steps": [
         {
           "label": "Hado L"

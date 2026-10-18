@@ -61,6 +61,11 @@ def test_zero_challenge_starts_with_rekkoha() -> None:
     assert _labels(mission) == ["Rekkoha", "3C", "j.C", "Sentsuizan B"]
 
 
+def test_both_ryu_challenges_use_five_bar_refill() -> None:
+    assert _mission("ryu.json", "ryu_007")["setup_meter_refill"] is True
+    assert _mission("ryu.json", "ryu_008")["setup_meter_refill"] is True
+
+
 def test_mission_loader_carries_declarative_meter_refill_flag() -> None:
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))

@@ -330,50 +330,6 @@
         "type": "combo_damage",
         "damage": 40000
       }
-    },
-    {
-      "mission_id": "tekkaman_blade_010",
-      "name": "VAR Baselard Route",
-      "notes": "",
-      "steps": [
-        {
-          "label": "VAR"
-        },
-        {
-          "label": "j.A"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "j.2C",
-          "input": "j.2C"
-        },
-        {
-          "label": "Blitz C",
-          "input": "[2]8X"
-        },
-        {
-          "label": "5B"
-        },
-        {
-          "label": "3C"
-        },
-        {
-          "label": "j.B"
-        },
-        {
-          "label": "Air Baselard A",
-          "input": "236X"
-        },
-        {
-          "label": "Crash Intrude"
-        },
-        {
-          "label": "j.2C",
-          "input": "j.2C"
-        }
-      ]
     }
   ]
 }

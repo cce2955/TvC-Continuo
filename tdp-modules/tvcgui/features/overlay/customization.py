@@ -20,6 +20,7 @@ DEFAULTS = {
     "p2_color": "#5aa0ff",
     "positions": {},
     "edit_mode": False,
+    "reduce_mission_motion": False,
 }
 
 
@@ -33,7 +34,7 @@ def _color(value, fallback):
 def normalize(data):
     data = data if isinstance(data, dict) else {}
     result = dict(DEFAULTS)
-    for key in ("show_health", "show_stun", "show_inputs", "show_move_timing", "show_meter_rail", "edit_mode"):
+    for key in ("show_health", "show_stun", "show_inputs", "show_move_timing", "show_meter_rail", "edit_mode", "reduce_mission_motion"):
         result[key] = bool(data.get(key, DEFAULTS[key]))
     override = data.get("show_damage_scaling")
     result["show_damage_scaling"] = None if override is None else bool(override)

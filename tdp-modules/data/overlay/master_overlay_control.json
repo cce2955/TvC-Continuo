@@ -1,7 +1,7 @@
 {
   "show_hud": true,
-  "show_hitboxes": true,
-  "show_hurtboxes": true,
+  "show_hitboxes": false,
+  "show_hurtboxes": false,
   "show_debug": false,
   "show_interaction_card": true,
   "show_combo_card": true,

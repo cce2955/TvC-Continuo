@@ -1,14 +1,14 @@
 {
-  "action_id": 19,
-  "auto_add_jump": false,
-  "cooldown_sec": 3.2,
+  "action_id": 257,
+  "auto_add_jump": true,
+  "cooldown_sec": 3.0,
   "enabled": false,
   "last_delay_frames": 0,
   "last_random_max_frames": 4,
   "last_random_min_frames": 1,
   "last_transition": "cancel",
   "legacy_jump_delay_migrated": true,
-  "move_label": "Jump",
+  "move_label": "5B [0x101]",
   "presets": {},
   "random_interval": false,
   "random_max_sec": 10.0,
@@ -17,34 +17,25 @@
   "require_neutral": true,
   "sequence": [
     {
-      "action_id": 19,
+      "action_id": 257,
       "delay_frames": 0,
-      "kind": "jump",
-      "move_label": "Jump",
+      "kind": "move",
+      "move_label": "5B [0x101]",
       "random_max_frames": 4,
       "random_min_frames": 1,
       "transition": "cancel"
     },
     {
-      "action_id": 267,
+      "action_id": 257,
       "delay_frames": 0,
       "kind": "move",
-      "move_label": "j.C [0x10B]",
-      "random_max_frames": 4,
-      "random_min_frames": 1,
-      "transition": "cancel"
-    },
-    {
-      "action_id": 322,
-      "delay_frames": 0,
-      "kind": "move",
-      "move_label": "Air Grenade C [0x142]",
+      "move_label": "5B [0x101]",
       "random_max_frames": 4,
       "random_min_frames": 1,
       "transition": "cancel"
     }
   ],
-  "show_countdown": true,
+  "show_countdown": false,
   "step_timeout_frames": 60,
   "target_slot": "P2-C1"
 }

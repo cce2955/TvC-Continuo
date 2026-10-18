@@ -8,14 +8,20 @@ history, or input cursors.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+import os
 import threading
 import time
+
+from tvcgui.core.paths import user_data_path
 
 MISSION_MENU_OPEN = "open"
 MISSION_MENU_NEXT = "next"
 MISSION_MENU_PREVIOUS = "previous"
 MISSION_MENU_SELECT = "select"
 MISSION_MENU_CLOSE = "close"
+MISSION_MENU_LOCK = "lock"
+MISSION_MENU_UNLOCK = "unlock"
 
 MISSION_MENU_DIRECTION_MASK = 0x0F
 MISSION_MENU_BUTTON_A = 0x80
@@ -25,8 +31,11 @@ MISSION_MENU_BUTTON_PARTNER = 0x10
 MISSION_MENU_BUTTON_TAUNT = 0x0C00
 MISSION_MENU_DOWN_DIRECTIONS = frozenset((0x08, 0x09, 0x0A))
 MISSION_MENU_UP_DIRECTIONS = frozenset((0x04, 0x05, 0x06))
+MISSION_MENU_RIGHT_DIRECTION = 0x01
+MISSION_MENU_LEFT_DIRECTION = 0x02
 MISSION_MENU_REPEAT_WINDOW_SEC = 1.35
 MISSION_MENU_COMMAND_LIMIT = 64
+MISSION_MENU_VISUAL_FILE = user_data_path("training", "mission_menu_visual.json")
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +61,8 @@ class MissionMenuInputInterpreter:
     Open menu:
         Down -> NEXT
         Up -> PREVIOUS
+        Right -> LOCK
+        Left -> UNLOCK
         Taunt -> SELECT
 
     Point ownership comes from fighter+0x44A0 sampled on the realtime lane. A
@@ -75,6 +86,32 @@ class MissionMenuInputInterpreter:
         self._menu_open_by_team: dict[str, bool] = {}
         self._menu_slot_by_team: dict[str, str] = {}
         self._state_by_slot: dict[str, dict] = {}
+        self._visual_count_by_slot: dict[str, int] = {}
+        self._visual_index_by_slot: dict[str, int] = {}
+
+    def _publish_visual(self, slot: str, is_open: bool) -> None:
+        """Give the 60 Hz overlay a cursor update directly from input sampling."""
+        payload = {
+            "slot": str(slot), "open": bool(is_open),
+            "index": int(self._visual_index_by_slot.get(slot, 0)),
+            "sequence": int(self._command_sequence),
+            "updated_ns": time.time_ns(),
+        }
+        try:
+            os.makedirs(os.path.dirname(MISSION_MENU_VISUAL_FILE), exist_ok=True)
+            temporary = MISSION_MENU_VISUAL_FILE + ".tmp"
+            with open(temporary, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, separators=(",", ":"))
+            os.replace(temporary, MISSION_MENU_VISUAL_FILE)
+        except OSError:
+            pass
+
+    def configure_menu(self, slot: str, count: int, index: int) -> None:
+        with self._lock:
+            slot = str(slot)
+            self._visual_count_by_slot[slot] = max(1, int(count))
+            self._visual_index_by_slot[slot] = int(index) % self._visual_count_by_slot[slot]
+            self._publish_visual(slot, True)
 
     @staticmethod
     def _teamtag(slot: str) -> str:
@@ -120,6 +157,12 @@ class MissionMenuInputInterpreter:
         )
         self._commands.append(command)
         del self._commands[:-self._command_limit]
+        count = self._visual_count_by_slot.get(slot, 0)
+        if kind == MISSION_MENU_NEXT and count:
+            self._visual_index_by_slot[slot] = (self._visual_index_by_slot.get(slot, 0) + 1) % count
+        elif kind == MISSION_MENU_PREVIOUS and count:
+            self._visual_index_by_slot[slot] = (self._visual_index_by_slot.get(slot, 0) - 1) % count
+        self._publish_visual(slot, kind not in (MISSION_MENU_CLOSE, MISSION_MENU_SELECT))
 
     def _set_point_slot(self, teamtag: str, slot: str, sample: dict) -> None:
         previous = self._point_slot_by_team.get(teamtag)
@@ -179,6 +222,8 @@ class MissionMenuInputInterpreter:
                 direction in MISSION_MENU_UP_DIRECTIONS
                 and previous_direction not in MISSION_MENU_UP_DIRECTIONS
             )
+            right_rising = direction == MISSION_MENU_RIGHT_DIRECTION and previous_direction != MISSION_MENU_RIGHT_DIRECTION
+            left_rising = direction == MISSION_MENU_LEFT_DIRECTION and previous_direction != MISSION_MENU_LEFT_DIRECTION
             attack_pressed = bool(
                 pressed
                 & (
@@ -195,6 +240,10 @@ class MissionMenuInputInterpreter:
                     self._emit(MISSION_MENU_NEXT, slot, sample)
                 if up_rising:
                     self._emit(MISSION_MENU_PREVIOUS, slot, sample)
+                if right_rising:
+                    self._emit(MISSION_MENU_LOCK, slot, sample)
+                if left_rising:
+                    self._emit(MISSION_MENU_UNLOCK, slot, sample)
                 if taunt_rising:
                     self._emit(MISSION_MENU_SELECT, slot, sample)
                     self._menu_open_by_team[teamtag] = False
@@ -244,6 +293,9 @@ class MissionMenuInputInterpreter:
             if self._enabled == enabled:
                 return
             self._enabled = enabled
+            if not enabled:
+                for slot in self._menu_slot_by_team.values():
+                    self._publish_visual(slot, False)
             self._commands.clear()
             self._menu_open_by_team.clear()
             self._menu_slot_by_team.clear()
@@ -272,6 +324,7 @@ class MissionMenuInputInterpreter:
                 slot = self._menu_slot_by_team.pop(team, None) or self._point_slot_by_team.get(team)
                 if slot:
                     self._reset_gesture(slot, keep_edges=True)
+                    self._publish_visual(slot, False)
 
     def set_menu_open(self, teamtag: str, slot: str) -> None:
         """Synchronize a menu opened by another surface such as the mouse."""
@@ -280,6 +333,7 @@ class MissionMenuInputInterpreter:
             self._menu_open_by_team[team] = True
             self._menu_slot_by_team[team] = str(slot)
             self._reset_gesture(str(slot), keep_edges=True)
+            self._publish_visual(str(slot), True)
 
     def point_slot(self, teamtag: str = "P1") -> str | None:
         with self._lock:

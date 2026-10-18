@@ -58,6 +58,39 @@ def test_assist_slot_swap_cannot_replace_pinned_point_character() -> None:
     assert manager.active_slot == "P1-C1"
 
 
+def test_real_tag_activates_new_point_fighters_missions() -> None:
+    manager = _manager()
+    ken = {**_point_snap("Ken the Eagle", 0x90000000, 1), "damage_point_active": True}
+    casshan = {**_point_snap("Casshan", 0x90010000, 2), "damage_point_active": False}
+    manager._render_snap_by_slot = {"P1-C1": ken, "P1-C2": casshan}
+    manager.active_slot = "P1-C1"
+    manager._capture_mission_owner("P1-C1", manager._render_snap_by_slot)
+
+    tagged = {
+        "P1-C1": {**ken, "damage_point_active": False},
+        "P1-C2": {**casshan, "damage_point_active": True},
+    }
+    manager._follow_native_point_tag(tagged)
+    assert manager._mission_owner["name"] == "Ken the Eagle"
+    manager._follow_native_point_tag(tagged)
+    assert manager.active_slot == "P1-C2"
+    assert manager._mission_owner["name"] == "Casshan"
+    assert manager._runtime["slot"] == "P1-C2"
+
+
+def test_assist_activity_without_native_point_flip_keeps_current_missions() -> None:
+    manager = _manager()
+    ken = {**_point_snap("Ken the Eagle", 0x90000000, 1), "damage_point_active": True}
+    casshan = {**_point_snap("Casshan", 0x90010000, 2, "Assist Attack"), "damage_point_active": False}
+    snaps = {"P1-C1": ken, "P1-C2": casshan}
+    manager.active_slot = "P1-C1"
+    manager._capture_mission_owner("P1-C1", snaps)
+    manager._follow_native_point_tag(snaps)
+    manager._follow_native_point_tag(snaps)
+    assert manager.active_slot == "P1-C1"
+    assert manager._mission_owner["name"] == "Ken the Eagle"
+
+
 def test_assist_native_action_is_not_recorded_for_point_route() -> None:
     manager = _manager()
     manager._mission_owner.update({"char_id": 1, "name": "Ken the Eagle"})

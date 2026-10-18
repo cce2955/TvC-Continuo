@@ -55,8 +55,14 @@ class V19MissionRedesignContractTests(unittest.TestCase):
         intro: float = 1.0,
         completed: int = 1,
         current: int = 1,
+        pulse: bool = False,
+        reduce_motion: bool = False,
+        theme_color: tuple[int, int, int] = (76, 139, 228),
     ) -> mission_hud.MasterOverlay:
         overlay = cls._overlay(intro)
+        overlay.control.reduce_mission_motion = reduce_motion
+        if pulse:
+            overlay._row_bump[0] = 1.0
         steps = cls._steps()
         data = {
             "active_mission_id": "ryu-c1",
@@ -72,7 +78,7 @@ class V19MissionRedesignContractTests(unittest.TestCase):
         overlay._draw_active_mission_panel(
             data=data,
             character="Ryu",
-            theme_color=(76, 139, 228),
+            theme_color=theme_color,
             mission_name="Challenge",
             mission_notes="Complete the sequence cleanly.",
             steps=steps,
@@ -405,6 +411,114 @@ class V19MissionRedesignContractTests(unittest.TestCase):
         overlay.mission_overlay_data["completed_step_count"] = 1
         overlay.update_mission_animations(0.05)
         self.assertGreater(overlay._mission_progress_display, 0.0)
+
+    def test_step_pulse_waits_for_confirmation(self):
+        overlay = self._overlay()
+        overlay.mission_overlay_data = {
+            "active_mission_id": "ryu-c1",
+            "active_mission_steps": self._steps(),
+            "completed_step_count": 0,
+            "confirmed_step_count": 0,
+            "current_step_index": 0,
+        }
+        overlay.update_mission_animations(0.016)
+        overlay.mission_overlay_data.update(completed_step_count=1, current_step_index=1)
+        overlay.update_mission_animations(0.016)
+        self.assertNotIn(0, overlay._row_bump)
+        overlay.mission_overlay_data["confirmed_step_count"] = 1
+        overlay.update_mission_animations(0.016)
+        self.assertGreater(overlay._row_bump[0], 0.0)
+
+    def test_reduced_motion_snaps_mission_visuals(self):
+        overlay = self._overlay()
+        overlay.control.reduce_mission_motion = True
+        overlay.mission_overlay_data = {
+            "active_mission_id": "ryu-c1",
+            "active_mission_steps": self._steps(),
+            "completed_step_count": 1,
+            "confirmed_step_count": 1,
+            "current_step_index": 1,
+            "selector_open": True,
+            "selector_index": 1,
+        }
+        overlay.update_mission_animations(0.016)
+        self.assertEqual(overlay._mission_intro_phase, 2.0)
+        self.assertEqual(overlay._mission_selector_open_phase, 1.0)
+        self.assertEqual(overlay._mission_selector_move_age, 1.0)
+        self.assertEqual(overlay.step_anim[1], 1.0)
+        self.assertFalse(overlay._row_bump)
+
+    def test_confirmation_outline_renders_and_reduced_motion_hides_it(self):
+        plain = pygame.surfarray.array3d(self._draw_panel().screen)
+        pulsed = pygame.surfarray.array3d(self._draw_panel(pulse=True).screen)
+        reduced = pygame.surfarray.array3d(self._draw_panel(pulse=True, reduce_motion=True).screen)
+        self.assertGreater(int((pulsed != plain).sum()), 0)
+        self.assertEqual(int((reduced != plain).sum()), 0)
+
+    def test_trial_panel_tint_changes_with_fighter(self):
+        ryu = pygame.surfarray.array3d(self._draw_panel(theme_color=(170, 30, 30)).screen)
+        alex = pygame.surfarray.array3d(self._draw_panel(theme_color=(40, 120, 255)).screen)
+        self.assertGreater(int((ryu != alex).sum()), 100)
+
+    def test_trial_top_strip_shows_fighter_color(self):
+        ryu = self._draw_panel(intro=2.0, theme_color=(170, 30, 30))
+        alex = self._draw_panel(intro=2.0, theme_color=(40, 120, 255))
+        for overlay, dominant in ((ryu, 0), (alex, 2)):
+            rect = overlay.mission_panel_rect
+            pixel = overlay.screen.get_at((rect.centerx, rect.y + 4))
+            self.assertGreater(pixel[dominant], max(pixel[(dominant + 1) % 3], pixel[(dominant + 2) % 3]))
+
+    def test_mission_portrait_is_cached_and_feathered(self):
+        overlay = self._overlay()
+        portrait = overlay._mission_portrait_watermark("Ryu", 68)
+        self.assertIsNotNone(portrait)
+        self.assertIs(portrait, overlay._mission_portrait_watermark("Ryu", 68))
+        self.assertEqual(portrait.get_at((0, 0)).a, 0)
+        self.assertGreater(portrait.get_at((34, 34)).a, 20)
+        self.assertIsNone(overlay._mission_portrait_watermark("Unknown Fighter", 68))
+
+    def test_mission_select_tint_changes_with_fighter(self):
+        def render(character: str):
+            overlay = self._overlay(intro=2.0)
+            overlay._mission_selector_open_phase = 1.0
+            overlay.mission_overlay_data = {
+                "character": character,
+                "slot": "P1-C1",
+                "selector_open": True,
+                "selector_index": 0,
+                "missions": [{"mission_id": "one", "name": "Challenge", "completed": False}],
+            }
+            overlay.draw_mission_overlay()
+            return overlay
+
+        ryu = render("Ryu")
+        alex = render("Alex")
+        self.assertGreater(int((pygame.surfarray.array3d(ryu.screen) != pygame.surfarray.array3d(alex.screen)).sum()), 100)
+        for overlay, dominant in ((ryu, 0), (alex, 2)):
+            rect = overlay.mission_panel_rect
+            pixel = overlay.screen.get_at((rect.centerx, rect.y + 4))
+            self.assertGreater(pixel[dominant], max(pixel[(dominant + 1) % 3], pixel[(dominant + 2) % 3]))
+
+    def test_mission_hides_when_live_fighter_unloads(self):
+        overlay = self._overlay(intro=2.0)
+        overlay.mission_overlay_data = {
+            "active": True,
+            "character": "Alex",
+            "fighter_loaded": False,
+            "active_mission_steps": self._steps(),
+            "active_mission_id": "alex-1",
+        }
+        overlay.draw_mission_overlay()
+        self.assertIsNone(overlay.mission_panel_rect)
+        overlay.mission_overlay_data["fighter_loaded"] = True
+        overlay.draw_mission_overlay()
+        self.assertIsNotNone(overlay.mission_panel_rect)
+
+    def test_mission_draws_with_regular_overlay_off(self):
+        source = function_source(MASTER, "run")
+        hidden_branch = source.split("if not self.control.show_hud:", 1)[1].split("continue", 1)[0]
+        self.assertIn("self.draw_mission_overlay()", hidden_branch)
+        self.assertIn("self.present()", hidden_branch)
 
     def test_activation_restarts_intro_sequence(self):
         overlay = mission_hud.MasterOverlay()

@@ -83,6 +83,14 @@ class SettingsBundleTests(unittest.TestCase):
 
 
 class SessionRecordingTests(unittest.TestCase):
+    def test_mission_event_history_outlasts_old_four_thousand_event_limit(self):
+        recorder = SessionRecorder(capacity=1)
+        recorder.start()
+        recorder.capture(1, 1.0, {"P1-C1": {"id": 1}}, context={})
+        for sequence in range(5000):
+            recorder.capture_event(float(sequence), "mission_event", {"seq": sequence})
+        self.assertEqual(len(recorder.events()), 5000)
+
     def test_bounded_recording_round_trips_as_read_only_frames(self):
         with TemporaryDirectory() as temp:
             recorder = SessionRecorder(capacity=2)

@@ -98,6 +98,8 @@ MASH_ACTION_LATCH_NS = 160_000_000
 MASH_REQUIRED_COUNT = 3
 JUMP_CONFIRM_WINDOW_NS = 150_000_000
 PENDING_ACTION_FALLBACK_NS = int(45 * (1_000_000_000 / 60.0))
+BUFFERED_NEXT_HIT_MAX_NS = 55_000_000
+MISSION_RUNTIME_DIAGNOSTIC_REVISION = "chain-lineage-hp-floor-20261018"
 
 
 class AttemptPhase(str, Enum):
@@ -142,6 +144,10 @@ class PendingAction:
     action_id: int
     labels: tuple[str, ...] = ()
     deadline_ns: int = 0
+    earliest_hit_ns: int = 0
+    superseded_by_next: bool = False
+    continuation_action_id: int = 0
+    combo_baseline: int = 0
 
 
 @dataclass(slots=True)
@@ -159,7 +165,10 @@ class AttemptState:
     event_floor: int = 0
     progress_index: int = 0
     pending_action: PendingAction | None = None
+    buffered_next_action: tuple[MissionEvent, tuple[str, ...]] | None = None
     combo_live: bool = False
+    combo_count: int = 0
+    defender_current_hp: int = -1
     reaction_live: bool = False
     native_stun_live: bool = False
     special_reaction_live: bool = False
@@ -183,6 +192,8 @@ class AttemptState:
     restart_count: int = 0
     last_restart_sequence: int = 0
     last_restart_reason: str = ""
+    last_cleared_attempt: int = 0
+    clear_count: int = 0
     restart_pending_reason: str = ""
     restart_pending_sequence: int = 0
     last_advance_sequence: int = 0
@@ -226,6 +237,8 @@ class RuntimeResult:
     goal_damage: int = 0
     goal_damage_needed: int = 0
     goal_hits: int = 0
+    last_cleared_attempt: int = 0
+    clear_count: int = 0
     goal_max_hits: int = 0
 
 
@@ -352,6 +365,21 @@ class MissionRuntimeV2:
     def mission_key(self) -> tuple[str, str, str] | None:
         return self._mission_key
 
+    def diagnostics(self) -> dict[str, int | str]:
+        """Small, scalar snapshot for saved-session hit confirmation audits."""
+        state = self._state
+        pending = state.pending_action
+        return {
+            "runtime_revision": MISSION_RUNTIME_DIAGNOSTIC_REVISION,
+            "pending_action_id": int(pending.action_id) if pending else 0,
+            "pending_chain_id": int(pending.continuation_action_id) if pending else 0,
+            "pending_combo_baseline": int(pending.combo_baseline) if pending else 0,
+            "combo_count": int(state.combo_count),
+            "defender_slot": str(state.continuity_defender_slot),
+            "defender_hp": int(state.defender_current_hp),
+            "last_completed_action_id": int(state.last_completed_action_id),
+        }
+
     def reset_all(self, event_floor: int = 0) -> None:
         self._mission_key = None
         self._steps = ()
@@ -427,8 +455,12 @@ class MissionRuntimeV2:
             self._state.buffered_advances += 1
         if self._state.progress_index >= len(self._steps):
             self._state.phase = AttemptPhase.CLEAR
+            self._state.last_cleared_attempt = int(self._state.attempt_id)
+            self._state.clear_count += 1
 
-    def _confirm_hit_continuity(self, step: CompiledStep, event: MissionEvent) -> None:
+    def _confirm_hit_continuity(
+        self, step: CompiledStep, event: MissionEvent, *, defender_slot: str | None = None
+    ) -> None:
         """Arm/resume route continuity from one confirmed damaging hit.
 
         A hit inside an authored grace window is the only thing that rescues
@@ -437,8 +469,8 @@ class MissionRuntimeV2:
         """
         state = self._state
         state.continuity_started = True
-        if event.slot:
-            state.continuity_defender_slot = str(event.slot)
+        if defender_slot or event.slot:
+            state.continuity_defender_slot = str(defender_slot or event.slot)
         action_id = int(event.action_id or 0) & 0x7FFF
         if (
             action_id in MISSION_COMBO_KEEPALIVE_STATES
@@ -490,10 +522,11 @@ class MissionRuntimeV2:
         # publication order, as the continuity boundary.
         if int(event.timestamp_ns or 0) <= int(state.continuity_last_hit_ns or 0):
             return
-        # The route becomes fail-able only after we have actually observed the
-        # defender in a protected hit/reaction/knockdown state for this attempt.
-        # This is the lock the player expects after the first confirmed hit.
-        if not state.reaction_seen:
+        # A complete combat packet can report the defender's return to idle
+        # even when every short lived stun sample was missed. After a confirmed
+        # hit, that explicit recovery edge is enough to end the attempt. Other
+        # end edges still require observed reaction evidence.
+        if not state.reaction_seen and event.kind != EVENT_RECOVERY_IDLE:
             return
         if state.restart_pending_reason:
             return
@@ -517,6 +550,8 @@ class MissionRuntimeV2:
             last_restart_sequence=floor,
             last_restart_reason=str(reason),
             last_event_ns=int(timestamp_ns or 0),
+            last_cleared_attempt=int(previous.last_cleared_attempt),
+            clear_count=int(previous.clear_count),
         )
 
     def _restart(self, event: MissionEvent, reason: str) -> None:
@@ -553,14 +588,27 @@ class MissionRuntimeV2:
         self._expire_pending_restart_at(int(event.timestamp_ns), int(event.sequence) - 1)
 
     def _expire_pending_action_at(self, timestamp_ns: int, newest_sequence: int) -> None:
-        """No-op by design: READY is invalidated by native action transitions.
+        """Expire delayed hit candidates and native continuation chains.
 
-        A frame-data timeout must never decide whether a route failed or whether
-        a late active frame counted. The next owner ACTION supersedes a pending
-        candidate; defender recovery owns route failure.
+        Ordinary active frames remain owned by native action transitions.
+        The authored delayed window is a pairing limit, not a route reset.
         """
-        _ = timestamp_ns
         _ = newest_sequence
+        pending = self._state.pending_action
+        step = self._current_step()
+        if (
+            pending is not None
+            and step is not None
+            and (
+                step.delayed_confirm_frames > 0
+                or pending.superseded_by_next
+                or pending.continuation_action_id > 0
+            )
+            and pending.step_index == self._state.progress_index
+            and int(timestamp_ns or 0) > pending.deadline_ns
+        ):
+            self._state.pending_action = None
+            self._state.buffered_next_action = None
 
     def _expire_jump_arm_at(self, timestamp_ns: int) -> None:
         input_ns = int(self._state.jump_input_ns or 0)
@@ -621,8 +669,9 @@ class MissionRuntimeV2:
         event: MissionEvent,
         labels: Sequence[str],
         label_matcher: LabelMatcher,
+        step: CompiledStep | None = None,
     ) -> bool:
-        step = self._current_step()
+        step = step or self._current_step()
         if step is None or step.kind != StepKind.ACTION:
             return False
         expected = list(step.labels)
@@ -649,12 +698,21 @@ class MissionRuntimeV2:
             return int(event.action_id or 0) >= 0x100
         return False
 
-    def _recent_damage_for_action(self, action: MissionEvent) -> RecentDamage | None:
+    def _recent_damage_for_action(self, action: MissionEvent, startup_frames: int) -> RecentDamage | None:
         for damage in reversed(self._state.recent_damage):
             if damage.consumed:
                 continue
             delta = int(action.timestamp_ns) - int(damage.timestamp_ns)
             if 0 <= delta <= PRE_ACTION_DAMAGE_NS:
+                # Once a route is underway, a pre-action HP edge is far more
+                # likely to be a later hit of the preceding move. Ryu j.B and
+                # Chun Legs both do this. Only a near-simultaneous read of an
+                # already-active new attack may claim that edge.
+                if self._state.progress_index > 0:
+                    if int(action.action_frame or 0) < max(0, int(startup_frames) - 1):
+                        continue
+                    if delta > 5_000_000:
+                        continue
                 return damage
         return None
 
@@ -664,6 +722,7 @@ class MissionRuntimeV2:
         labels: Sequence[str],
         label_matcher: LabelMatcher,
         action_timeout_resolver: ActionTimeoutResolver | None,
+        action_startup_resolver: ActionTimeoutResolver | None,
         *,
         preserve_pending_for_jump: bool = False,
     ) -> None:
@@ -671,33 +730,90 @@ class MissionRuntimeV2:
         if step is None or step.kind != StepKind.ACTION:
             return
 
-        # One native action transition ends the previous candidate instance. This
-        # replaces fragile wall-clock whiff expiry and prevents a later wrong
-        # move's damage from confirming an older expected move.
+        # Ordinary attacks lose ownership on the next native action. Explicit
+        # delayed attacks (traps/summons) can hit after their trigger action,
+        # so keep their candidate until the authored deadline or a new instance
+        # of the expected attack replaces it.
         pending = self._state.pending_action
+        matched = self._match_step_action(event, labels, label_matcher)
+        # A native chain-hit state can replace the attack action before its HP
+        # edge arrives. Follow the previous-action link to retain hit ownership
+        # only when this state descends from the pending attack. This also
+        # supports repeated chain phases without naming individual moves.
+        chain_continuation = bool(
+            pending is not None
+            and "chain hit" in self._normalized_action_labels(labels)
+            and int(event.previous_action_id) == int(
+                pending.continuation_action_id or pending.action_id
+            )
+        )
+        if chain_continuation:
+            pending.continuation_action_id = int(event.action_id)
+        delayed_pending = bool(
+            pending is not None
+            and step.delayed_confirm_frames > 0
+            and int(event.timestamp_ns or 0) <= pending.deadline_ns
+        )
+        next_step_index = self._state.progress_index + 1
+        next_step = self._steps[next_step_index] if next_step_index < len(self._steps) else None
+        next_matches = bool(
+            not matched
+            and next_step is not None
+            and self._match_step_action(event, labels, label_matcher, next_step)
+        )
+        if pending is not None and next_matches and not delayed_pending:
+            startup_frames = 2
+            if action_startup_resolver is not None:
+                try:
+                    startup_frames = max(0, int(action_startup_resolver(int(event.action_id)) or 0))
+                except Exception:
+                    startup_frames = 2
+            action_frame = max(0, int(event.action_frame or 0))
+            # Some air normals have no measured startup yet. A zero from the
+            # resolver means unknown, not that a same-frame buffered hit is
+            # impossible. Keep one sampled frame for that handoff.
+            remaining_frames = max(
+                1 if action_frame <= 2 else 0,
+                startup_frames - action_frame,
+            )
+            overlap_ns = min(
+                BUFFERED_NEXT_HIT_MAX_NS,
+                int(remaining_frames * (1_000_000_000 / 60.0)),
+            )
+            if overlap_ns > 0:
+                pending.deadline_ns = min(pending.deadline_ns, int(event.timestamp_ns) + overlap_ns)
+                pending.superseded_by_next = True
+                self._state.buffered_next_action = (event, tuple(labels))
+                return
         if (
             pending is not None
             and int(event.sequence) > int(pending.sequence)
-            and not preserve_pending_for_jump
+            and not (preserve_pending_for_jump or chain_continuation)
+            and not delayed_pending
         ):
             self._state.pending_action = None
+            self._state.buffered_next_action = None
 
-        matched = self._match_step_action(event, labels, label_matcher)
         if not matched:
             # Cross-slot sampling can publish DAMAGE a few ms before the owner
             # ACTION edge that caused it. If this action is not the expected row,
             # claim those nearby damage edges as unrelated so the next expected
             # move cannot steal them.
-            for damage in reversed(self._state.recent_damage):
-                if damage.consumed:
-                    continue
-                delta = int(event.timestamp_ns) - int(damage.timestamp_ns)
-                if delta < 0:
-                    continue
-                if delta > PRE_ACTION_DAMAGE_NS:
-                    break
-                damage.consumed = True
+            if not delayed_pending:
+                for damage in reversed(self._state.recent_damage):
+                    if damage.consumed:
+                        continue
+                    delta = int(event.timestamp_ns) - int(damage.timestamp_ns)
+                    if delta < 0:
+                        continue
+                    if delta > PRE_ACTION_DAMAGE_NS:
+                        break
+                    damage.consumed = True
             return
+
+        # A fresh instance of the current move replaces any older buffered
+        # next-step input; that old input cannot be replayed after this hit.
+        self._state.buffered_next_action = None
 
         if self._state.phase == AttemptPhase.ARMED:
             self._state.phase = AttemptPhase.RUNNING
@@ -707,7 +823,13 @@ class MissionRuntimeV2:
             self._advance(event, count_buffered=True)
             return
 
-        recent_damage = self._recent_damage_for_action(event)
+        startup_frames = 2
+        if action_startup_resolver is not None:
+            try:
+                startup_frames = max(2, int(action_startup_resolver(int(event.action_id)) or 0))
+            except Exception:
+                pass
+        recent_damage = self._recent_damage_for_action(event, startup_frames)
         if recent_damage is not None:
             recent_damage.consumed = True
             self._confirm_hit_continuity(step, event)
@@ -724,10 +846,7 @@ class MissionRuntimeV2:
             except Exception:
                 pass
         if int(step.delayed_confirm_frames or 0) > 0:
-            timeout_ns = max(
-                timeout_ns,
-                int(step.delayed_confirm_frames * (1_000_000_000 / 60.0)),
-            )
+            timeout_ns = int(step.delayed_confirm_frames * (1_000_000_000 / 60.0))
         self._state.pending_action = PendingAction(
             step_index=int(self._state.progress_index),
             sequence=int(event.sequence),
@@ -735,6 +854,11 @@ class MissionRuntimeV2:
             action_id=int(event.action_id),
             labels=tuple(str(label) for label in labels if str(label).strip()),
             deadline_ns=int(event.timestamp_ns) + max(1, int(timeout_ns)),
+            earliest_hit_ns=int(event.timestamp_ns) + int(
+                min(3, max(0, startup_frames - max(0, int(event.action_frame or 0)) - 2))
+                * (1_000_000_000 / 60.0)
+            ) if self._state.progress_index > 0 else 0,
+            combo_baseline=int(self._state.combo_count),
         )
 
     def _consume_input(self, event: MissionEvent) -> None:
@@ -848,9 +972,18 @@ class MissionRuntimeV2:
         self._buffer_jump_transition(event)
         self._try_consume_buffered_jump(jump_cancel_checker)
 
-    def _consume_damage(self, event: MissionEvent) -> None:
+    def _consume_damage(
+        self,
+        event: MissionEvent,
+        label_matcher: LabelMatcher,
+        action_timeout_resolver: ActionTimeoutResolver | None,
+        action_startup_resolver: ActionTimeoutResolver | None,
+    ) -> None:
         if int(event.damage or 0) <= 0:
             return
+        self._state.defender_current_hp = int(event.current_hp)
+        if int(event.combo_count or 0) > 0:
+            self._state.combo_count = int(event.combo_count)
         recent = RecentDamage(
             sequence=int(event.sequence),
             timestamp_ns=int(event.timestamp_ns),
@@ -876,13 +1009,44 @@ class MissionRuntimeV2:
 
         pending = self._state.pending_action
         if pending is not None and pending.step_index == self._state.progress_index:
+            if int(event.timestamp_ns or 0) < int(pending.earliest_hit_ns or 0):
+                recent.consumed = True
+                return
             step = self._current_step()
             if step is None:
                 return
             recent.consumed = True
-            self._confirm_hit_continuity(step, event)
-            self._state.last_completed_action_id = int(pending.action_id)
-            self._advance(event, count_buffered=True)
+            self._confirm_pending_hit(
+                event, label_matcher, action_timeout_resolver, action_startup_resolver
+            )
+
+    def _confirm_pending_hit(
+        self,
+        event: MissionEvent,
+        label_matcher: LabelMatcher,
+        action_timeout_resolver: ActionTimeoutResolver | None,
+        action_startup_resolver: ActionTimeoutResolver | None,
+        *,
+        defender_slot: str | None = None,
+    ) -> None:
+        pending = self._state.pending_action
+        step = self._current_step()
+        if pending is None or step is None:
+            return
+        self._confirm_hit_continuity(step, event, defender_slot=defender_slot)
+        self._state.last_completed_action_id = int(pending.action_id)
+        buffered = self._state.buffered_next_action
+        self._advance(event, count_buffered=True)
+        self._state.buffered_next_action = None
+        if buffered is not None and self._current_step() is not None:
+            buffered_event, buffered_labels = buffered
+            self._consume_action(
+                buffered_event,
+                buffered_labels,
+                label_matcher,
+                action_timeout_resolver,
+                action_startup_resolver,
+            )
 
     def _consume_route_event(
         self,
@@ -894,6 +1058,7 @@ class MissionRuntimeV2:
         action_label_resolver: ActionLabelResolver,
         jump_cancel_checker: JumpCancelChecker | None,
         action_timeout_resolver: ActionTimeoutResolver | None,
+        action_startup_resolver: ActionTimeoutResolver | None,
     ) -> None:
         state = self._state
         is_owner = str(event.slot) == str(owner_slot)
@@ -916,6 +1081,7 @@ class MissionRuntimeV2:
                     labels,
                     label_matcher,
                     action_timeout_resolver,
+                    action_startup_resolver,
                     preserve_pending_for_jump=is_jump_transition,
                 )
                 return
@@ -958,20 +1124,48 @@ class MissionRuntimeV2:
             # collateral damage to an assist/reserve confirm the mission route.
             if not defender_slot and event.point_active is False:
                 return
-            self._consume_damage(event)
+            self._consume_damage(
+                event, label_matcher, action_timeout_resolver, action_startup_resolver
+            )
             return
 
         if event.kind == EVENT_COMBO_BEGIN:
             state.combo_live = True
+            state.combo_count = max(0, int(event.combo_count or 0))
             return
         if event.kind == EVENT_COMBO_CHANGE:
-            state.combo_live = int(event.combo_count or 0) > 0
+            new_count = max(0, int(event.combo_count or 0))
+            previous_count = int(state.combo_count)
+            state.combo_live = new_count > 0
+            state.combo_count = new_count
+            pending = state.pending_action
+            # Training can hold the defender at 1 HP. A later attack then
+            # increases the native combo counter and reaction without creating
+            # an HP-delta event. The already-bound defender and a rise beyond
+            # this move's baseline make that increment valid hit evidence.
+            if (
+                pending is not None
+                and pending.step_index == state.progress_index
+                and state.continuity_started
+                and bool(state.continuity_defender_slot)
+                and state.defender_current_hp == 1
+                and pending.combo_baseline > 0
+                and new_count > max(previous_count, pending.combo_baseline)
+                and int(event.timestamp_ns or 0) >= int(pending.timestamp_ns)
+                and int(event.timestamp_ns or 0) >= int(pending.earliest_hit_ns or 0)
+            ):
+                self._confirm_pending_hit(
+                    event, label_matcher, action_timeout_resolver,
+                    action_startup_resolver,
+                    defender_slot=state.continuity_defender_slot,
+                )
             return
         if event.kind == EVENT_COMBO_END:
             # Combo count is display/goal telemetry only. It is intentionally
             # forbidden from resetting a route; native defender reaction owns
             # continuity.
             state.combo_live = False
+            state.combo_count = 0
             return
 
         if is_enemy and state.continuity_defender_slot and str(event.slot or "") != str(state.continuity_defender_slot):
@@ -1001,6 +1195,11 @@ class MissionRuntimeV2:
                 state.reaction_seen = True
                 return
             state.native_stun_live = False
+            if state.special_reaction_live and action_id not in MISSION_RECOVERY_BOUNDARY_ACTIONS:
+                # One stun clock can reach zero during wall bounce or another
+                # protected reaction. That is not defender recovery.
+                state.reaction_live = True
+                return
             state.special_reaction_live = False
             state.reaction_live = False
             if action_id in MISSION_WAKEUP_ACTIONS:
@@ -1020,10 +1219,10 @@ class MissionRuntimeV2:
                 state.reaction_live = True
                 state.reaction_seen = True
                 return
-            # Same rule as HITSTUN_END: update telemetry, never fail the route
-            # from a timer-derived end edge.
             state.special_reaction_live = False
             state.reaction_live = bool(state.native_stun_live)
+            if action_id in MISSION_RECOVERY_BOUNDARY_ACTIONS and not state.native_stun_live:
+                self._begin_continuity_break(event, "reaction_end")
             return
 
         if is_enemy and event.kind == EVENT_RECOVERY_IDLE:
@@ -1147,6 +1346,7 @@ class MissionRuntimeV2:
         action_label_resolver: ActionLabelResolver,
         jump_cancel_checker: JumpCancelChecker | None = None,
         action_timeout_resolver: ActionTimeoutResolver | None = None,
+        action_startup_resolver: ActionTimeoutResolver | None = None,
         newest_sequence: int = 0,
     ) -> RuntimeResult:
         owner_team = self._team(owner_slot)
@@ -1185,6 +1385,7 @@ class MissionRuntimeV2:
                     action_label_resolver=action_label_resolver,
                     jump_cancel_checker=jump_cancel_checker,
                     action_timeout_resolver=action_timeout_resolver,
+                    action_startup_resolver=action_startup_resolver,
                 )
                 # P1 jump evidence can arrive before P2 DAMAGE confirms the
                 # preceding attack. Re-check after every event so the DAMAGE
@@ -1227,6 +1428,8 @@ class MissionRuntimeV2:
             last_restart_reason=str(self._state.last_restart_reason),
             ready_progress_index=ready_progress,
             prediction_active=prediction_active,
+            last_cleared_attempt=int(self._state.last_cleared_attempt),
+            clear_count=int(self._state.clear_count),
         )
 
     def tick(self, *, now_ns: int, newest_sequence: int = 0) -> RuntimeResult:
