@@ -38,6 +38,11 @@ secrets/
 # Runtime captures and logs
 data/runtime/
 runtime/
+# Keep new source modules in the runtime package visible to Git.
+!tdp-modules/tvcgui/runtime/
+tdp-modules/tvcgui/runtime/*
+!tdp-modules/tvcgui/runtime/fighter_frames.py
+!tdp-modules/tvcgui/runtime/session_recording.py
 logs/
 *.log
 *.jsonl
@@ -126,6 +131,7 @@ venv/
 
 # Build outputs
 /tdp-modules/build/
+/tdp-modules/build*/
 /tdp-modules/dist*/
 
 # Memory and diagnostic captures

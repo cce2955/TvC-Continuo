@@ -21,17 +21,17 @@ HELP_TOPICS: list[tuple[str, str]] = [
 
 The main Continuo window is a control surface. Some buttons toggle layers over the game, while other buttons open dedicated tool windows. Turning the core Overlay off does not disable the other visual or training layers.
 
-A good first setup is Set: Core, then enable Hitboxes or Hurtboxes only when you need them. Open Tools when you want the dedicated training and setup utilities.""",
+A good first setup is HUD Settings > Core, then enable Hitboxes or Hurtboxes only when you need them. Open Tools when you want the dedicated training and setup utilities.""",
     ),
     (
         "HUD Controls",
         """HUD CONTROLS
 
-Set: Core / Research / Full
-Cycles between useful information presets. Core keeps the basic HUD concise. Research adds damage scaling and HS Scale. Full enables the broader live combat display while retaining both research gauges. Changing individual HUD toggles changes the preset to Custom.
+HUD Settings
+Opens the display switches and built-in Core, Research, and Full sets. Save the current switches and overlay appearance as a named preset, then load it later. Appearance and positions opens the visual customizer.
 
 Overlay
-Shows or hides the core team HUD. Hitboxes, hurtboxes, ruler guides, Mission Mode, and trainer prompts are separate layers.
+Shows or hides the in-game overlay. HUD information switches live in HUD Settings.
 
 Hit / Block
 Shows the live interaction ribbon for recent hit and block results.
@@ -51,8 +51,8 @@ Adds meter gain and spend information beside the normal meter display.
 Red HP
 Shows recoverable health and its amount.
 
-Research
-Opens the standalone read-only Attack Research window. It is separate from the Research HUD preset.
+Attack Research
+Opens the standalone read-only Attack Research window from HUD Settings. It is separate from the Research HUD preset.
 
 Tag
 Shows or hides the incoming tag resource card.
@@ -64,7 +64,7 @@ Tools
 Expands the Training and Lab / Setup sections.
 
 Help
-Opens this guide.""",
+Opens this guide from Settings.""",
     ),
     (
         "Visuals",

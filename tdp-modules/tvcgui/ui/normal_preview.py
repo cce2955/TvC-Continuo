@@ -268,7 +268,9 @@ def _normal_advantage(mv: dict, kind: str, *, prefer_observed: bool = False) -> 
     """
     if str(kind).lower().startswith("b"):
         if prefer_observed:
-            return _normal_observed_block_advantage(mv)
+            observed = _normal_observed_block_advantage(mv)
+            if observed is not None:
+                return observed
         stored = _normal_derived_block_advantage(mv)
         stun = _normal_int(mv, "blockstun", "block", "b")
     else:
@@ -444,6 +446,21 @@ def _normal_visible_moves(moves: list, char_ref: dict | None = None) -> list:
     return out
 
 
+def _normal_preview_slot_moves(slot: dict) -> list[dict]:
+    """Reuse the curated rows within one preview draw."""
+    cached = slot.get("_preview_visible_moves")
+    if isinstance(cached, list):
+        return cached
+    return _normal_visible_moves(slot.get("moves") or [], slot)
+
+
+def _normal_preview_block_advantage(slot: dict, mv: dict) -> int | None:
+    """Use the same block value for the table, filters, and punish ladder."""
+    manual = _manual_observed_for_slot(slot, _normal_move_label(mv))
+    if manual is not None:
+        return manual
+    return _normal_advantage(mv, "block", prefer_observed=True)
+
 
 _NORMAL_PREVIEW_MODE_META = {
     "fast": {"label": "Fastest", "color": (112, 182, 245)},
@@ -512,7 +529,7 @@ def _normal_preview_selected_move(slots: list[dict], selection: dict | None) -> 
         slot_label = str(slot.get("slot_label") or slot.get("slot") or "")
         if slot_label != wanted_slot:
             continue
-        visible = _normal_visible_moves(slot.get("moves") or [], slot)
+        visible = _normal_preview_slot_moves(slot)
         for mv in visible:
             if wanted_key and _normal_preview_selection_matches(selection, slot_label, mv):
                 return slot_label, mv
@@ -538,7 +555,7 @@ def _normal_preview_current_move(slot: dict) -> dict | None:
     """Resolve the currently executing visible normal for one slot."""
     if not isinstance(slot, dict):
         return None
-    visible = _normal_visible_moves(slot.get("moves") or [], slot)
+    visible = _normal_preview_slot_moves(slot)
     if not visible:
         return None
 
@@ -614,7 +631,7 @@ def _normal_preview_live_source(slots: list[dict]) -> tuple[str, dict] | tuple[N
     return found[0]
 
 
-def _normal_preview_best_keys(moves: list[dict], mode: str) -> set[str]:
+def _normal_preview_best_keys(moves: list[dict], mode: str, slot: dict | None = None) -> set[str]:
     """Return the best metric rows for one character card.
 
     Fast/damage/+block highlights are split into grounded and aerial groups so
@@ -644,17 +661,17 @@ def _normal_preview_best_keys(moves: list[dict], mode: str) -> set[str]:
                 continue
             grouped[is_air].append((int(value), _normal_preview_key(mv)))
         elif mode == "adv_block":
-            value = _normal_advantage(mv, "block", prefer_observed=True)
+            value = _normal_preview_block_advantage(slot, mv) if slot is not None else _normal_advantage(mv, "block", prefer_observed=True)
             if value is None:
                 continue
             grouped[is_air].append((int(value), _normal_preview_key(mv)))
         elif mode == "safe":
-            value = _normal_advantage(mv, "block", prefer_observed=True)
+            value = _normal_preview_block_advantage(slot, mv) if slot is not None else _normal_advantage(mv, "block", prefer_observed=True)
             if value is None or int(value) < 0:
                 continue
             grouped[is_air].append((int(value), _normal_preview_key(mv)))
         elif mode == "unsafe":
-            value = _normal_advantage(mv, "block", prefer_observed=True)
+            value = _normal_preview_block_advantage(slot, mv) if slot is not None else _normal_advantage(mv, "block", prefer_observed=True)
             if value is None:
                 continue
             grouped[is_air].append((-int(value), _normal_preview_key(mv)))
@@ -673,7 +690,7 @@ def _normal_preview_punish_ladder(slot: dict, source_mv: dict, window: int) -> d
     """Return fastest and highest-damage legal normal punish options for one slot."""
     source_is_air = _normal_preview_is_air_move(source_mv)
     candidates: list[dict[str, object]] = []
-    for mv in _normal_visible_moves(slot.get("moves") or [], slot):
+    for mv in _normal_preview_slot_moves(slot):
         if _normal_preview_is_air_move(mv) != source_is_air:
             continue
         startup = _normal_int(mv, "startup", "start", "active_start")
@@ -709,7 +726,8 @@ def _normal_preview_punish_from_source(
     source_mv: dict,
 ) -> tuple[dict[str, set[str]], dict[str, dict[str, str]], int | None, str | None]:
     """Return a fastest/highest-damage punish ladder for both opposing slots."""
-    adv_block = _normal_advantage(source_mv, "block", prefer_observed=True)
+    source = next((slot for slot in slots if str(slot.get("slot_label") or slot.get("slot") or "") == source_slot), {})
+    adv_block = _normal_preview_block_advantage(source, source_mv)
     if adv_block is None or adv_block >= 0:
         return {}, {}, adv_block, source_slot
 
@@ -760,7 +778,7 @@ def _normal_preview_matchup_from_source(
         slot_label = str(slot.get("slot_label") or slot.get("slot") or "")
         if not slot_label.startswith(target_team):
             continue
-        for mv in _normal_visible_moves(slot.get("moves") or [], slot):
+        for mv in _normal_preview_slot_moves(slot):
             canon = _normal_canonical_label(_normal_move_label(mv)) or _normal_canon_label(_normal_move_label(mv))
             if canon != wanted:
                 continue
@@ -814,7 +832,7 @@ def _normal_preview_highlight_keys(slots: list[dict], mode: str, selection: dict
         if not isinstance(slot, dict):
             continue
         slot_label = str(slot.get("slot_label") or slot.get("slot") or "")
-        keys = _normal_preview_best_keys(_normal_visible_moves(slot.get("moves") or [], slot), mode)
+        keys = _normal_preview_best_keys(_normal_preview_slot_moves(slot), mode, slot)
         if keys:
             out[slot_label] = keys
     return out, {}, None, None
@@ -844,7 +862,8 @@ def _normal_preview_status(slots: list[dict], mode: str, selection: dict | None)
             return f"{source_slot} {label}: no matching normal on the opposing team"
         return f"{source_slot} {label}: matched on {', '.join(sorted(highlighted))}"
 
-    adv_block = _normal_advantage(source_mv, "block", prefer_observed=True)
+    source = next((slot for slot in slots if str(slot.get("slot_label") or slot.get("slot") or "") == source_slot), {})
+    adv_block = _normal_preview_block_advantage(source, source_mv)
     prefix = "Live " if mode == "live_punish" else ""
     if adv_block is None:
         return f"{prefix}{source_slot} {label}: block value unavailable"
@@ -948,7 +967,7 @@ def _normal_preview_focus_slot(
 
 def _normal_preview_essential_choices(slot: dict) -> list[dict]:
     """Build a compact coaching list from one fighter's visible normals."""
-    moves = _normal_visible_moves(slot.get("moves") or [], slot)
+    moves = _normal_preview_slot_moves(slot)
     if not moves:
         return []
 
@@ -961,7 +980,7 @@ def _normal_preview_essential_choices(slot: dict) -> list[dict]:
         return int(value) if value is not None else -1
 
     def block_adv(move: dict) -> int:
-        value = _normal_advantage(move, "block", prefer_observed=True)
+        value = _normal_preview_block_advantage(slot, move)
         return int(value) if value is not None else -9999
 
     def by_label(*wanted: str) -> dict | None:
@@ -1003,7 +1022,7 @@ def _normal_preview_essential_choices(slot: dict) -> list[dict]:
         label = _normal_move_label(move)
         start = _normal_int(move, "startup", "start", "active_start")
         dmg = _normal_damage(move)
-        adv = _normal_advantage(move, "block", prefer_observed=True)
+        adv = _normal_preview_block_advantage(slot, move)
         details = []
         if start is not None:
             details.append(f"{start}f")
@@ -1082,6 +1101,8 @@ def draw_scan_normals_polished(
         if _lbl and _lbl not in slot_map:
             slot_map[_lbl] = _s
     slots = [slot_map.get(lbl, {"slot_label": lbl, "char_name": "No character", "moves": []}) for lbl in ordered_labels]
+    for slot in slots:
+        slot["_preview_visible_moves"] = _normal_visible_moves(slot.get("moves") or [], slot)
     resolved_focus_slot = _normal_preview_focus_slot(slots, focus_slot, selection)
     compact_view = "essentials" if str(compact_view or "full").lower().startswith("essential") else "full"
 
@@ -1260,10 +1281,7 @@ def draw_scan_normals_polished(
         name_s = _fit_text(card_name_font, char_name, GUI_TEXT, max(24, card.right - name_x - 8))
         surf.blit(name_s, (name_x, card.y + (header_h - name_s.get_height()) // 2))
 
-        moves = slot.get("moves") or []
-        if not isinstance(moves, list):
-            moves = []
-        visible_moves = _normal_visible_moves(moves, slot)
+        visible_moves = _normal_preview_slot_moves(slot)
         is_empty_card = len(visible_moves) <= 0
 
         cur_id = slot.get("cur_anim") or slot.get("current_anim") or slot.get("mv_id_display") or slot.get("move_id")
@@ -1653,11 +1671,7 @@ def draw_scan_normals_polished(
 
             # Observed block advantage from wiki/profile data wins here. If a
             # fresh scan has no stored value yet, fall back to stun minus recovery.
-            adv_block = _manual_observed_for_slot(slot, label)
-            if adv_block is None:
-                adv_block = _normal_advantage(mv, "block", prefer_observed=True)
-            if adv_block is None and block is not None and recovery is not None:
-                adv_block = int(block) - int(recovery)
+            adv_block = _normal_preview_block_advantage(slot, mv)
             damage = _normal_damage(mv)
 
             values = [

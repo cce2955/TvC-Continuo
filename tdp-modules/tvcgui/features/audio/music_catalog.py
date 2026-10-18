@@ -81,16 +81,17 @@ _RESOURCES.extend(MusicResource(*item) for item in _OTHER)
 RESOURCES = tuple(_RESOURCES)
 BY_KEY = {item.key: item for item in RESOURCES}
 
-# Only scenes with confirmed detection in the current Continuo reader can
-# be selected automatically. Other resources are reachable through the
-# explicit Advanced > SSD resource control until verified runtime probes exist.
+# Only scenes with a concrete runtime boundary are selected automatically.
+# Other resources remain available through Advanced > SSD resource.
 AUTO_SCENES = {
     'menu': 's_bgm_42',
     'character_select': 's_bgm_24',
     'stage_select': 's_bgm_25',
+    'winner': 's_bgm_26',
 }
 STAGE_ID_RESOURCE = {n: f'stage_{n:02d}' for n in range(1, 15)}
-STAGE_ID_RESOURCE[15] = 'stage_17'
+STAGE_ID_RESOURCE[15] = 's_bgm_32'  # Yami arena uses a boss BGM stream
+STAGE_ID_RESOURCE[17] = 'stage_17'  # observed in phase-4 Training Stage dump
 
 
 def resource_label(key: str | None) -> str:

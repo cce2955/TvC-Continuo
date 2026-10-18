@@ -1972,6 +1972,25 @@ def _looks_like_ptr(v: int) -> bool:
 
 def read_hitboxes(slot_base: int, layout: HitboxLayout):
     base = slot_base + layout.struct_shift
+    if layout.blocks:
+        start = min(min(layout.blocks) + min(layout.off_x, layout.off_y, layout.off_r), layout.off_flag)
+        end = max(max(layout.blocks) + max(layout.off_x, layout.off_y, layout.off_r) + 4,
+                  layout.off_flag + 1)
+        try:
+            blob = rbytes(base + start, end - start)
+        except Exception:
+            blob = None
+        if blob is not None and len(blob) == end - start:
+            flag = blob[layout.off_flag - start]
+            boxes = []
+            for block in layout.blocks:
+                values = []
+                for offset in (layout.off_x, layout.off_y, layout.off_r):
+                    value = struct.unpack_from(">f", blob, block + offset - start)[0]
+                    values.append(value if math.isfinite(value) else 0.0)
+                boxes.append((*values, flag))
+            return boxes
+    # Keep the scalar reader for Dolphin backends that reject a span read.
     out = []
     flag = rb(base + layout.off_flag)
     for b in layout.blocks:
@@ -2003,7 +2022,7 @@ def _read_matrix_3x4(matrix_ptr: int) -> Optional[Tuple[float, ...]]:
     return tuple(vals)
 
 
-def _valid_bone_matrix(matrix_ptr: int) -> bool:
+def _valid_bone_matrix(matrix_ptr: int, values: Optional[Tuple[float, ...]] = None) -> bool:
     """Reject uninitialized/stale bone matrices without rejecting large fighters.
 
     PTX's live giant-body matrices still have normal-sized orthonormal rows.
@@ -2011,7 +2030,8 @@ def _valid_bone_matrix(matrix_ptr: int) -> bool:
     and an absurd translation.  Those are descriptor leftovers, not renderable
     body geometry.
     """
-    values = _read_matrix_3x4(matrix_ptr)
+    if values is None:
+        values = _read_matrix_3x4(matrix_ptr)
     if values is None:
         return False
     rows = ((values[0], values[1], values[2]),
@@ -2033,11 +2053,18 @@ def _valid_bone_matrix(matrix_ptr: int) -> bool:
     return 0.015 <= abs(det) <= 16.0
 
 
-def _matrix_transform_point(matrix_ptr: int, lx: float, ly: float, lz: float) -> Tuple[float, float, float]:
+def _matrix_transform_point(matrix_ptr: int, lx: float, ly: float, lz: float,
+                            values: Optional[Tuple[float, ...]] = None) -> Tuple[float, float, float]:
     # Live bone matrices are row-major 3x4:
     #   [r00 r01 r02 tx]
     #   [r10 r11 r12 ty]
     #   [r20 r21 r22 tz]
+    if values is not None:
+        return (
+            values[0] * lx + values[1] * ly + values[2] * lz + values[3],
+            values[4] * lx + values[5] * ly + values[6] * lz + values[7],
+            values[8] * lx + values[9] * ly + values[10] * lz + values[11],
+        )
     x = (_rf(matrix_ptr + 0x00) * lx) + (_rf(matrix_ptr + 0x04) * ly) + (_rf(matrix_ptr + 0x08) * lz) + _rf(matrix_ptr + 0x0C)
     y = (_rf(matrix_ptr + 0x10) * lx) + (_rf(matrix_ptr + 0x14) * ly) + (_rf(matrix_ptr + 0x18) * lz) + _rf(matrix_ptr + 0x1C)
     z = (_rf(matrix_ptr + 0x20) * lx) + (_rf(matrix_ptr + 0x24) * ly) + (_rf(matrix_ptr + 0x28) * lz) + _rf(matrix_ptr + 0x2C)
@@ -2054,24 +2081,34 @@ def _sane_world_box(x: float, y: float, z: float, r: float) -> bool:
 
 def read_hurtboxes(slot_name: str, slot_base: int) -> List[HurtboxState]:
     out: List[HurtboxState] = []
+    matrix_cache: Dict[int, Optional[Tuple[float, ...]]] = {}
+    descriptor_base = slot_base + HURTBOX_DESC_BASE
+    descriptor_blob = rbytes(descriptor_base, HURTBOX_DESC_COUNT * HURTBOX_DESC_STRIDE)
+    if len(descriptor_blob) != HURTBOX_DESC_COUNT * HURTBOX_DESC_STRIDE:
+        return out
     for i in range(HURTBOX_DESC_COUNT):
-        desc = slot_base + HURTBOX_DESC_BASE + i * HURTBOX_DESC_STRIDE
-        raw_type = rd32(desc) or 0
-        matrix_ptr = rd32(desc + 0x04) or 0
+        desc = descriptor_base + i * HURTBOX_DESC_STRIDE
+        descriptor = descriptor_blob[i * HURTBOX_DESC_STRIDE:(i + 1) * HURTBOX_DESC_STRIDE]
+        raw_type, matrix_ptr = struct.unpack_from(">II", descriptor)
 
         # A blank descriptor means the current list is done.
         if raw_type == 0 and matrix_ptr == 0:
             break
         if not _valid_matrix_ptr(matrix_ptr):
             continue
-        if not _valid_bone_matrix(matrix_ptr):
+        if matrix_ptr not in matrix_cache:
+            matrix_raw = rbytes(matrix_ptr, 0x30)
+            if len(matrix_raw) != 0x30:
+                matrix_cache[matrix_ptr] = None
+            else:
+                values = struct.unpack(">12f", matrix_raw)
+                matrix_cache[matrix_ptr] = values if all(math.isfinite(value) for value in values) and _valid_bone_matrix(matrix_ptr, values) else None
+        matrix = matrix_cache[matrix_ptr]
+        if matrix is None:
             continue
 
-        lx = _rf(desc + 0x08)
-        ly = _rf(desc + 0x0C)
-        lz = _rf(desc + 0x10)
-        r = _rf(desc + 0x14)
-        x, y, z = _matrix_transform_point(matrix_ptr, lx, ly, lz)
+        lx, ly, lz, r = struct.unpack_from(">4f", descriptor, 0x08)
+        x, y, z = _matrix_transform_point(matrix_ptr, lx, ly, lz, matrix)
         if not _sane_world_box(x, y, z, r):
             continue
 
@@ -2330,6 +2367,25 @@ def read_camera_view_affine(layout: CameraLayout) -> Tuple[float, float, float, 
         _rf(layout.base + CAMERA_DEPTH_Z_COEFF_OFF),
         _rf(layout.base + CAMERA_DEPTH_TRANSLATE_OFF),
     )
+
+
+def read_camera_frame(layout: CameraLayout) -> Tuple[float, ...]:
+    """Capture camera position and view rows from one guest-memory instant."""
+    offsets = (
+        layout.off_x, layout.off_y, layout.off_z, layout.off_w,
+        CAMERA_VIEW_COS_OFF, CAMERA_VIEW_SIN_OFF, CAMERA_VIEW_Y_TRANSLATE_OFF,
+        CAMERA_DEPTH_Y_COEFF_OFF, CAMERA_DEPTH_Z_COEFF_OFF, CAMERA_DEPTH_TRANSLATE_OFF,
+    )
+    start = min(offsets)
+    end = max(offsets) + 4
+    try:
+        blob = rbytes(layout.base + start, end - start)
+    except Exception:
+        blob = None
+    if blob is not None and len(blob) == end - start:
+        values = [struct.unpack_from(">f", blob, offset - start)[0] for offset in offsets]
+        return tuple(value if math.isfinite(value) else 0.0 for value in values)
+    return (*read_camera_pos(layout), *read_camera_view_affine(layout))
 
 
 def update_projectile_nodes(tracker):
@@ -3784,6 +3840,7 @@ class HitboxRenderer:
         self.node_tracker = ProjectileNodeTracker(total_nodes)
 
         self.cached_projectiles: List[ProjectileActorState] = []
+        self.cached_hitboxes: Dict[str, List[Tuple[float, float, float, int]]] = {}
         self.cached_hurtboxes: Dict[str, List[HurtboxState]] = {}
         self.cached_hit_contacts: List[HitContactState] = []
         self.hurt_counts: Dict[str, int] = {}
@@ -6588,6 +6645,7 @@ class HitboxRenderer:
 
     def _clear_runtime_hitbox_state(self) -> None:
         self.cached_projectiles.clear()
+        self.cached_hitboxes.clear()
         self.cached_hurtboxes.clear()
         self.cached_hit_contacts.clear()
         self._last_range_rulers.clear()
@@ -6819,43 +6877,11 @@ class HitboxRenderer:
         if char_changed or not self._fd_scan_done:
             self._refresh_frame_data_cache()
 
-        # Projectiles move fast; do not throttle this on pygame tick parity.
-        # The old parity gate made projectile overlays appear to update at a
-        # lower frame rate than the actual projectile.
-        pools = resolve_projectile_pools() or PROJECTILE_POOLS
-        node_idx = 0
-        for pool in pools:
-            for i in range(PROJECTILE_NODE_COUNT):
-                node_addr = pool + i * PROJECTILE_NODE_STRIDE
-                self.node_tracker.update_from_node(node_idx, node_addr)
-                node_idx += 1
-
+        self.cached_hitboxes = {}
         slot_filter = _read_slot_filter()
         counts: Dict[str, int] = {}
 
         if hitboxes_on:
-            for name, base in SLOT_BASES.items():
-                try:
-                    if not slot_filter.get(name, True):
-                        counts[name] = 0
-                        continue
-
-                    raw_state = read_state_raw(base)
-                    state_id = decode_state_id(raw_state)
-                    if slot_passive_override(name, state_id):
-                        continue
-
-                    boxes = read_hitboxes(base, HITBOX)
-                    active = 0
-                    for i, (x, y, r, flag) in enumerate(boxes):
-                        visible = self.motion_filter.update(name, i, x, y, r)
-                        if visible and r > 0.001:
-                            active += 1
-                    counts[name] = active
-
-                except Exception as slot_exc:
-                    print(f"[SlotError] {name}: {slot_exc!r}")
-
             # Read projectile actors every overlay update so the drawn volume
             # tracks fast projectiles frame-for-frame.
             self.cached_projectiles = read_projectile_hitboxes()
@@ -6868,7 +6894,9 @@ class HitboxRenderer:
         # Cache skeletal hurtboxes in update(), not draw().  The same tiny
         # geometry pass also tells us whether a partner slot is actually on-stage
         # so stale standby hitboxes can be culled even when hurtbox display is off.
-        if (hitboxes_on or hurtboxes_on or ruler_on) and now_ms - self._last_hurt_update_ms >= 16:
+        # Sample once per compositor frame. A 16 ms wall-clock gate occasionally
+        # skipped a 60 Hz frame when tick jitter was below the threshold.
+        if hitboxes_on or hurtboxes_on or ruler_on:
             hurt_filter = _read_hurtbox_filter()
             hurt_counts: Dict[str, int] = {}
             sample_bits = []
@@ -6905,6 +6933,28 @@ class HitboxRenderer:
             self.cached_hit_contacts = []
             globals()["_last_hurt_debug_text"] = "hurt=off"
 
+        # Fighter attacks are sampled last so the cached attack geometry is as
+        # close as possible to the camera snapshot taken at draw time.
+        if hitboxes_on:
+            for name, base in SLOT_BASES.items():
+                try:
+                    if not slot_filter.get(name, True):
+                        counts[name] = 0
+                        continue
+                    state_id = decode_state_id(read_state_raw(base))
+                    if slot_passive_override(name, state_id):
+                        continue
+                    boxes = read_hitboxes(base, HITBOX)
+                    self.cached_hitboxes[name] = boxes
+                    active = 0
+                    for i, (x, y, r, _flag) in enumerate(boxes):
+                        visible = self.motion_filter.update(name, i, x, y, r)
+                        if visible and r > 0.001:
+                            active += 1
+                    counts[name] = active
+                except Exception as slot_exc:
+                    print(f"[SlotError] {name}: {slot_exc!r}")
+
         self._flush_range_profiles()
 
         # Never scan the broad resolver/contact pool during normal overlay play.
@@ -6929,8 +6979,8 @@ class HitboxRenderer:
         if not (hitboxes_on or hurtboxes_on or ruler_on):
             return
 
-        camx, camy, camz, camw = read_camera_pos(CAMERA)
-        cam_cos, cam_sin, cam_translate_y, cam_depth_y, cam_depth_z, cam_depth_translate = read_camera_view_affine(CAMERA)
+        (camx, camy, camz, camw, cam_cos, cam_sin, cam_translate_y,
+         cam_depth_y, cam_depth_z, cam_depth_translate) = read_camera_frame(CAMERA)
 
         ov = self.overlay
         ov.screen = screen
@@ -7374,7 +7424,9 @@ class HitboxRenderer:
                     _action_char_id = int(rd32(base + OFF_CHAR_ID) or 0)
                     _action_origin = _action_root
 
-                boxes = read_hitboxes(base, HITBOX)
+                boxes = self.cached_hitboxes.get(name)
+                if boxes is None:
+                    boxes = read_hitboxes(base, HITBOX)
                 palette = COLORS.get(name, [(255, 255, 255)])
                 fd = lookup_frame_data(self.fd_by_slot, name, state_id)
                 action_frame = read_action_frame(base)

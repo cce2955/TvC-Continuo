@@ -18,6 +18,7 @@ def test_realtime_snapshot_exposes_team_meter_without_an_extra_primary_read():
     source = INPUT_MONITOR.read_text(encoding="utf-8")
     body = _body(INPUT_MONITOR, "read_overlay_input_packet", "direction_name")
     assert 'current_meter = blob_u32(0x4C) if label.endswith("-C1") else 0' in body
+    assert 'aux_hp = blob_u32(0x2C)' in body
     assert '"current_meter": current_meter' in body
     # +0x4C lives inside the existing contiguous realtime_blob.
     primary = body.split("else:\n        # Fallback", 1)[0]
@@ -37,7 +38,7 @@ def test_realtime_combat_transport_updates_when_meter_or_hp_changes():
     assert 'int(sample.get("current_hp", 0) or 0),' in source
     assert 'int(sample.get("current_meter", 0) or 0),' in source
     assert '"current_meter": int(sample.get("current_meter", 0) or 0),' in source
-    assert '"seq", "sample_ns", "base", "char_id", "current_hp", "current_meter", "action_id"' in source
+    assert '"seq", "sample_ns", "base", "char_id", "current_hp", "aux_hp", "current_meter", "action_id"' in source
 
 
 def test_hud_merges_realtime_hp_and_team_meter_as_authoritative_resources():

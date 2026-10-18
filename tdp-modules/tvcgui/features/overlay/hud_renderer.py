@@ -58,6 +58,7 @@ SLOT_COLORS = {
     "P2-C1": ( 90, 160, 255),
     "P2-C2": (120, 190, 255),
 }
+EDITABLE_PANEL_RECTS: dict[str, pygame.Rect] = {}
 
 COL_TEXT         = (220, 220, 220)
 COL_TEXT_DIM     = (120, 120, 120)
@@ -1445,6 +1446,12 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
                 live_hp = max(0, int(latest.get("current_hp", 0) or 0))
                 snap["realtime_current_hp"] = live_hp
                 snap["cur"] = live_hp
+                if "aux_hp" in latest:
+                    live_aux = max(live_hp, int(latest.get("aux_hp", 0) or 0))
+                    snap["red_health_current"] = live_hp
+                    snap["red_health_aux"] = live_aux
+                    snap["red_health_recoverable"] = live_aux - live_hp
+                    snap["_realtime_aux_hp"] = live_aux
             except Exception:
                 pass
         # The tiny combat sidecar updates on native action/action-frame edges,
@@ -1604,6 +1611,9 @@ def _merge_realtime_inputs(slots: dict, realtime_payload: dict) -> None:
                         enriched_hs["native_hitstun_current"] = max(0, int(victim_latest.get("hitstun_remaining", 0) or 0))
                         enriched_hs["native_untech_current"] = max(0, int(victim_latest.get("untech_remaining", 0) or 0))
                         enriched_hs["native_current_sample_ns"] = victim_ns
+                        enriched_hs["native_action_id_current"] = int(victim_latest.get("action_id", 0) or 0)
+                        enriched_hs["native_action_frame_current"] = int(victim_latest.get("action_frame", 0) or 0)
+                        enriched_hs["native_impact_freeze_current"] = int(victim_latest.get("impact_freeze_remaining", 0) or 0)
                         # Some launch routes publish +0x1210 on the contact
                         # packet and arm +0x1220 one native frame later.  Let
                         # the same hit generation promote itself to AIR HS so
@@ -4072,7 +4082,6 @@ def _compact_red_health_values(snap: dict) -> tuple[int, int, int, float, int, i
         snap.get("red_health_aux", snap.get("recoverable_ceiling")),
         current,
     )
-    auxiliary = max(current, min(maximum, auxiliary))
     recoverable = max(
         0,
         _panel_int(
@@ -4080,6 +4089,16 @@ def _compact_red_health_values(snap: dict) -> tuple[int, int, int, float, int, i
             auxiliary - current,
         ),
     )
+    if recoverable == 0 and "_realtime_aux_hp" not in snap:
+        baroque_current = _panel_int(snap.get("baroque_local_hp32"), -1)
+        baroque_ceiling = _panel_int(snap.get("baroque_local_pool32"), -1)
+        if (baroque_current == current and
+                current < baroque_ceiling <= maximum):
+            recoverable = baroque_ceiling - current
+    # Some snapshots have the red amount before the auxiliary ceiling catches
+    # up. The actual recoverable amount is sufficient to draw the red segment.
+    auxiliary = max(current, min(maximum, max(auxiliary, current + recoverable)))
+    recoverable = max(0, min(recoverable, auxiliary - current))
     recoverable_pct = float(
         snap.get(
             "red_health_pct_max",
@@ -7637,6 +7656,9 @@ def _realtime_hs_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
 
     previous_generation = int(slot_anim.get("hs_contact_generation", 0) or 0)
     source_promoted = bool(event.get("source_promoted", False))
+    action_id = int(event.get("native_action_id_current", 0) or 0)
+    action_frame = max(0, int(event.get("native_action_frame_current", 0) or 0))
+    sample_ns = max(0, int(event.get("native_current_sample_ns", 0) or 0))
     if generation != previous_generation:
         # A new hit is a hard reset, even when it lands during the previous
         # hit's still-nonzero countdown.
@@ -7648,6 +7670,10 @@ def _realtime_hs_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
         slot_anim["hs_contact_source"] = source
         slot_anim["hs_contact_move"] = str(event.get("move_label") or "")
         slot_anim["hs_contact_remaining"] = target
+        slot_anim["hs_contact_age_frames"] = 0
+        slot_anim["hs_contact_last_action_id"] = action_id
+        slot_anim["hs_contact_last_action_frame"] = action_frame
+        slot_anim["hs_contact_last_sample_ns"] = sample_ns
     elif source_promoted and source == "untech" and str(slot_anim.get("hs_contact_source") or "") != "untech":
         # Same physical hit, later authoritative air-recovery lane.  Switch to
         # +0x1220 immediately rather than waiting for another contact.
@@ -7656,6 +7682,10 @@ def _realtime_hs_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
         slot_anim["hs_contact_loss"] = loss
         slot_anim["hs_contact_source"] = source
         slot_anim["hs_contact_remaining"] = target
+        slot_anim["hs_contact_age_frames"] = 0
+        slot_anim["hs_contact_last_action_id"] = action_id
+        slot_anim["hs_contact_last_action_frame"] = action_frame
+        slot_anim["hs_contact_last_sample_ns"] = sample_ns
 
     target = max(0, int(slot_anim.get("hs_contact_target", target) or 0))
     raw = max(target, int(slot_anim.get("hs_contact_raw", raw) or raw))
@@ -7675,6 +7705,27 @@ def _realtime_hs_contact_clock(slot_anim: dict, snap: dict) -> dict | None:
     # while the victim state above is always the newest monotonic native sample.
     previous_remaining = max(0, min(target, int(slot_anim.get("hs_contact_remaining", target) or target)))
     remaining = min(previous_remaining, current)
+    # Some native lanes remain pinned after contact instead of decrementing.
+    # Retire such a clock after twice its displayed span of actual fighter
+    # frames. Action-frame progress, rather than wall time or HUD draws, keeps
+    # Dolphin pause and hitstop from consuming the fallback window.
+    last_sample_ns = int(slot_anim.get("hs_contact_last_sample_ns", 0) or 0)
+    if sample_ns > 0 and sample_ns != last_sample_ns:
+        last_action_id = int(slot_anim.get("hs_contact_last_action_id", action_id) or 0)
+        last_action_frame = max(0, int(slot_anim.get("hs_contact_last_action_frame", action_frame) or 0))
+        if int(event.get("native_impact_freeze_current", 0) or 0) <= 0:
+            if action_id == last_action_id and action_frame > last_action_frame:
+                advance = min(4, action_frame - last_action_frame)
+            elif action_id != last_action_id:
+                advance = 1
+            else:
+                advance = 0
+            slot_anim["hs_contact_age_frames"] = int(slot_anim.get("hs_contact_age_frames", 0) or 0) + advance
+        slot_anim["hs_contact_last_action_id"] = action_id
+        slot_anim["hs_contact_last_action_frame"] = action_frame
+        slot_anim["hs_contact_last_sample_ns"] = sample_ns
+    if int(slot_anim.get("hs_contact_age_frames", 0) or 0) >= target * 2:
+        remaining = 0
     if previous_remaining > 0 and remaining <= 0:
         slot_anim["stun_expire_flash"] = 1.0
     slot_anim["hs_contact_remaining"] = remaining
@@ -9352,8 +9403,15 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
 
     hud_info_set = str(getattr(control, "hud_info_set", "CUSTOM") or "CUSTOM").strip().upper() if control is not None else "CUSTOM"
     core_telemetry = hud_info_set == "CORE"
-    show_damage_inline = bool(core_telemetry or (control is not None and getattr(control, "show_damage_badge", False)))
-    show_untech_inline = bool(core_telemetry or (control is not None and getattr(control, "show_untech_panel", False)))
+    show_health = bool(getattr(control, "show_health", True))
+    show_inputs = bool(getattr(control, "show_inputs", True))
+    show_move_timing = bool(getattr(control, "show_move_timing", True))
+    show_stun = bool(getattr(control, "show_stun", True))
+    show_meter_rail = bool(getattr(control, "show_meter_rail", True))
+    damage_override = getattr(control, "show_damage_scaling", None)
+    show_damage_inline = (bool(damage_override) if damage_override is not None else
+                          bool(core_telemetry or (control is not None and getattr(control, "show_damage_badge", False))))
+    show_untech_inline = show_stun and bool(core_telemetry or (control is not None and getattr(control, "show_untech_panel", False)))
     show_meter_inline = bool(control is not None and getattr(control, "show_meter_panel", False))
     show_red_inline = bool(control is not None and getattr(control, "show_red_health_panel", False))
     show_attack_inline = bool(control is not None and getattr(control, "show_attack_property_panel", False))
@@ -9367,11 +9425,13 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     frame_data_row_h = max(font_sm.get_height() + max(5, int(6 * scale)), int(17 * scale))
     frame_data_inner_gap = max(2, int(3 * scale))
     frame_data_gap = max(2, int(3 * scale))
-    frame_data_layout_extra = frame_data_row_h * 2 + frame_data_inner_gap + frame_data_gap
+    frame_data_layout_extra = (frame_data_row_h * 2 + frame_data_inner_gap + frame_data_gap) if show_move_timing else 0
     compact_metric_rail_h = max(font_sm.get_height() + 4, int(17 * scale))
     meter_rail_height = max(6, int(7 * scale))
     meter_rail_gap = max(3, int(4 * scale))
     meter_rail_layout_extra = meter_rail_height + meter_rail_gap
+    if not show_meter_rail:
+        meter_rail_layout_extra = 0
     damage_scale_height = compact_metric_rail_h
     untech_scale_height = compact_metric_rail_h
     damage_scale_layout_extra = damage_scale_height + max(3, int(4 * scale)) if show_damage_inline else 0
@@ -9391,7 +9451,15 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     base_y = 0
     is_left = team == "P1"
     base_x = 0 if is_left else screen.get_width() - width
-    accent = SLOT_COLORS.get(point_label, SLOT_COLORS[f"{team}-C1"])
+    position = (getattr(control, "positions", None) or {}).get(team)
+    if isinstance(position, (list, tuple)) and len(position) == 2:
+        base_x = round(float(position[0]) * max(0, screen.get_width() - width))
+        base_y = round(float(position[1]) * max(0, screen.get_height() - height))
+    color_hex = getattr(control, "p1_color" if is_left else "p2_color", "#ff6464" if is_left else "#5aa0ff")
+    try:
+        accent = tuple(bytes.fromhex(color_hex.lstrip("#")))
+    except (ValueError, TypeError):
+        accent = SLOT_COLORS.get(point_label, SLOT_COLORS[f"{team}-C1"])
     point_dead = int(point.get("cur") or 0) <= 0
     partner_dead = int(partner.get("cur") or 0) <= 0
     for anim in (point_anim, partner_anim):
@@ -9469,7 +9537,7 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
         team_anim["slide_x"] = _approach(float(team_anim.get("slide_x", 0.0)), off_target, 1700.0, dt)
         team_anim["alpha"] = _approach(float(team_anim.get("alpha", 0.0)), 0.0, 3.2, dt)
 
-    panel_alpha = overlay_alpha * float(team_anim.get("alpha", 0.0))
+    panel_alpha = overlay_alpha * float(team_anim.get("alpha", 0.0)) * float(getattr(control, "opacity", 1.0))
     if panel_alpha <= 0.01:
         return
     shake = float(team_anim.get("shake", 0.0))
@@ -9481,6 +9549,7 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     impact_x = shake_dir * float(team_anim.get("impact_recoil_power", 0.0)) * impact_curve
     x = int(base_x + float(team_anim.get("slide_x", 0.0)) + shake_x + impact_x)
     y = int(base_y + float(team_anim.get("slide_y", 0.0)) + shake_y)
+    EDITABLE_PANEL_RECTS[team] = pygame.Rect(x, y, width, height)
 
     shadow, panel = _cached_compact_panel_shell(width, height, accent, is_left, scale, panel_alpha)
     screen.blit(shadow, (x - int(4 * scale), y + int(4 * scale)))
@@ -9513,7 +9582,7 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     strip_y = frame_data_y + frame_data_layout_extra
     history_y = strip_y + max(17, int(18 * scale)) + int(3 * scale)
     input_y = history_y + max(12, int(13 * scale)) + int(2 * scale)
-    input_row_h = max(15, int(17 * scale))
+    input_row_h = max(15, int(17 * scale)) if show_inputs else 0
     frames_y = input_y + input_row_h + int(2 * scale)
     frames_row_h = max(13, int(15 * scale))
     research_y = frames_y + frames_row_h + int(2 * scale)
@@ -9604,26 +9673,21 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     point_value_x = point_value_right - hp_number_col_w
     hp_gap = max(4, int(5 * scale))
     hp_w = max(72, point_value_x - hp_gap - name_x)
-    _draw_compact_health(
-        screen,
-        name_x,
-        top_hp_y,
-        hp_w,
-        hp_h,
-        point.get("cur"),
-        point.get("max"),
-        point_dead,
-        point_anim.get("hp_display_frac"),
-        point_anim.get("hp_trail_frac"),
-        (point_auxiliary / max(1.0, float(point.get("max") or 1))) if show_red_inline else None,
-    )
+    if show_health:
+        _draw_compact_health(
+            screen, name_x, top_hp_y, hp_w, hp_h, point.get("cur"),
+            point.get("max"), point_dead, point_anim.get("hp_display_frac"),
+            point_anim.get("hp_trail_frac"),
+            (point_auxiliary / max(1.0, float(point.get("max") or 1))) if point_recoverable > 0 else None,
+        )
     hp_text_x = point_value_right - hp_text.get_width() - red_text_w
     hp_text.set_alpha(int(255 * top_row_alpha))
-    screen.blit(hp_text, (hp_text_x, top_hp_y - max(1, int(2 * scale))))
-    if point_red_text is not None:
+    if show_health:
+        screen.blit(hp_text, (hp_text_x, top_hp_y - max(1, int(2 * scale))))
+    if show_health and point_red_text is not None:
         point_red_text.set_alpha(int(255 * top_row_alpha))
         screen.blit(point_red_text, (hp_text_x + hp_text.get_width(), top_hp_y - max(1, int(2 * scale))))
-    if show_point_baroque:
+    if show_health and show_point_baroque:
         point_bq_rect = pygame.Rect(point_bbq_x, top_hp_y - max(4, int(5 * scale)), point_bbq_w, max(14, int(16 * scale)))
         _draw_compact_baroque_badge(
             screen,
@@ -9675,17 +9739,18 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
         team_anim["input_history_signature"] = input_signature
     team_anim["input_history_current"] = [dict(chip) for chip in input_chips]
     team_anim["input_history_slide"] = _approach(float(team_anim.get("input_history_slide", 0.0)), 0.0, 22.0, dt)
-    _draw_compact_input_history(
-        screen,
-        font_sm,
-        input_chips,
-        left,
-        input_y,
-        right,
-        scale,
-        team_anim.get("input_history_prev", []),
-        float(team_anim.get("input_history_slide", 0.0)),
-    )
+    if show_inputs:
+        _draw_compact_input_history(
+            screen,
+            font_sm,
+            input_chips,
+            left,
+            input_y,
+            right,
+            scale,
+            team_anim.get("input_history_prev", []),
+            float(team_anim.get("input_history_slide", 0.0)),
+        )
 
     if show_attack_inline:
         _draw_attack_property_badge(
@@ -9789,19 +9854,21 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     partner_value_right = partner_bbq_x - (max(4, int(5 * scale)) if partner_bbq_w else 0)
     partner_value_x = partner_value_right - partner_number_col_w
     partner_hp_w = max(54, partner_value_x - max(4, int(5 * scale)) - partner_name_x)
-    _draw_compact_health(
-        screen, partner_name_x, bottom_hp_y, partner_hp_w, max(4, int(5 * scale)),
-        partner.get("cur"), partner.get("max"), partner_dead, partner_anim.get("hp_display_frac"),
-        partner_anim.get("hp_trail_frac"),
-        (partner_auxiliary / max(1.0, float(partner.get("max") or 1))) if show_red_inline else None,
-    )
+    if show_health:
+        _draw_compact_health(
+            screen, partner_name_x, bottom_hp_y, partner_hp_w, max(4, int(5 * scale)),
+            partner.get("cur"), partner.get("max"), partner_dead, partner_anim.get("hp_display_frac"),
+            partner_anim.get("hp_trail_frac"),
+            (partner_auxiliary / max(1.0, float(partner.get("max") or 1))) if partner_recoverable > 0 else None,
+        )
     partner_hp_text_x = partner_value_right - partner_hp_text.get_width() - partner_red_text_w
     partner_hp_text.set_alpha(int(255 * bottom_row_alpha))
-    screen.blit(partner_hp_text, (partner_hp_text_x, bottom_hp_y - max(1, int(2 * scale))))
-    if partner_red_text is not None:
+    if show_health:
+        screen.blit(partner_hp_text, (partner_hp_text_x, bottom_hp_y - max(1, int(2 * scale))))
+    if show_health and partner_red_text is not None:
         partner_red_text.set_alpha(int(255 * bottom_row_alpha))
         screen.blit(partner_red_text, (partner_hp_text_x + partner_hp_text.get_width(), bottom_hp_y - max(1, int(2 * scale))))
-    if show_partner_baroque:
+    if show_health and show_partner_baroque:
         partner_bq_rect = pygame.Rect(partner_bbq_x, bottom_hp_y - max(4, int(5 * scale)), partner_bbq_w, max(14, int(16 * scale)))
         _draw_compact_baroque_badge(
             screen,
@@ -9822,19 +9889,12 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
             screen, font_sm, pygame.Rect(ko_x, bottom_hp_y - int(4 * scale), partner_ko_w, max(13, int(15 * scale))),
             scale, float(partner_anim.get("ko_alpha", 1.0)), float(partner_anim.get("ko_scale", 1.0))
         )
-    _draw_compact_meter_rail(
-        screen,
-        font_sm,
-        team_anim,
-        point,
-        left,
-        meter_rail_y,
-        right,
-        scale,
-        bool(point_dead and partner_dead),
-        show_profile_delta=show_meter_inline,
-        meter_value=team_meter_target,
-    )
+    if show_meter_rail:
+        _draw_compact_meter_rail(
+            screen, font_sm, team_anim, point, left, meter_rail_y, right,
+            scale, bool(point_dead and partner_dead),
+            show_profile_delta=show_meter_inline, meter_value=team_meter_target,
+        )
     if show_damage_inline:
         _draw_compact_damage_scaling_rows(
             screen,
@@ -9898,18 +9958,13 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
     # Render the move clock directly after the live stun/scaling rails. The
     # action frame is refreshed through the realtime combat sidecar at native
     # game-frame cadence, independently of the slower full HUD payload.
-    _draw_compact_frame_data_bar(
-        screen,
-        font_sm,
-        point,
-        left,
-        frame_data_y,
-        right,
-        scale,
-        race_clock=race_clock if isinstance(race_clock, dict) else None,
-        race_anim=point_anim,
-        race_override=shared_race if isinstance(shared_race, dict) else None,
-    )
+    if show_move_timing:
+        _draw_compact_frame_data_bar(
+            screen, font_sm, point, left, frame_data_y, right, scale,
+            race_clock=race_clock if show_stun and isinstance(race_clock, dict) else None,
+            race_anim=point_anim,
+            race_override=shared_race if show_stun and isinstance(shared_race, dict) else None,
+        )
 
     if control is None or getattr(control, "show_tag_card", True):
         _draw_tag_card(screen, font_sm, team_anim, x, y + height + int(5 * scale), width, scale, is_left, dt)
@@ -9967,6 +10022,7 @@ def _draw_compact_team_panel(screen, font, font_sm, team: str, slots: dict, scal
 
 def draw_overlay(screen, font, font_sm, slots, scale, dt, control=None) -> None:
     core_visible = control is None or getattr(control, "show_hud", True)
+    EDITABLE_PANEL_RECTS.clear()
 
     for slot_label, snap in slots.items():
         if isinstance(snap, dict):

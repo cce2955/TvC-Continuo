@@ -157,6 +157,9 @@ def _empty_state(rule_enabled: bool | None) -> dict:
         "_hitstun_victim_hp": 0,
         "_hitstun_sample_ns": 0,
         "_hitstun_authored_raw": 0,
+        "_hitstun_victim_action_id": 0,
+        "_hitstun_victim_action_frame": 0,
+        "_hitstun_victim_freeze": 0,
     }
 
 
@@ -188,6 +191,9 @@ def _snapshot_team(payload: dict, team: str, rule_enabled: bool | None) -> dict:
     hitstun_remaining = 0
     untech_remaining = 0
     cantukemi = False
+    victim_action_id = 0
+    victim_action_frame = 0
+    victim_freeze = 0
     if victim_info is not None:
         victim_label, victim = victim_info
         victim_base = _safe_int(victim.get("base"))
@@ -201,6 +207,9 @@ def _snapshot_team(payload: dict, team: str, rule_enabled: bool | None) -> dict:
         cantukemi = bool(state_flags & CANTUKEMI_MASK)
         victim_hp = max(0, _safe_int(victim.get("realtime_current_hp", victim.get("cur"))))
         sample_ns = max(0, _safe_int(victim.get("realtime_sample_ns")))
+        victim_action_id = max(0, _safe_int(victim.get("realtime_action_id")))
+        victim_action_frame = max(0, _safe_int(victim.get("realtime_action_frame")))
+        victim_freeze = max(0, _safe_int(victim.get("realtime_impact_freeze_remaining")))
 
     return {
         "hitstun_decay_live": bool(owner_base),
@@ -229,6 +238,9 @@ def _snapshot_team(payload: dict, team: str, rule_enabled: bool | None) -> dict:
         "_hitstun_victim_hp": victim_hp,
         "_hitstun_sample_ns": sample_ns,
         "_hitstun_authored_raw": authored_raw,
+        "_hitstun_victim_action_id": victim_action_id,
+        "_hitstun_victim_action_frame": victim_action_frame,
+        "_hitstun_victim_freeze": victim_freeze,
     }
 
 
@@ -270,6 +282,10 @@ def _apply_untech_latch(team: str, state: dict) -> dict:
         "source": "",
         "contact_ns": 0,
         "last_authored_hitstun": 0,
+        "age_frames": 0,
+        "last_action_id": 0,
+        "last_action_frame": 0,
+        "retired": False,
     })
 
     victim_base = _safe_int(state.get("_hitstun_victim_base"))
@@ -283,6 +299,9 @@ def _apply_untech_latch(team: str, state: dict) -> dict:
     native_loss = max(0, _safe_int(state.get("hitstun_decay_frames")))
     sample_ns = max(0, _safe_int(state.get("_hitstun_sample_ns")))
     authored_raw = max(0, _safe_int(state.get("_hitstun_authored_raw")))
+    action_id = max(0, _safe_int(state.get("_hitstun_victim_action_id")))
+    action_frame = max(0, _safe_int(state.get("_hitstun_victim_action_frame")))
+    freeze = max(0, _safe_int(state.get("_hitstun_victim_freeze")))
     if authored_raw > 0:
         latch["last_authored_hitstun"] = authored_raw
 
@@ -333,10 +352,11 @@ def _apply_untech_latch(team: str, state: dict) -> dict:
     # Contact itself can mint the clock even if the native countdown is still
     # zero. That is the latency fix. Timer-only starts remain as fallback for
     # projectiles/unknown moves that lack an authored hitstun hint.
-    first_timer = candidate_remaining > 0 and _safe_int(latch.get("effective_start")) <= 0
+    retired = bool(latch.get("retired", False)) and not victim_changed
+    first_timer = candidate_remaining > 0 and _safe_int(latch.get("effective_start")) <= 0 and not retired
     new_lock = bool(
         (contact_event and provisional_target > 0)
-        or (candidate_remaining > 0 and (victim_changed or first_timer or explicit_new_hit))
+        or (candidate_remaining > 0 and not retired and (victim_changed or first_timer or explicit_new_hit))
     )
 
     if new_lock:
@@ -348,17 +368,34 @@ def _apply_untech_latch(team: str, state: dict) -> dict:
         target = max(1, int(target or candidate_remaining or authored_target or 1))
         loss = native_loss if native_loss > 0 else 0
         latch["generation"] = max(0, _safe_int(latch.get("generation"))) + 1
+        latch["retired"] = False
         latch["source"] = source
         latch["effective_start"] = target
         latch["loss"] = loss
         latch["base_estimate"] = raw_hint if raw_hint > 0 else _inclusive_base_estimate(target, loss)
         latch["approximate"] = bool(source == "contact" or authored_raw > 0)
         latch["elapsed"] = 0
+        latch["age_frames"] = 0
+        latch["last_action_id"] = action_id
+        latch["last_action_frame"] = action_frame
         latch["contact_ns"] = 0
         remaining = candidate_remaining
     else:
         target = max(0, _safe_int(latch.get("effective_start")))
         if target > 0:
+            if sample_ns > 0 and sample_ns != _safe_int(latch.get("sample_ns")):
+                prior_action_id = _safe_int(latch.get("last_action_id"))
+                prior_action_frame = max(0, _safe_int(latch.get("last_action_frame")))
+                if freeze <= 0:
+                    if action_id == prior_action_id and action_frame > prior_action_frame:
+                        advance = min(4, action_frame - prior_action_frame)
+                    elif action_id != prior_action_id:
+                        advance = 1
+                    else:
+                        advance = 0
+                    latch["age_frames"] = _safe_int(latch.get("age_frames")) + advance
+                latch["last_action_id"] = action_id
+                latch["last_action_frame"] = action_frame
             native_elapsed = 0
             if previous_source == "untech":
                 # Never switch to +0x1210 when the authoritative air-recovery
@@ -379,10 +416,15 @@ def _apply_untech_latch(team: str, state: dict) -> dict:
                 max(0, _safe_int(latch.get("elapsed"))),
                 min(target, native_elapsed),
             )
+            if _safe_int(latch.get("age_frames")) >= target * 2:
+                latch["elapsed"] = target
+                latch["retired"] = True
 
     target = max(0, _safe_int(latch.get("effective_start")))
     elapsed = max(0, min(target, _safe_int(latch.get("elapsed")))) if target > 0 else 0
     clock_remaining = max(0, target - elapsed) if target > 0 else 0
+    if target > 0 and clock_remaining <= 0:
+        latch["retired"] = True
 
     # True neutral clears old geometry. During a combo, an expired clock remains
     # visible until the next hit replaces it.
@@ -392,6 +434,7 @@ def _apply_untech_latch(team: str, state: dict) -> dict:
         latch["loss"] = 0
         latch["approximate"] = False
         latch["elapsed"] = 0
+        latch["age_frames"] = 0
         latch["source"] = ""
         latch["contact_ns"] = 0
         target = 0
@@ -454,6 +497,9 @@ def annotate_hitstun_scaling_payload(payload: dict, render_snap_by_slot: dict | 
         state.pop("_hitstun_victim_hp", None)
         state.pop("_hitstun_sample_ns", None)
         state.pop("_hitstun_authored_raw", None)
+        state.pop("_hitstun_victim_action_id", None)
+        state.pop("_hitstun_victim_action_frame", None)
+        state.pop("_hitstun_victim_freeze", None)
         for suffix in ("C1", "C2"):
             row = payload.get(f"{team}-{suffix}")
             if isinstance(row, dict):

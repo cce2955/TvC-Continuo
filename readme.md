@@ -27,6 +27,7 @@
 - [HUD Controls Quick Reference](#hud-controls-quick-reference)
 - [Installation](#installation)
 - [Running the HUD](#running-the-hud)
+- [Settings and Session Replay](#settings-and-session-replay)
 - [Frame Data Scanning](#frame-data-scanning)
 - [Memory Reference](#memory-reference-us-build)
 - [Offsets Reference](#tvc-continuo--offsets-reference)
@@ -148,6 +149,8 @@ These controls affect the informational layers shown over the game.
 | **Tag** | Shows or hides the incoming tag resource card. |
 | **Clear** | Hides the optional HUD cards in one click while leaving the core overlay available. It does not erase saved data, clear scans, or shut Continuo down. |
 | **Tools** | Expands or collapses the TRAINING and LAB / SETUP sections. |
+
+Open **Settings & Sessions → Customize overlay** for a visual preview and independent switches for health, hitstun, damage scaling, inputs, move timing, and the meter rail. Choose separate P1/P2 accent colors and panel opacity. Enable **Edit positions** there, drag either team panel on the game screen, then turn Edit positions off. Changes save immediately; **Reset positions** returns the panels to their corners. **Use dock setting** returns damage scaling to the normal dock control.
 
 
 ### Input Monitor and Charge Tracking
@@ -772,6 +775,77 @@ python main.py
 
 Wait until the console shows Dolphin is hooked.
 When connected, four fighter panels and the event log appear automatically.
+
+In **Custom Music**, choose **Fighter** as the source and **Per tag** for fighter
+changes. **Start with** selects the opening P1 or P2 point fighter. **Tag music
+follows** can then use both sides (the default) or that side alone; in both
+sides mode, whichever team tags in most recently owns the music. Fighters
+without custom songs use the current stage playlist. **Stage** source ignores
+tag changes.
+
+For stage and fighter songs, **Song ends** defaults to **Repeat until next
+match**: the selected track repeats, and the next match picks the next track
+in the chosen order. **Next song** advances through that stage or fighter's
+folder when a track finishes. Per-track loop points apply in repeat mode;
+playlist mode plays each file through once. A **Per tag** fighter change can
+still switch songs during a match.
+
+The **Rules** tab has optional low health music, off by default. When one
+fighter on a team is KO and the survivor is at or below the chosen health
+percentage (30% by default), Continuo looks in
+`low_health/characters/<fighter>` for Fighter source or
+`low_health/stages/<stage>` for Stage source. If that folder has no song, the
+normal music choice stays in effect. These songs also appear in **Loops**.
+
+The same tab can ignore fighter music changes caused by Tag out, DHC, VAR, or
+Cross counter independently. Action IDs must be observed for an ignore rule to
+apply; unidentified point changes retain the usual behavior. A cooldown from
+0 to 300 seconds can prevent another fighter music change shortly after one
+plays; its default is 0 seconds.
+
+The **Loops** tab groups songs under expandable **Stages**, **Characters**,
+**Menus**, **Extras**, **Low health**, and **Legacy scenes** folders. Select any custom song to
+set its loop start and optional end. Enter seconds or
+`mm:ss.s`. **First play from** can be **Song beginning** (play the intro once)
+or **Loop start** (skip the intro); later repeats always return to the loop start.
+Leave End blank to repeat at the file's end. Click **Save loop** above the song
+list, or press Enter in either time field. Loop settings are saved as
+`loop_points.json` in the selected music folder. WAV songs can loop from the
+beginning; use OGG or MP3 to seek to a later loop start. MP3 seek times may be
+approximate.
+
+Selecting a song shows its length in the Loops tab. **Use song end** copies
+that timestamp into Loop end so you can adjust it before saving or previewing.
+
+Click **Preview loop** to hear about three seconds before the entered End and
+three seconds after it jumps to Start. Preview uses the current fields, so you
+can listen before saving. **Stop preview** ends it early. Live custom music is
+lowered while the preview plays and returns to its prior volume afterward.
+
+If preview plays but the game keeps native music, open **Custom Music** during
+the affected match. Check **Detected game state** for the stage and playlist,
+then read **Native BGM** at the bottom. **AX BGM pair not verified** means the
+game's music voices could not be identified, so Continuo leaves native audio
+untouched and holds custom playback. **Inspect BGM** opens a read-only report
+of the current AX voices; capture it while native music is audible. The report
+helps identify a different game or Dolphin audio layout without guessing at
+which voices to mute.
+
+---
+
+## Settings and Session Replay
+
+Click **Settings** in the top HUD dock to export or import a ZIP of preferences
+and editable profiles. The ZIP does not contain music tracks, memory dumps,
+logs, or generated exports. Restart Continuo after importing settings.
+
+The same window can record the latest minute of HUD fighter snapshots and a
+bounded list of music events. Click **Start recording**, reproduce a music
+transition, then click **Stop recording** and **Save session**. The JSON file's
+`events` list includes raw scene signals, accepted scene changes, native phase
+and AX gate changes, and music play/stop events. The read-only replay shows fighter IDs,
+health, meter, action, and the music scene/stage sampled by the app. It does
+not write to Dolphin.
 
 ---
 

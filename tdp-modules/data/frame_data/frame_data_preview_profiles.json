@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-13T16:15:54",
+  "generated_at": "2026-10-16T16:49:17",
   "profiles": {
     "id_01_ken_the_eagle": {
       "char_id": 1,
@@ -25938,33 +25938,37 @@
           "active2_start": 1,
           "active_end": 5,
           "active_start": 5,
-          "adv_block": -46,
-          "adv_block_derived": -46,
-          "adv_hit": -43,
-          "adv_hit_derived": -43,
+          "adv_block": -4,
+          "adv_block_derived": -4,
+          "adv_hit": -1,
+          "adv_hit_derived": -1,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.30000001,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 18,
           "armor_probe": "",
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x909C07C4 / Normal route @ 0x909C07D4: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x909C07E4)",
+          "cancel_probe": "Special window @ 0x9090D7A4 / Normal route @ 0x9090D7B4: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x9090D7C4)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2426144708,
+              "addr": 2425411492,
               "kind": "special",
               "label": "Special window",
               "offset": 960
             },
             {
-              "addr": 2426144724,
-              "branch_addr": 2426144740,
+              "addr": 2425411508,
+              "branch_addr": 2425411524,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 976,
-              "target_abs": 2426161328,
+              "target_abs": 2425428112,
               "target_id": 270,
               "target_label": "6B [0x010E]",
               "target_rel": 118672
@@ -25991,57 +25995,63 @@
           "launch_profile": 0,
           "meter": 50,
           "move_name": "5A",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 0,
           "normal_confirmed": true,
-          "property_probe_count": 10
+          "property_probe_count": 10,
+          "recovery": 13,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": 4,
           "active2_start": 2,
           "active_end": 9,
           "active_start": 8,
-          "adv_block": -39,
-          "adv_block_derived": -39,
-          "adv_hit": -34,
-          "adv_hit_derived": -34,
+          "adv_block": -10,
+          "adv_block_derived": -10,
+          "adv_hit": -5,
+          "adv_hit_derived": -5,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.51666665,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 31,
           "armor_probe": "",
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x909C0BEC / Normal route @ 0x909C0BFC: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x909C0C0C) / Normal route @ 0x909C0C14: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x909C0C24)",
+          "cancel_probe": "Special window @ 0x9090DBCC / Normal route @ 0x9090DBDC: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x9090DBEC) / Normal route @ 0x9090DBF4: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x9090DC04)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2426145772,
+              "addr": 2425412556,
               "kind": "special",
               "label": "Special window",
               "offset": 856
             },
             {
-              "addr": 2426145788,
-              "branch_addr": 2426145804,
+              "addr": 2425412572,
+              "branch_addr": 2425412588,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 872,
-              "target_abs": 2426150324,
+              "target_abs": 2425417108,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 107668
             },
             {
-              "addr": 2426145812,
-              "branch_addr": 2426145828,
+              "addr": 2425412596,
+              "branch_addr": 2425412612,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 896,
-              "target_abs": 2426152584,
+              "target_abs": 2425419368,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 109928
@@ -26068,29 +26078,35 @@
           "launch_profile": 0,
           "meter": 100,
           "move_name": "5B",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 0,
           "normal_confirmed": true,
-          "property_probe_count": 8
+          "property_probe_count": 8,
+          "recovery": 22,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": 4,
           "active2_start": 2,
           "active_end": 14,
           "active_start": 13,
-          "adv_block": -31,
-          "adv_block_derived": -31,
-          "adv_hit": -25,
-          "adv_hit_derived": -25,
+          "adv_block": -16,
+          "adv_block_derived": -16,
+          "adv_hit": -10,
+          "adv_hit_derived": -10,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.75,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 45,
           "armor_probe": "",
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x909C1298",
+          "cancel_probe": "Special window @ 0x9090E278",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2426147480,
+              "addr": 2425414264,
               "kind": "special",
               "label": "Special window",
               "offset": 1500
@@ -26117,29 +26133,35 @@
           "launch_profile": 0,
           "meter": 150,
           "move_name": "5C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 1,
           "normal_confirmed": true,
-          "property_probe_count": 8
+          "property_probe_count": 8,
+          "recovery": 31,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": 4,
           "active2_start": 1,
           "active_end": 6,
           "active_start": 5,
-          "adv_block": -45,
-          "adv_block_derived": -45,
-          "adv_hit": -42,
-          "adv_hit_derived": -42,
+          "adv_block": -4,
+          "adv_block_derived": -4,
+          "adv_hit": -1,
+          "adv_hit_derived": -1,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.31666666,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 19,
           "armor_probe": "",
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x909C16E0",
+          "cancel_probe": "Special window @ 0x9090E6C0",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2426148576,
+              "addr": 2425415360,
               "kind": "special",
               "label": "Special window",
               "offset": 888
@@ -26166,43 +26188,49 @@
           "launch_profile": 0,
           "meter": 50,
           "move_name": "2A",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 0,
           "normal_confirmed": true,
-          "property_probe_count": 9
+          "property_probe_count": 9,
+          "recovery": 13,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": 4,
           "active2_start": 1,
           "active_end": 8,
           "active_start": 7,
-          "adv_block": -40,
-          "adv_block_derived": -40,
-          "adv_hit": -35,
-          "adv_hit_derived": -35,
+          "adv_block": -14,
+          "adv_block_derived": -14,
+          "adv_hit": -9,
+          "adv_hit_derived": -9,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.56666666,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 34,
           "armor_probe": "",
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x909C1CE4 / Normal route @ 0x909C1CF4: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x909C1D04)",
+          "cancel_probe": "Special window @ 0x9090ECC4 / Normal route @ 0x9090ECD4: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x9090ECE4)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2426150116,
+              "addr": 2425416900,
               "kind": "special",
               "label": "Special window",
               "offset": 1332
             },
             {
-              "addr": 2426150132,
-              "branch_addr": 2426150148,
+              "addr": 2425416916,
+              "branch_addr": 2425416932,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1348,
-              "target_abs": 2426155408,
+              "target_abs": 2425422192,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 112752
@@ -26229,29 +26257,35 @@
           "launch_profile": 0,
           "meter": 100,
           "move_name": "2B",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 1,
           "normal_confirmed": true,
-          "property_probe_count": 8
+          "property_probe_count": 8,
+          "recovery": 26,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": 10,
           "active2_start": 10,
           "active_end": 18,
           "active_start": 17,
-          "adv_block": -27,
-          "adv_block_derived": -27,
-          "adv_hit": -21,
-          "adv_hit_derived": -21,
+          "adv_block": -20,
+          "adv_block_derived": -20,
+          "adv_hit": -14,
+          "adv_hit_derived": -14,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.88333333,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 53,
           "armor_probe": "",
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x909C25B8",
+          "cancel_probe": "Special window @ 0x9090F598",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2426152376,
+              "addr": 2425419160,
               "kind": "special",
               "label": "Special window",
               "offset": 2052
@@ -26278,29 +26312,35 @@
           "launch_profile": 0,
           "meter": 150,
           "move_name": "2C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 2,
           "normal_confirmed": true,
-          "property_probe_count": 7
+          "property_probe_count": 7,
+          "recovery": 35,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": 10,
           "active2_start": 10,
           "active_end": 44,
           "active_start": 41,
-          "adv_block": -1,
-          "adv_block_derived": -1,
-          "adv_hit": 5,
-          "adv_hit_derived": 5,
+          "adv_block": -8,
+          "adv_block_derived": -8,
+          "adv_hit": -2,
+          "adv_hit_derived": -2,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 1.11666667,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 67,
           "armor_probe": "",
           "attack_property": 20,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x909C30AC",
+          "cancel_probe": "Special window @ 0x9091008C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2426155180,
+              "addr": 2425421964,
               "kind": "special",
               "label": "Special window",
               "offset": 2596
@@ -26327,29 +26367,35 @@
           "launch_profile": 0,
           "meter": 150,
           "move_name": "6C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 1,
           "normal_confirmed": true,
-          "property_probe_count": 11
+          "property_probe_count": 11,
+          "recovery": 23,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": null,
           "active2_start": null,
           "active_end": 16,
           "active_start": 15,
-          "adv_block": -29,
-          "adv_block_derived": -29,
-          "adv_hit": -23,
-          "adv_hit_derived": -23,
+          "adv_block": -24,
+          "adv_block_derived": -24,
+          "adv_hit": -18,
+          "adv_hit_derived": -18,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.91666669,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 55,
           "armor_probe": "",
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x909C39DC",
+          "cancel_probe": "Special window @ 0x909109BC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2426157532,
+              "addr": 2425424316,
               "kind": "special",
               "label": "Special window",
               "offset": 2124
@@ -26376,20 +26422,26 @@
           "launch_profile": 55,
           "meter": 150,
           "move_name": "3C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 1,
           "normal_confirmed": true,
-          "property_probe_count": 6
+          "property_probe_count": 6,
+          "recovery": 39,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": null,
           "active2_start": null,
           "active_end": 17,
           "active_start": 5,
-          "adv_block": -34,
-          "adv_block_derived": -34,
-          "adv_hit": -31,
-          "adv_hit_derived": -31,
+          "adv_block": -8,
+          "adv_block_derived": -8,
+          "adv_hit": -5,
+          "adv_hit_derived": -5,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.56666666,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 34,
           "armor_probe": "",
           "attack_property": 17,
           "baroque_probe": "",
@@ -26418,20 +26470,26 @@
           "launch_profile": 0,
           "meter": 50,
           "move_name": "j.A",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 0,
           "normal_confirmed": true,
-          "property_probe_count": 8
+          "property_probe_count": 8,
+          "recovery": 17,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": null,
           "active2_start": null,
           "active_end": 19,
           "active_start": 7,
-          "adv_block": -29,
-          "adv_block_derived": -29,
-          "adv_hit": -24,
-          "adv_hit_derived": -24,
+          "adv_block": -7,
+          "adv_block_derived": -7,
+          "adv_hit": -2,
+          "adv_hit_derived": -2,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.63333333,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 38,
           "armor_probe": "",
           "attack_property": 18,
           "baroque_probe": "",
@@ -26460,20 +26518,26 @@
           "launch_profile": 0,
           "meter": 100,
           "move_name": "j.B",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 0,
           "normal_confirmed": true,
-          "property_probe_count": 8
+          "property_probe_count": 8,
+          "recovery": 19,
+          "recovery_source": "mot_derived"
         },
         {
           "active2_end": null,
           "active2_start": null,
           "active_end": 14,
           "active_start": 12,
-          "adv_block": -31,
-          "adv_block_derived": -31,
-          "adv_hit": -25,
-          "adv_hit_derived": -25,
+          "adv_block": -8,
+          "adv_block_derived": -8,
+          "adv_hit": -2,
+          "adv_hit_derived": -2,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 0.61666667,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 37,
           "armor_probe": "",
           "attack_property": 20,
           "baroque_probe": "",
@@ -26502,10 +26566,67 @@
           "launch_profile": 0,
           "meter": 150,
           "move_name": "j.C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
           "multi_hit_count": 1,
           "normal_confirmed": true,
-          "property_probe_count": 8
+          "property_probe_count": 8,
+          "recovery": 23,
+          "recovery_source": "mot_derived"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 29,
+          "adv_block": -32,
+          "adv_block_derived": -32,
+          "adv_hit": -27,
+          "adv_hit_derived": -27,
+          "animation_char_key": "jun",
+          "animation_duration_seconds": 1.25,
+          "animation_motion": "0000.mot",
+          "animation_total_frames": 75,
+          "armor_probe": "",
+          "attack_property": 34,
+          "baroque_probe": "",
+          "blockstun": 12,
+          "cancel_probe": "Special window @ 0x90911E0C",
+          "cancel_window_count": 1,
+          "cancel_windows": [
+            {
+              "addr": 2425429516,
+              "kind": "special",
+              "label": "Special window",
+              "offset": 1404
+            }
+          ],
+          "damage": 1440,
+          "damage_flag": 8,
+          "ground_kb": null,
+          "ground_kb_y": null,
+          "guard_point": "",
+          "guard_point_mask": 0,
+          "guard_point_probe_count": 0,
+          "guard_point_probes": [],
+          "guard_point_source": "",
+          "hitstop": 0,
+          "hitstun": 17,
+          "id": 270,
+          "invuln": "Untargetable 1-20f [L]",
+          "invuln_confidence": "low",
+          "invuln_frames": 20,
+          "invuln_kind": "collision_exclusion_candidate",
+          "kb_type": 9,
+          "kind": "normal",
+          "launch_profile": 0,
+          "meter": 100,
+          "move_name": "6B",
+          "move_name_source": "lookup",
+          "multi_hit_count": 0,
+          "normal_confirmed": true,
+          "property_probe_count": 9,
+          "recovery": 44,
+          "recovery_source": "mot_derived"
         }
       ],
       "table_signature": "90aff5c26fb10d3d",
@@ -26533,8 +26654,8 @@
           "family_strength": "",
           "id": 18,
           "kind": "special",
-          "move_name": "anim_0012",
-          "move_name_source": "anim",
+          "move_name": "Jump Cancel",
+          "move_name_source": "lookup",
           "source": "strict"
         },
         {
@@ -26548,6 +26669,7 @@
               6
             ]
           ],
+          "animation_total_frames": 10,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26559,8 +26681,10 @@
           "family_strength": "",
           "id": 30,
           "kind": "special",
-          "move_name": "anim_001E",
-          "move_name_source": "anim",
+          "move_name": "landing",
+          "move_name_source": "lookup",
+          "recovery": 4,
+          "recovery_source": "mot_derived",
           "source": "anim_hdr"
         },
         {
@@ -26574,6 +26698,7 @@
               18
             ]
           ],
+          "animation_total_frames": 8,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26585,8 +26710,10 @@
           "family_strength": "",
           "id": 32,
           "kind": "special",
-          "move_name": "anim_0020",
-          "move_name_source": "anim",
+          "move_name": "Turn Around",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
           "source": "anim_hdr"
         },
         {
@@ -26600,6 +26727,7 @@
               5
             ]
           ],
+          "animation_total_frames": 43,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26611,8 +26739,10 @@
           "family_strength": "",
           "id": 42,
           "kind": "special",
-          "move_name": "anim_002A",
-          "move_name_source": "anim",
+          "move_name": "Win Pose",
+          "move_name_source": "lookup",
+          "recovery": 38,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26626,6 +26756,7 @@
               5
             ]
           ],
+          "animation_total_frames": 16,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26639,6 +26770,8 @@
           "kind": "special",
           "move_name": "anim_002B",
           "move_name_source": "anim",
+          "recovery": 11,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26652,6 +26785,7 @@
               5
             ]
           ],
+          "animation_total_frames": 60,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26665,6 +26799,8 @@
           "kind": "special",
           "move_name": "anim_002D",
           "move_name_source": "anim",
+          "recovery": 55,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26678,6 +26814,7 @@
               5
             ]
           ],
+          "animation_total_frames": 50,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26691,6 +26828,8 @@
           "kind": "special",
           "move_name": "anim_002F",
           "move_name_source": "anim",
+          "recovery": 45,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26715,8 +26854,8 @@
           "family_strength": "",
           "id": 80,
           "kind": "special",
-          "move_name": "anim_0050",
-          "move_name_source": "anim",
+          "move_name": "Hard Knockdown",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -26741,8 +26880,8 @@
           "family_strength": "",
           "id": 102,
           "kind": "special",
-          "move_name": "anim_0066",
-          "move_name_source": "anim",
+          "move_name": "knocked down (face up)",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -26767,8 +26906,8 @@
           "family_strength": "",
           "id": 154,
           "kind": "special",
-          "move_name": "anim_009A",
-          "move_name_source": "anim",
+          "move_name": "KO'd",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -26793,8 +26932,8 @@
           "family_strength": "",
           "id": 155,
           "kind": "special",
-          "move_name": "anim_009B",
-          "move_name_source": "anim",
+          "move_name": "KO in slow motion",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -26819,8 +26958,8 @@
           "family_strength": "",
           "id": 165,
           "kind": "special",
-          "move_name": "anim_00A5",
-          "move_name_source": "anim",
+          "move_name": "Breakaway Recovery",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -26834,6 +26973,7 @@
               31
             ]
           ],
+          "animation_total_frames": 5,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26845,8 +26985,10 @@
           "family_strength": "",
           "id": 167,
           "kind": "special",
-          "move_name": "anim_00A7",
-          "move_name_source": "anim",
+          "move_name": "Parry? what is this?",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
           "source": "anim_hdr"
         },
         {
@@ -26860,6 +27002,7 @@
               5
             ]
           ],
+          "animation_total_frames": 18,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26872,7 +27015,9 @@
           "id": 256,
           "kind": "normal",
           "move_name": "5A",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 13,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26886,6 +27031,7 @@
               9
             ]
           ],
+          "animation_total_frames": 31,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26898,7 +27044,9 @@
           "id": 257,
           "kind": "normal",
           "move_name": "5B",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 22,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26912,6 +27060,7 @@
               14
             ]
           ],
+          "animation_total_frames": 45,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26924,7 +27073,9 @@
           "id": 258,
           "kind": "normal",
           "move_name": "5C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 31,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26938,6 +27089,7 @@
               6
             ]
           ],
+          "animation_total_frames": 19,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26950,7 +27102,9 @@
           "id": 259,
           "kind": "normal",
           "move_name": "2A",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 13,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26964,6 +27118,7 @@
               8
             ]
           ],
+          "animation_total_frames": 34,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -26976,7 +27131,9 @@
           "id": 260,
           "kind": "normal",
           "move_name": "2B",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 26,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -26994,19 +27151,22 @@
               27
             ]
           ],
-          "family_confidence": "nearby-multihit-helper",
-          "family_context": "Ground",
-          "family_group_key": "jun_the_swan:6c:linked_hits",
-          "family_group_label": "6C linked sections",
-          "family_key": "jun_the_swan:6c:linked_hits",
-          "family_link_label": "6C / Ground / Linked hits",
-          "family_phase": "Linked hits",
-          "family_role": "section",
+          "animation_total_frames": 53,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
           "family_strength": "",
           "id": 261,
           "kind": "normal",
           "move_name": "2C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 35,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27020,32 +27180,7 @@
               44
             ]
           ],
-          "family_confidence": "nearby-multihit-owner",
-          "family_context": "Ground",
-          "family_group_key": "jun_the_swan:6c:linked_hits",
-          "family_group_label": "6C linked sections",
-          "family_key": "jun_the_swan:6c:linked_hits",
-          "family_link_label": "6C / Entry",
-          "family_phase": "Entry",
-          "family_role": "entry",
-          "family_strength": "",
-          "id": 262,
-          "kind": "normal",
-          "move_name": "6C",
-          "move_name_source": "anim_map",
-          "source": "table"
-        },
-        {
-          "active2_end": null,
-          "active2_start": null,
-          "active_end": 16,
-          "active_start": 15,
-          "active_windows": [
-            [
-              15,
-              16
-            ]
-          ],
+          "animation_total_frames": 67,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27055,10 +27190,12 @@
           "family_phase": "",
           "family_role": "",
           "family_strength": "",
-          "id": 263,
-          "kind": "special",
-          "move_name": "anim_0107",
-          "move_name_source": "anim",
+          "id": 262,
+          "kind": "normal",
+          "move_name": "6C",
+          "move_name_source": "lookup",
+          "recovery": 23,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27076,19 +27213,22 @@
               44
             ]
           ],
-          "family_confidence": "nearby-multihit-helper",
-          "family_context": "Ground",
-          "family_group_key": "jun_the_swan:6c:linked_hits",
-          "family_group_label": "6C linked sections",
-          "family_key": "jun_the_swan:6c:linked_hits",
-          "family_link_label": "6C / Ground / Linked hits",
-          "family_phase": "Linked hits",
-          "family_role": "section",
+          "animation_total_frames": 81,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
           "family_strength": "",
           "id": 263,
           "kind": "special",
-          "move_name": "anim_0107",
-          "move_name_source": "anim",
+          "move_name": "back throw",
+          "move_name_source": "lookup",
+          "recovery": 61,
+          "recovery_source": "mot_derived",
           "source": "air_hdr"
         },
         {
@@ -27102,6 +27242,7 @@
               16
             ]
           ],
+          "animation_total_frames": 55,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27114,7 +27255,9 @@
           "id": 264,
           "kind": "normal",
           "move_name": "3C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 39,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27128,6 +27271,7 @@
               17
             ]
           ],
+          "animation_total_frames": 34,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27140,7 +27284,9 @@
           "id": 265,
           "kind": "normal",
           "move_name": "j.A",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 17,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27154,6 +27300,7 @@
               19
             ]
           ],
+          "animation_total_frames": 38,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27166,7 +27313,9 @@
           "id": 266,
           "kind": "normal",
           "move_name": "j.B",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 19,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27180,6 +27329,7 @@
               14
             ]
           ],
+          "animation_total_frames": 37,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27192,7 +27342,9 @@
           "id": 267,
           "kind": "normal",
           "move_name": "j.C",
-          "move_name_source": "anim_map",
+          "move_name_source": "lookup",
+          "recovery": 23,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27206,19 +27358,25 @@
               31
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 66,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "jun_the_swan:j_b:chain:1",
+          "family_group_label": "j.B () Air L chain",
+          "family_key": "jun_the_swan:j_b",
+          "family_link_label": "j.B () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
           "id": 268,
           "kind": "special",
-          "move_name": "anim_010C",
-          "move_name_source": "anim",
+          "move_name": "j.B (Second)",
+          "move_name_source": "lookup",
+          "recovery": 35,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27232,19 +27390,25 @@
               31
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 69,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "jun_the_swan:j_c:chain:1",
+          "family_group_label": "j.C () Air L chain",
+          "family_key": "jun_the_swan:j_c",
+          "family_link_label": "j.C () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
           "id": 269,
           "kind": "special",
-          "move_name": "anim_010D",
-          "move_name_source": "anim",
+          "move_name": "j.C (Second)",
+          "move_name_source": "lookup",
+          "recovery": 38,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27258,6 +27422,7 @@
               31
             ]
           ],
+          "animation_total_frames": 75,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27269,8 +27434,10 @@
           "family_strength": "",
           "id": 270,
           "kind": "normal",
-          "move_name": "anim_010E",
-          "move_name_source": "anim",
+          "move_name": "6B",
+          "move_name_source": "lookup",
+          "recovery": 44,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27284,6 +27451,7 @@
               7
             ]
           ],
+          "animation_total_frames": 30,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27295,8 +27463,10 @@
           "family_strength": "",
           "id": 271,
           "kind": "special",
-          "move_name": "anim_010F",
-          "move_name_source": "anim",
+          "move_name": "j.2C",
+          "move_name_source": "lookup",
+          "recovery": 23,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27310,19 +27480,57 @@
               12
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 41,
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "jun_the_swan:j_b:chain:2",
+          "family_group_label": "j.B () Air M chain",
+          "family_key": "jun_the_swan:j_b",
+          "family_link_label": "j.B () / Air M chain / Hit 2",
+          "family_phase": "Hit 2",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
           "id": 289,
           "kind": "special",
-          "move_name": "anim_0121",
+          "move_name": "j.B (second hit)",
+          "move_name_source": "lookup",
+          "recovery": 29,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 12,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              12
+            ]
+          ],
+          "animation_total_frames": 47,
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "nearby-unnamed-linked",
+          "family_context": "Air",
+          "family_group_key": "jun_the_swan:j_b:chain:2",
+          "family_group_label": "j.B () Air M chain",
+          "family_key": "jun_the_swan:j_b",
+          "family_link_label": "j.B () / Air M chain / Linked section",
+          "family_phase": "Linked section",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 290,
+          "kind": "special",
+          "move_name": "anim_0122",
           "move_name_source": "anim",
+          "recovery": 35,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27340,6 +27548,7 @@
               14
             ]
           ],
+          "animation_total_frames": 47,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27353,6 +27562,8 @@
           "kind": "special",
           "move_name": "anim_0122",
           "move_name_source": "anim",
+          "recovery": 38,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27374,6 +27585,7 @@
               14
             ]
           ],
+          "animation_total_frames": 25,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27387,6 +27599,8 @@
           "kind": "special",
           "move_name": "anim_0124",
           "move_name_source": "anim",
+          "recovery": 11,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27420,6 +27634,7 @@
               22
             ]
           ],
+          "animation_total_frames": 17,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27433,6 +27648,8 @@
           "kind": "special",
           "move_name": "anim_0126",
           "move_name_source": "anim",
+          "recovery": 11,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27466,6 +27683,7 @@
               22
             ]
           ],
+          "animation_total_frames": 23,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27479,6 +27697,49 @@
           "kind": "special",
           "move_name": "anim_0127",
           "move_name_source": "anim",
+          "recovery": 17,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 8,
+          "active_start": 8,
+          "active_windows": [
+            [
+              3,
+              6
+            ],
+            [
+              8,
+              8
+            ],
+            [
+              10,
+              10
+            ],
+            [
+              15,
+              15
+            ]
+          ],
+          "animation_total_frames": 43,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Air",
+          "family_group_key": "jun_the_swan:bingo",
+          "family_group_label": "Bingo",
+          "family_key": "jun_the_swan:bingo",
+          "family_link_label": "Bingo / Air / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "",
+          "id": 296,
+          "kind": "special",
+          "move_name": "anim_0128",
+          "move_name_source": "anim",
+          "recovery": 35,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27512,6 +27773,36 @@
               22
             ]
           ],
+          "animation_total_frames": 43,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:talon_burst",
+          "family_group_label": "Talon Burst",
+          "family_key": "jun_the_swan:talon_burst",
+          "family_link_label": "Talon Burst / Ground / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "",
+          "id": 296,
+          "kind": "special",
+          "move_name": "anim_0128",
+          "move_name_source": "anim",
+          "recovery": 35,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 10,
+          "active_start": 10,
+          "active_windows": [
+            [
+              10,
+              10
+            ]
+          ],
+          "animation_total_frames": 42,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27521,10 +27812,12 @@
           "family_phase": "",
           "family_role": "",
           "family_strength": "",
-          "id": 296,
+          "id": 297,
           "kind": "special",
-          "move_name": "anim_0128",
+          "move_name": "anim_0129",
           "move_name_source": "anim",
+          "recovery": 32,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27554,19 +27847,22 @@
               22
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
+          "animation_total_frames": 42,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:talon_burst",
+          "family_group_label": "Talon Burst",
+          "family_key": "jun_the_swan:talon_burst",
+          "family_link_label": "Talon Burst / Ground / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
           "family_strength": "",
           "id": 297,
           "kind": "special",
           "move_name": "anim_0129",
           "move_name_source": "anim",
+          "recovery": 32,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27580,6 +27876,7 @@
               30
             ]
           ],
+          "animation_total_frames": 58,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27593,6 +27890,8 @@
           "kind": "special",
           "move_name": "anim_012A",
           "move_name_source": "anim",
+          "recovery": 28,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27606,6 +27905,7 @@
               33
             ]
           ],
+          "animation_total_frames": 65,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27619,6 +27919,8 @@
           "kind": "special",
           "move_name": "anim_012B",
           "move_name_source": "anim",
+          "recovery": 32,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27632,19 +27934,19 @@
               12
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:yoyo",
+          "family_group_label": "Yoyo",
+          "family_key": "jun_the_swan:yoyo",
+          "family_link_label": "Yoyo / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
           "id": 304,
           "kind": "special",
-          "move_name": "anim_0130",
-          "move_name_source": "anim",
+          "move_name": "Yoyo A",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -27666,19 +27968,22 @@
               14
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 60,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:lightning_kick",
+          "family_group_label": "Lightning Kick",
+          "family_key": "jun_the_swan:lightning_kick",
+          "family_link_label": "Lightning Kick / Ground / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
           "id": 308,
           "kind": "special",
-          "move_name": "anim_0134",
-          "move_name_source": "anim",
+          "move_name": "Lightning Kick B",
+          "move_name_source": "lookup",
+          "recovery": 46,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27696,19 +28001,22 @@
               14
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 53,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:lightning_kick",
+          "family_group_label": "Lightning Kick",
+          "family_key": "jun_the_swan:lightning_kick",
+          "family_link_label": "Lightning Kick / Ground / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
           "id": 309,
           "kind": "special",
-          "move_name": "anim_0135",
-          "move_name_source": "anim",
+          "move_name": "Lightning Kick C",
+          "move_name_source": "lookup",
+          "recovery": 44,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27748,6 +28056,7 @@
               18
             ]
           ],
+          "animation_total_frames": 100,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27761,6 +28070,8 @@
           "kind": "special",
           "move_name": "anim_0137",
           "move_name_source": "anim",
+          "recovery": 82,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27774,6 +28085,7 @@
               18
             ]
           ],
+          "animation_total_frames": 25,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27787,6 +28099,8 @@
           "kind": "special",
           "move_name": "anim_0138",
           "move_name_source": "anim",
+          "recovery": 7,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27800,19 +28114,22 @@
               18
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
+          "animation_total_frames": 100,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:bingo",
+          "family_group_label": "Bingo",
+          "family_key": "jun_the_swan:bingo",
+          "family_link_label": "Bingo / Ground / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
           "family_strength": "",
           "id": 313,
           "kind": "special",
-          "move_name": "anim_0139",
-          "move_name_source": "anim",
+          "move_name": "Bingo",
+          "move_name_source": "lookup",
+          "recovery": 82,
+          "recovery_source": "mot_derived",
           "source": "strict"
         },
         {
@@ -27826,19 +28143,22 @@
               30
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 25,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:dancing_swan",
+          "family_group_label": "Dancing Swan",
+          "family_key": "jun_the_swan:dancing_swan",
+          "family_link_label": "Dancing Swan / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
           "id": 314,
           "kind": "special",
-          "move_name": "anim_013A",
-          "move_name_source": "anim",
+          "move_name": "Dancing Swan A",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27852,19 +28172,22 @@
               33
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 30,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:dancing_swan",
+          "family_group_label": "Dancing Swan",
+          "family_key": "jun_the_swan:dancing_swan",
+          "family_link_label": "Dancing Swan / Ground / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
           "id": 315,
           "kind": "special",
-          "move_name": "anim_013B",
-          "move_name_source": "anim",
+          "move_name": "Dancing Swan B",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27878,19 +28201,22 @@
               33
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 34,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:dancing_swan",
+          "family_group_label": "Dancing Swan",
+          "family_key": "jun_the_swan:dancing_swan",
+          "family_link_label": "Dancing Swan / Ground / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
           "id": 316,
           "kind": "special",
-          "move_name": "anim_013C",
-          "move_name_source": "anim",
+          "move_name": "Dancing Swan C",
+          "move_name_source": "lookup",
+          "recovery": 1,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27904,6 +28230,7 @@
               33
             ]
           ],
+          "animation_total_frames": 78,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -27917,6 +28244,8 @@
           "kind": "special",
           "move_name": "anim_013D",
           "move_name_source": "anim",
+          "recovery": 45,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27930,19 +28259,22 @@
               6
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
+          "animation_total_frames": 45,
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "jun_the_swan:bingo",
+          "family_group_label": "Bingo",
+          "family_key": "jun_the_swan:bingo",
+          "family_link_label": "Bingo / Air / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
           "family_strength": "",
           "id": 323,
           "kind": "special",
-          "move_name": "anim_0143",
-          "move_name_source": "anim",
+          "move_name": "Air Bingo",
+          "move_name_source": "lookup",
+          "recovery": 39,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -27968,19 +28300,22 @@
               15
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 67,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:swan_rush",
+          "family_group_label": "Swan Rush",
+          "family_key": "jun_the_swan:swan_rush",
+          "family_link_label": "Swan Rush / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
           "id": 324,
           "kind": "special",
-          "move_name": "anim_0144",
-          "move_name_source": "anim",
+          "move_name": "Swan Rush A",
+          "move_name_source": "lookup",
+          "recovery": 61,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -28014,19 +28349,22 @@
               22
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 45,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:swan_rush",
+          "family_group_label": "Swan Rush",
+          "family_key": "jun_the_swan:swan_rush",
+          "family_link_label": "Swan Rush / Ground / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
           "id": 325,
           "kind": "special",
-          "move_name": "anim_0145",
-          "move_name_source": "anim",
+          "move_name": "Swan Rush B",
+          "move_name_source": "lookup",
+          "recovery": 39,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -28056,19 +28394,22 @@
               22
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "animation_total_frames": 48,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:swan_rush",
+          "family_group_label": "Swan Rush",
+          "family_key": "jun_the_swan:swan_rush",
+          "family_link_label": "Swan Rush / Ground / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
           "id": 326,
           "kind": "special",
-          "move_name": "anim_0146",
-          "move_name_source": "anim",
+          "move_name": "Swan Rush C",
+          "move_name_source": "lookup",
+          "recovery": 42,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -28082,6 +28423,7 @@
               10
             ]
           ],
+          "animation_total_frames": 25,
           "family_confidence": "",
           "family_context": "",
           "family_group_key": "",
@@ -28095,6 +28437,8 @@
           "kind": "special",
           "move_name": "anim_0147",
           "move_name_source": "anim",
+          "recovery": 15,
+          "recovery_source": "mot_derived",
           "source": "table"
         },
         {
@@ -28108,19 +28452,19 @@
               10
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:talon_burst",
+          "family_group_label": "Talon Burst",
+          "family_key": "jun_the_swan:talon_burst",
+          "family_link_label": "Talon Burst / Ground / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
           "family_strength": "",
           "id": 352,
           "kind": "special",
-          "move_name": "anim_0160",
-          "move_name_source": "anim",
+          "move_name": "Talon Burst",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28160,19 +28504,19 @@
               18
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "jun_the_swan:phoenix",
+          "family_group_label": "Phoenix",
+          "family_key": "jun_the_swan:phoenix",
+          "family_link_label": "Phoenix / Air / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
           "family_strength": "",
           "id": 369,
           "kind": "special",
-          "move_name": "anim_0171",
-          "move_name_source": "anim",
+          "move_name": "Air Phoenix",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28186,19 +28530,19 @@
               20
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:mirage_swan",
+          "family_group_label": "Mirage Swan",
+          "family_key": "jun_the_swan:mirage_swan",
+          "family_link_label": "Mirage Swan / Ground / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
           "family_strength": "",
           "id": 370,
           "kind": "special",
-          "move_name": "anim_0172",
-          "move_name_source": "anim",
+          "move_name": "Mirage Swan",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28249,8 +28593,8 @@
           "family_strength": "",
           "id": 416,
           "kind": "special",
-          "move_name": "anim_01A0",
-          "move_name_source": "anim",
+          "move_name": "Tag Out",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28275,8 +28619,8 @@
           "family_strength": "",
           "id": 417,
           "kind": "special",
-          "move_name": "anim_01A1",
-          "move_name_source": "anim",
+          "move_name": "assist leave",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28301,8 +28645,8 @@
           "family_strength": "",
           "id": 418,
           "kind": "special",
-          "move_name": "anim_01A2",
-          "move_name_source": "anim",
+          "move_name": "Tag In",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28353,8 +28697,8 @@
           "family_strength": "",
           "id": 420,
           "kind": "special",
-          "move_name": "anim_01A4",
-          "move_name_source": "anim",
+          "move_name": "Cross Counter Tag out",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28379,8 +28723,8 @@
           "family_strength": "",
           "id": 421,
           "kind": "special",
-          "move_name": "anim_01A5",
-          "move_name_source": "anim",
+          "move_name": "VAR",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28405,8 +28749,8 @@
           "family_strength": "",
           "id": 424,
           "kind": "special",
-          "move_name": "anim_01A8",
-          "move_name_source": "anim",
+          "move_name": "assist taunt",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -28431,8 +28775,8 @@
           "family_strength": "",
           "id": 425,
           "kind": "special",
-          "move_name": "anim_01A9",
-          "move_name_source": "anim",
+          "move_name": "Tag In Taunt",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -28457,8 +28801,8 @@
           "family_strength": "",
           "id": 427,
           "kind": "special",
-          "move_name": "anim_01AB",
-          "move_name_source": "anim",
+          "move_name": "Cross Counter Tag in",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28483,8 +28827,8 @@
           "family_strength": "",
           "id": 428,
           "kind": "special",
-          "move_name": "anim_01AC",
-          "move_name_source": "anim",
+          "move_name": "DHC Hop in",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28509,8 +28853,8 @@
           "family_strength": "",
           "id": 430,
           "kind": "special",
-          "move_name": "anim_01AE",
-          "move_name_source": "anim",
+          "move_name": "assist standby",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -28524,19 +28868,51 @@
               15
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "family_chain_index": 1,
+          "family_chain_label": "Ground L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:match_leave:chain:1",
+          "family_group_label": "Match Leave Ground L chain",
+          "family_key": "jun_the_swan:match_leave",
+          "family_link_label": "Match Leave / Ground L chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
           "id": 445,
           "kind": "special",
-          "move_name": "anim_01BD",
-          "move_name_source": "anim",
+          "move_name": "Match Start Leave",
+          "move_name_source": "lookup",
+          "source": "cmd_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 3,
+          "family_chain_label": "Ground H chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:match_leave:chain:3",
+          "family_group_label": "Match Leave Ground H chain",
+          "family_key": "jun_the_swan:match_leave",
+          "family_link_label": "Match Leave / Ground H chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "H",
+          "family_strength_guess": "H",
+          "id": 445,
+          "kind": "special",
+          "move_name": "Match Start Leave",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28550,19 +28926,51 @@
               15
             ]
           ],
-          "family_confidence": "",
-          "family_context": "",
-          "family_group_key": "",
-          "family_group_label": "",
-          "family_key": "",
-          "family_link_label": "",
-          "family_phase": "",
-          "family_role": "",
-          "family_strength": "",
+          "family_chain_index": 1,
+          "family_chain_label": "Ground L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:match_swap:chain:1",
+          "family_group_label": "Match Swap Ground L chain",
+          "family_key": "jun_the_swan:match_swap",
+          "family_link_label": "Match Swap / Ground L chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
           "id": 446,
           "kind": "special",
-          "move_name": "anim_01BE",
-          "move_name_source": "anim",
+          "move_name": "Match Start Swap",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 2,
+          "family_chain_label": "Ground M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "jun_the_swan:match_swap:chain:2",
+          "family_group_label": "Match Swap Ground M chain",
+          "family_key": "jun_the_swan:match_swap",
+          "family_link_label": "Match Swap / Ground M chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 446,
+          "kind": "special",
+          "move_name": "Match Start Swap",
+          "move_name_source": "lookup",
           "source": "anim_hdr"
         },
         {
@@ -28587,8 +28995,8 @@
           "family_strength": "",
           "id": 447,
           "kind": "special",
-          "move_name": "anim_01BF",
-          "move_name_source": "anim",
+          "move_name": "Match Start Anchor",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28613,8 +29021,8 @@
           "family_strength": "",
           "id": 448,
           "kind": "special",
-          "move_name": "anim_01C0",
-          "move_name_source": "anim",
+          "move_name": "Megacrash",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28639,8 +29047,8 @@
           "family_strength": "",
           "id": 449,
           "kind": "special",
-          "move_name": "anim_01C1",
-          "move_name_source": "anim",
+          "move_name": "Crumple",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28795,8 +29203,8 @@
           "family_strength": "",
           "id": 465,
           "kind": "special",
-          "move_name": "anim_01D1",
-          "move_name_source": "anim",
+          "move_name": "Forward Throw",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28873,8 +29281,8 @@
           "family_strength": "",
           "id": 468,
           "kind": "special",
-          "move_name": "anim_01D4",
-          "move_name_source": "anim",
+          "move_name": "Back Throw",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -28951,8 +29359,8 @@
           "family_strength": "",
           "id": 471,
           "kind": "special",
-          "move_name": "anim_01D7",
-          "move_name_source": "anim",
+          "move_name": "Air Forward Throw",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -29029,8 +29437,8 @@
           "family_strength": "",
           "id": 474,
           "kind": "special",
-          "move_name": "anim_01DA",
-          "move_name_source": "anim",
+          "move_name": "Air Back Throw",
+          "move_name_source": "lookup",
           "source": "table"
         },
         {
@@ -39967,11 +40375,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x90965668",
+          "cancel_probe": "Special window @ 0x908B2648",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425771624,
+              "addr": 2425038408,
               "kind": "special",
               "label": "Special window",
               "offset": 1080
@@ -40022,39 +40430,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x90965AA4 / Normal route @ 0x90965AB4: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x90965AC4) / Normal route @ 0x90965ACC: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x90965ADC)",
+          "cancel_probe": "Special window @ 0x908B2A84 / Normal route @ 0x908B2A94: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908B2AA4) / Normal route @ 0x908B2AAC: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x908B2ABC)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425772708,
+              "addr": 2425039492,
               "kind": "special",
               "label": "Special window",
               "offset": 876
             },
             {
-              "addr": 2425772724,
-              "branch_addr": 2425772740,
+              "addr": 2425039508,
+              "branch_addr": 2425039524,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 892,
-              "target_abs": 2425776396,
+              "target_abs": 2425043180,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 107148
             },
             {
-              "addr": 2425772748,
-              "branch_addr": 2425772764,
+              "addr": 2425039532,
+              "branch_addr": 2425039548,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 916,
-              "target_abs": 2425777532,
+              "target_abs": 2425044316,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 108284
@@ -40105,11 +40513,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90965F30",
+          "cancel_probe": "Special window @ 0x908B2F10",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425773872,
+              "addr": 2425040656,
               "kind": "special",
               "label": "Special window",
               "offset": 956
@@ -40160,11 +40568,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x909663BC",
+          "cancel_probe": "Special window @ 0x908B339C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425775036,
+              "addr": 2425041820,
               "kind": "special",
               "label": "Special window",
               "offset": 956
@@ -40215,25 +40623,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x9096683C / Normal route @ 0x9096684C: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x9096685C)",
+          "cancel_probe": "Special window @ 0x908B381C / Normal route @ 0x908B382C: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908B383C)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425776188,
+              "addr": 2425042972,
               "kind": "special",
               "label": "Special window",
               "offset": 944
             },
             {
-              "addr": 2425776204,
-              "branch_addr": 2425776220,
+              "addr": 2425042988,
+              "branch_addr": 2425043004,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 960,
-              "target_abs": 2425778704,
+              "target_abs": 2425045488,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 109456
@@ -40284,11 +40692,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90966CAC",
+          "cancel_probe": "Special window @ 0x908B3C8C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425777324,
+              "addr": 2425044108,
               "kind": "special",
               "label": "Special window",
               "offset": 928
@@ -40339,11 +40747,11 @@
           "attack_property": 20,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x9096712C",
+          "cancel_probe": "Special window @ 0x908B410C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425778476,
+              "addr": 2425045260,
               "kind": "special",
               "label": "Special window",
               "offset": 944
@@ -40394,11 +40802,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x909675CC",
+          "cancel_probe": "Special window @ 0x908B45AC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425779660,
+              "addr": 2425046444,
               "kind": "special",
               "label": "Special window",
               "offset": 956
@@ -70319,11 +70727,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x90972B1C",
+          "cancel_probe": "Special window @ 0x9097869C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425826076,
+              "addr": 2425849500,
               "kind": "special",
               "label": "Special window",
               "offset": 1096
@@ -70374,39 +70782,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x909731A8 / Normal route @ 0x909731B8: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x909731C8) / Normal route @ 0x909731D0: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x909731E0)",
+          "cancel_probe": "Special window @ 0x90978D28 / Normal route @ 0x90978D38: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x90978D48) / Normal route @ 0x90978D50: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x90978D60)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425827752,
+              "addr": 2425851176,
               "kind": "special",
               "label": "Special window",
               "offset": 1468
             },
             {
-              "addr": 2425827768,
-              "branch_addr": 2425827784,
+              "addr": 2425851192,
+              "branch_addr": 2425851208,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1484,
-              "target_abs": 2425832680,
+              "target_abs": 2425856104,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 108072
             },
             {
-              "addr": 2425827792,
-              "branch_addr": 2425827808,
+              "addr": 2425851216,
+              "branch_addr": 2425851232,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1508,
-              "target_abs": 2425834872,
+              "target_abs": 2425858296,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 110264
@@ -70457,11 +70865,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x909739F4",
+          "cancel_probe": "Special window @ 0x90979574",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425829876,
+              "addr": 2425853300,
               "kind": "special",
               "label": "Special window",
               "offset": 1916
@@ -70512,11 +70920,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x90973F1C",
+          "cancel_probe": "Special window @ 0x90979A9C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425831196,
+              "addr": 2425854620,
               "kind": "special",
               "label": "Special window",
               "offset": 1112
@@ -70567,25 +70975,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x90974418 / Normal route @ 0x90974428: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x90974438)",
+          "cancel_probe": "Special window @ 0x90979F98 / Normal route @ 0x90979FA8: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x90979FB8)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425832472,
+              "addr": 2425855896,
               "kind": "special",
               "label": "Special window",
               "offset": 1068
             },
             {
-              "addr": 2425832488,
-              "branch_addr": 2425832504,
+              "addr": 2425855912,
+              "branch_addr": 2425855928,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1084,
-              "target_abs": 2425836632,
+              "target_abs": 2425860056,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 112024
@@ -70636,11 +71044,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90974CA8",
+          "cancel_probe": "Special window @ 0x9097A828",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425834664,
+              "addr": 2425858088,
               "kind": "special",
               "label": "Special window",
               "offset": 1984
@@ -70668,7 +71076,7 @@
           "meter": 150,
           "move_name": "2C",
           "move_name_source": "lookup",
-          "multi_hit_count": 0,
+          "multi_hit_count": 1,
           "normal_confirmed": true,
           "property_probe_count": 8,
           "recovery": 44,
@@ -70691,11 +71099,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x9097535C",
+          "cancel_probe": "Special window @ 0x9097AEDC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425836380,
+              "addr": 2425859804,
               "kind": "special",
               "label": "Special window",
               "offset": 1508
@@ -70723,7 +71131,7 @@
           "meter": 150,
           "move_name": "6C",
           "move_name_source": "lookup",
-          "multi_hit_count": 0,
+          "multi_hit_count": 1,
           "normal_confirmed": true,
           "property_probe_count": 6,
           "recovery": 33,
@@ -70746,11 +71154,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90975934",
+          "cancel_probe": "Special window @ 0x9097B4B4",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425837876,
+              "addr": 2425861300,
               "kind": "special",
               "label": "Special window",
               "offset": 1244
@@ -83749,7 +84157,2703 @@
           "stun_source": "engine_default_hit_level"
         }
       ],
-      "table_signature": "c7ef08f0b1abb6c0"
+      "table_signature": "c7ef08f0b1abb6c0",
+      "timing_coverage": "all_actions_v3_family_variants",
+      "timing_moves": [
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 14,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              14
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 18,
+          "kind": "special",
+          "move_name": "Jump Cancel",
+          "move_name_source": "lookup",
+          "recovery": 36,
+          "recovery_source": "mot_derived",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 29,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              29
+            ]
+          ],
+          "animation_total_frames": 13,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 32,
+          "kind": "special",
+          "move_name": "Turn Around",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 7,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              7
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 42,
+          "kind": "special",
+          "move_name": "Win Pose",
+          "move_name_source": "lookup",
+          "recovery": 13,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 7,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              7
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 43,
+          "kind": "special",
+          "move_name": "anim_002B",
+          "move_name_source": "anim",
+          "recovery": 43,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 7,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              7
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 45,
+          "kind": "special",
+          "move_name": "anim_002D",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 4,
+          "active_end": 7,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              7
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 47,
+          "kind": "special",
+          "move_name": "anim_002F",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 102,
+          "kind": "special",
+          "move_name": "knocked down (face up)",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 104,
+          "kind": "special",
+          "move_name": "knocked down (face down)",
+          "move_name_source": "lookup",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 105,
+          "kind": "special",
+          "move_name": "OTG Hit (Face up)",
+          "move_name_source": "lookup",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 154,
+          "kind": "special",
+          "move_name": "KO'd",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 155,
+          "kind": "special",
+          "move_name": "KO in slow motion",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 24,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              24
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 165,
+          "kind": "special",
+          "move_name": "Breakaway Recovery",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "animation_total_frames": 5,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 167,
+          "kind": "special",
+          "move_name": "Parry? what is this?",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 4,
+          "active_end": 7,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              7
+            ]
+          ],
+          "animation_total_frames": 30,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 256,
+          "kind": "normal",
+          "move_name": "5A",
+          "move_name_source": "lookup",
+          "recovery": 23,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 4,
+          "active_end": 12,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              12
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 257,
+          "kind": "normal",
+          "move_name": "5B",
+          "move_name_source": "lookup",
+          "recovery": 38,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 18,
+          "active_start": 17,
+          "active_windows": [
+            [
+              17,
+              18
+            ]
+          ],
+          "animation_total_frames": 60,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 258,
+          "kind": "normal",
+          "move_name": "5C",
+          "move_name_source": "lookup",
+          "recovery": 42,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 1,
+          "active_end": 9,
+          "active_start": 8,
+          "active_windows": [
+            [
+              8,
+              9
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 259,
+          "kind": "normal",
+          "move_name": "2A",
+          "move_name_source": "lookup",
+          "recovery": 11,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 4,
+          "active2_start": 3,
+          "active_end": 10,
+          "active_start": 9,
+          "active_windows": [
+            [
+              9,
+              10
+            ]
+          ],
+          "animation_total_frames": 40,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 260,
+          "kind": "normal",
+          "move_name": "2B",
+          "move_name_source": "lookup",
+          "recovery": 30,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 24,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              24
+            ]
+          ],
+          "animation_total_frames": 55,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 261,
+          "kind": "normal",
+          "move_name": "2C",
+          "move_name_source": "lookup",
+          "recovery": 31,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 22,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              22
+            ]
+          ],
+          "animation_total_frames": 8,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 262,
+          "kind": "normal",
+          "move_name": "6C",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 8,
+          "active2_start": 8,
+          "active_end": 22,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              22
+            ]
+          ],
+          "animation_total_frames": 20,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 263,
+          "kind": "special",
+          "move_name": "4C",
+          "move_name_source": "lookup",
+          "recovery": 0,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 7,
+          "active2_start": 7,
+          "active_end": 22,
+          "active_start": 16,
+          "active_windows": [
+            [
+              16,
+              22
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 264,
+          "kind": "normal",
+          "move_name": "3C",
+          "move_name_source": "lookup",
+          "recovery": 28,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": 7,
+          "active2_start": 7,
+          "active_end": 11,
+          "active_start": 6,
+          "active_windows": [
+            [
+              6,
+              11
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 265,
+          "kind": "normal",
+          "move_name": "j.A",
+          "move_name_source": "lookup",
+          "recovery": 39,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 14,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              14
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 266,
+          "kind": "normal",
+          "move_name": "j.B",
+          "move_name_source": "lookup",
+          "recovery": 36,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 17,
+          "active_start": 15,
+          "active_windows": [
+            [
+              15,
+              17
+            ],
+            [
+              20,
+              22
+            ]
+          ],
+          "animation_total_frames": 28,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 267,
+          "kind": "normal",
+          "move_name": "j.C",
+          "move_name_source": "lookup",
+          "recovery": 11,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 14,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              14
+            ]
+          ],
+          "animation_total_frames": 30,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:j_b:chain:1",
+          "family_group_label": "j.B () Air L chain",
+          "family_key": "tekkaman_blade:j_b",
+          "family_link_label": "j.B () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 268,
+          "kind": "special",
+          "move_name": "j.B (Second)",
+          "move_name_source": "lookup",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 1,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              1
+            ]
+          ],
+          "animation_total_frames": 30,
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:j_b:chain:2",
+          "family_group_label": "j.B () Air M chain",
+          "family_key": "tekkaman_blade:j_b",
+          "family_link_label": "j.B () / Air M chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 268,
+          "kind": "special",
+          "move_name": "j.B (Second)",
+          "move_name_source": "lookup",
+          "recovery": 29,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 14,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              14
+            ]
+          ],
+          "animation_total_frames": 30,
+          "family_chain_index": 3,
+          "family_chain_label": "Air H chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:j_b:chain:3",
+          "family_group_label": "j.B () Air H chain",
+          "family_key": "tekkaman_blade:j_b",
+          "family_link_label": "j.B () / Air H chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "H",
+          "family_strength_guess": "H",
+          "id": 268,
+          "kind": "special",
+          "move_name": "j.B (Second)",
+          "move_name_source": "lookup",
+          "recovery": 16,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 17,
+          "active_start": 15,
+          "active_windows": [
+            [
+              15,
+              17
+            ],
+            [
+              20,
+              22
+            ]
+          ],
+          "animation_total_frames": 32,
+          "family_chain_index": 1,
+          "family_chain_label": "Air L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:j_c:chain:1",
+          "family_group_label": "j.C () Air L chain",
+          "family_key": "tekkaman_blade:j_c",
+          "family_link_label": "j.C () / Air L chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 269,
+          "kind": "special",
+          "move_name": "j.C (Second)",
+          "move_name_source": "lookup",
+          "recovery": 15,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 1,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              1
+            ]
+          ],
+          "animation_total_frames": 32,
+          "family_chain_index": 2,
+          "family_chain_label": "Air M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:j_c:chain:2",
+          "family_group_label": "j.C () Air M chain",
+          "family_key": "tekkaman_blade:j_c",
+          "family_link_label": "j.C () / Air M chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 269,
+          "kind": "special",
+          "move_name": "j.C (Second)",
+          "move_name_source": "lookup",
+          "recovery": 31,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              21
+            ]
+          ],
+          "animation_total_frames": 32,
+          "family_chain_index": 3,
+          "family_chain_label": "Air H chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:j_c:chain:3",
+          "family_group_label": "j.C () Air H chain",
+          "family_key": "tekkaman_blade:j_c",
+          "family_link_label": "j.C () / Air H chain / Second",
+          "family_phase": "Second",
+          "family_role": "section",
+          "family_strength": "H",
+          "family_strength_guess": "H",
+          "id": 269,
+          "kind": "special",
+          "move_name": "j.C (Second)",
+          "move_name_source": "lookup",
+          "recovery": 11,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 1,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              1
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 270,
+          "kind": "normal",
+          "move_name": "anim_010E",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 3,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              3
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              14,
+              15
+            ],
+            [
+              14,
+              16
+            ],
+            [
+              18,
+              19
+            ],
+            [
+              18,
+              20
+            ]
+          ],
+          "animation_total_frames": 11,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 272,
+          "kind": "special",
+          "move_name": "j.2C",
+          "move_name_source": "lookup",
+          "recovery": 8,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 3,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              3
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              14,
+              15
+            ],
+            [
+              14,
+              16
+            ],
+            [
+              18,
+              19
+            ],
+            [
+              18,
+              20
+            ]
+          ],
+          "animation_total_frames": 21,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 273,
+          "kind": "special",
+          "move_name": "anim_0111",
+          "move_name_source": "anim",
+          "recovery": 18,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 3,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              3
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              14,
+              15
+            ],
+            [
+              18,
+              19
+            ]
+          ],
+          "animation_total_frames": 21,
+          "family_confidence": "nearby-multihit-helper",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:baselard",
+          "family_group_label": "Baselard",
+          "family_key": "tekkaman_blade:baselard",
+          "family_link_label": "Baselard / Ground / A / Linked hits",
+          "family_phase": "Linked hits",
+          "family_role": "section",
+          "family_strength": "A",
+          "id": 273,
+          "kind": "special",
+          "move_name": "anim_0111",
+          "move_name_source": "anim",
+          "recovery": 18,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              21
+            ],
+            [
+              23,
+              25
+            ],
+            [
+              27,
+              29
+            ],
+            [
+              61,
+              63
+            ],
+            [
+              65,
+              67
+            ],
+            [
+              69,
+              71
+            ],
+            [
+              73,
+              75
+            ],
+            [
+              77,
+              79
+            ],
+            [
+              81,
+              83
+            ],
+            [
+              85,
+              87
+            ],
+            [
+              89,
+              91
+            ],
+            [
+              93,
+              95
+            ]
+          ],
+          "animation_total_frames": 42,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 283,
+          "kind": "special",
+          "move_name": "Air Front Throw",
+          "move_name_source": "lookup",
+          "recovery": 21,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 63,
+          "active_start": 61,
+          "active_windows": [
+            [
+              61,
+              63
+            ],
+            [
+              65,
+              67
+            ],
+            [
+              69,
+              71
+            ],
+            [
+              73,
+              75
+            ],
+            [
+              77,
+              79
+            ],
+            [
+              81,
+              83
+            ],
+            [
+              85,
+              87
+            ],
+            [
+              89,
+              91
+            ],
+            [
+              93,
+              95
+            ]
+          ],
+          "animation_total_frames": 90,
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 286,
+          "kind": "special",
+          "move_name": "Back Throw",
+          "move_name_source": "lookup",
+          "recovery": 27,
+          "recovery_source": "mot_derived",
+          "source": "legacy_special"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 14,
+          "active_start": 11,
+          "active_windows": [
+            [
+              11,
+              14
+            ]
+          ],
+          "animation_total_frames": 34,
+          "family_chain_index": 3,
+          "family_chain_label": "Air H chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:j_b:chain:3",
+          "family_group_label": "j.B () Air H chain",
+          "family_key": "tekkaman_blade:j_b",
+          "family_link_label": "j.B () / Air H chain / Hit 2",
+          "family_phase": "Hit 2",
+          "family_role": "section",
+          "family_strength": "H",
+          "family_strength_guess": "H",
+          "id": 289,
+          "kind": "special",
+          "move_name": "j.B (second hit)",
+          "move_name_source": "lookup",
+          "recovery": 20,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 7,
+          "active_start": 5,
+          "active_windows": [
+            [
+              5,
+              7
+            ],
+            [
+              8,
+              10
+            ],
+            [
+              14,
+              15
+            ],
+            [
+              16,
+              17
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 290,
+          "kind": "special",
+          "move_name": "anim_0122",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 7,
+          "active_start": 5,
+          "active_windows": [
+            [
+              5,
+              7
+            ],
+            [
+              8,
+              10
+            ],
+            [
+              14,
+              15
+            ],
+            [
+              16,
+              17
+            ]
+          ],
+          "animation_total_frames": 112,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:shamshir",
+          "family_group_label": "Shamshir",
+          "family_key": "tekkaman_blade:shamshir",
+          "family_link_label": "Shamshir / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
+          "id": 304,
+          "kind": "special",
+          "move_name": "Shamshir A",
+          "move_name_source": "lookup",
+          "recovery": 105,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 3,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              3
+            ],
+            [
+              11,
+              12
+            ],
+            [
+              11,
+              13
+            ],
+            [
+              15,
+              17
+            ],
+            [
+              20,
+              22
+            ]
+          ],
+          "animation_total_frames": 55,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:shamshir",
+          "family_group_label": "Shamshir",
+          "family_key": "tekkaman_blade:shamshir",
+          "family_link_label": "Shamshir / Ground / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
+          "id": 305,
+          "kind": "special",
+          "move_name": "Shamshir B",
+          "move_name_source": "lookup",
+          "recovery": 52,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 3,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              3
+            ],
+            [
+              10,
+              12
+            ],
+            [
+              14,
+              15
+            ],
+            [
+              14,
+              16
+            ],
+            [
+              18,
+              19
+            ],
+            [
+              18,
+              20
+            ]
+          ],
+          "animation_total_frames": 112,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:shamshir",
+          "family_group_label": "Shamshir",
+          "family_key": "tekkaman_blade:shamshir",
+          "family_link_label": "Shamshir / Ground / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
+          "id": 306,
+          "kind": "special",
+          "move_name": "Shamshir C",
+          "move_name_source": "lookup",
+          "recovery": 109,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              19
+            ]
+          ],
+          "animation_total_frames": 55,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:baselard",
+          "family_group_label": "Baselard",
+          "family_key": "tekkaman_blade:baselard",
+          "family_link_label": "Baselard / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
+          "id": 307,
+          "kind": "special",
+          "move_name": "Baselard A",
+          "move_name_source": "lookup",
+          "recovery": 36,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 19,
+          "active_start": 18,
+          "active_windows": [
+            [
+              18,
+              19
+            ]
+          ],
+          "animation_total_frames": 92,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:baselard",
+          "family_group_label": "Baselard",
+          "family_key": "tekkaman_blade:baselard",
+          "family_link_label": "Baselard / Ground / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
+          "id": 308,
+          "kind": "special",
+          "move_name": "Baselard B",
+          "move_name_source": "lookup",
+          "recovery": 73,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 22,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              22
+            ]
+          ],
+          "animation_total_frames": 35,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:baselard",
+          "family_group_label": "Baselard",
+          "family_key": "tekkaman_blade:baselard",
+          "family_link_label": "Baselard / Ground / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
+          "id": 309,
+          "kind": "special",
+          "move_name": "Baselard C",
+          "move_name_source": "lookup",
+          "recovery": 13,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 22,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              22
+            ],
+            [
+              23,
+              25
+            ],
+            [
+              26,
+              28
+            ],
+            [
+              29,
+              31
+            ]
+          ],
+          "animation_total_frames": 92,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:blitz",
+          "family_group_label": "Blitz",
+          "family_key": "tekkaman_blade:blitz",
+          "family_link_label": "Blitz / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
+          "id": 310,
+          "kind": "special",
+          "move_name": "Blitz A",
+          "move_name_source": "lookup",
+          "recovery": 70,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              21
+            ],
+            [
+              23,
+              25
+            ],
+            [
+              27,
+              29
+            ],
+            [
+              31,
+              33
+            ],
+            [
+              35,
+              37
+            ]
+          ],
+          "animation_total_frames": 60,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:blitz",
+          "family_group_label": "Blitz",
+          "family_key": "tekkaman_blade:blitz",
+          "family_link_label": "Blitz / Ground / B / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "B",
+          "id": 311,
+          "kind": "special",
+          "move_name": "Blitz B",
+          "move_name_source": "lookup",
+          "recovery": 39,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 19,
+          "active_windows": [
+            [
+              19,
+              21
+            ],
+            [
+              23,
+              25
+            ],
+            [
+              27,
+              29
+            ],
+            [
+              61,
+              63
+            ],
+            [
+              65,
+              67
+            ],
+            [
+              69,
+              71
+            ],
+            [
+              73,
+              75
+            ],
+            [
+              77,
+              79
+            ],
+            [
+              81,
+              83
+            ],
+            [
+              85,
+              87
+            ],
+            [
+              89,
+              91
+            ],
+            [
+              93,
+              95
+            ]
+          ],
+          "animation_total_frames": 50,
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:blitz",
+          "family_group_label": "Blitz",
+          "family_key": "tekkaman_blade:blitz",
+          "family_link_label": "Blitz / Ground / C / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "C",
+          "id": 312,
+          "kind": "special",
+          "move_name": "Blitz C",
+          "move_name_source": "lookup",
+          "recovery": 29,
+          "recovery_source": "mot_derived",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 95,
+          "active_start": 93,
+          "active_windows": [
+            [
+              93,
+              95
+            ]
+          ],
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:falchion",
+          "family_group_label": "Falchion",
+          "family_key": "tekkaman_blade:falchion",
+          "family_link_label": "Falchion / Ground / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
+          "id": 313,
+          "kind": "special",
+          "move_name": "Falchion A",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 29,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              29
+            ]
+          ],
+          "animation_total_frames": 31,
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:baselard",
+          "family_group_label": "Baselard",
+          "family_key": "tekkaman_blade:baselard",
+          "family_link_label": "Baselard / Air / A / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "A",
+          "id": 326,
+          "kind": "special",
+          "move_name": "Air Baselard A",
+          "move_name_source": "lookup",
+          "recovery": 2,
+          "recovery_source": "mot_derived",
+          "source": "strict"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              21
+            ]
+          ],
+          "family_confidence": "name-generic",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:voltekka",
+          "family_group_label": "Voltekka",
+          "family_key": "tekkaman_blade:voltekka",
+          "family_link_label": "Voltekka / Ground / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "",
+          "id": 352,
+          "kind": "special",
+          "move_name": "Voltekka",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 29,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              29
+            ]
+          ],
+          "family_confidence": "name-generic",
+          "family_context": "Air",
+          "family_group_key": "tekkaman_blade:crash_intrude",
+          "family_group_label": "Crash Intrude",
+          "family_key": "tekkaman_blade:crash_intrude",
+          "family_link_label": "Crash Intrude / Air / Entry",
+          "family_phase": "Entry",
+          "family_role": "entry",
+          "family_strength": "",
+          "id": 354,
+          "kind": "special",
+          "move_name": "Air Crash Intrude",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 29,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              29
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 355,
+          "kind": "special",
+          "move_name": "anim_0163",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 370,
+          "kind": "special",
+          "move_name": "anim_0172",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 416,
+          "kind": "special",
+          "move_name": "Tag Out",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 29,
+          "active_start": 7,
+          "active_windows": [
+            [
+              7,
+              29
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 417,
+          "kind": "special",
+          "move_name": "assist leave",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 418,
+          "kind": "special",
+          "move_name": "Tag In",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 419,
+          "kind": "special",
+          "move_name": "anim_01A3",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 420,
+          "kind": "special",
+          "move_name": "Cross Counter Tag out",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 421,
+          "kind": "special",
+          "move_name": "VAR",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 424,
+          "kind": "special",
+          "move_name": "assist taunt",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 425,
+          "kind": "special",
+          "move_name": "Tag In Taunt",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              21
+            ],
+            [
+              23,
+              25
+            ],
+            [
+              27,
+              29
+            ],
+            [
+              31,
+              33
+            ],
+            [
+              35,
+              37
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 426,
+          "kind": "special",
+          "move_name": "assist attack",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 427,
+          "kind": "special",
+          "move_name": "Cross Counter Tag in",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 428,
+          "kind": "special",
+          "move_name": "DHC Hop in",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 21,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              21
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 429,
+          "kind": "special",
+          "move_name": "anim_01AD",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 31,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              31
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 430,
+          "kind": "special",
+          "move_name": "assist standby",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 3,
+          "family_chain_label": "Ground H chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:match_leave:chain:3",
+          "family_group_label": "Match Leave Ground H chain",
+          "family_key": "tekkaman_blade:match_leave",
+          "family_link_label": "Match Leave / Ground H chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "H",
+          "family_strength_guess": "H",
+          "id": 445,
+          "kind": "special",
+          "move_name": "Match Start Leave",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 1,
+          "family_chain_label": "Ground L chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:match_swap:chain:1",
+          "family_group_label": "Match Swap Ground L chain",
+          "family_key": "tekkaman_blade:match_swap",
+          "family_link_label": "Match Swap / Ground L chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "L",
+          "family_strength_guess": "L",
+          "id": 446,
+          "kind": "special",
+          "move_name": "Match Start Swap",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_chain_index": 2,
+          "family_chain_label": "Ground M chain",
+          "family_confidence": "generic-chain+strength-inferred",
+          "family_context": "Ground",
+          "family_group_key": "tekkaman_blade:match_swap:chain:2",
+          "family_group_label": "Match Swap Ground M chain",
+          "family_key": "tekkaman_blade:match_swap",
+          "family_link_label": "Match Swap / Ground M chain / Start",
+          "family_phase": "Start",
+          "family_role": "section",
+          "family_strength": "M",
+          "family_strength_guess": "M",
+          "id": 446,
+          "kind": "special",
+          "move_name": "Match Start Swap",
+          "move_name_source": "lookup",
+          "source": "anim_hdr"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 447,
+          "kind": "special",
+          "move_name": "Match Start Anchor",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 448,
+          "kind": "special",
+          "move_name": "Megacrash",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 449,
+          "kind": "special",
+          "move_name": "Crumple",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 15,
+          "active_start": 14,
+          "active_windows": [
+            [
+              14,
+              15
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 450,
+          "kind": "special",
+          "move_name": "anim_01C2",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 24,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              24
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 451,
+          "kind": "special",
+          "move_name": "anim_01C3",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 24,
+          "active_start": 20,
+          "active_windows": [
+            [
+              20,
+              24
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 452,
+          "kind": "special",
+          "move_name": "anim_01C4",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 453,
+          "kind": "special",
+          "move_name": "anim_01C5",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 465,
+          "kind": "special",
+          "move_name": "Front Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 466,
+          "kind": "special",
+          "move_name": "anim_01D2",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 467,
+          "kind": "special",
+          "move_name": "anim_01D3",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 468,
+          "kind": "special",
+          "move_name": "Back Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 469,
+          "kind": "special",
+          "move_name": "anim_01D5",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 470,
+          "kind": "special",
+          "move_name": "anim_01D6",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 471,
+          "kind": "special",
+          "move_name": "Air Forward Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 472,
+          "kind": "special",
+          "move_name": "anim_01D8",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 473,
+          "kind": "special",
+          "move_name": "anim_01D9",
+          "move_name_source": "anim",
+          "source": "table"
+        },
+        {
+          "active2_end": null,
+          "active2_start": null,
+          "active_end": 2,
+          "active_start": 1,
+          "active_windows": [
+            [
+              1,
+              2
+            ]
+          ],
+          "family_confidence": "",
+          "family_context": "",
+          "family_group_key": "",
+          "family_group_label": "",
+          "family_key": "",
+          "family_link_label": "",
+          "family_phase": "",
+          "family_role": "",
+          "family_strength": "",
+          "id": 474,
+          "kind": "special",
+          "move_name": "Air Back Throw",
+          "move_name_source": "lookup",
+          "source": "table"
+        }
+      ]
     },
     "id_27_joe_the_condor": {
       "char_id": 27,

@@ -493,6 +493,17 @@ class MasterControl:
     show_attack_property_panel: bool = False
     show_tag_card: bool = False
     hud_info_set: str = "CORE"
+    show_health: bool = True
+    show_stun: bool = True
+    show_inputs: bool = True
+    show_move_timing: bool = True
+    show_meter_rail: bool = True
+    show_damage_scaling: bool | None = None
+    opacity: float = 1.0
+    p1_color: str = "#ff6464"
+    p2_color: str = "#5aa0ff"
+    positions: dict | None = None
+    edit_mode: bool = False
 
 
 class Renderer(Protocol):
@@ -611,6 +622,9 @@ class MasterOverlay:
         self.smallfont: Optional[pygame.font.Font] = None
 
         self._last_control_mtime = 0.0
+        self._last_customization_mtime = 0
+        self._drag_team = None
+        self._drag_offset = (0, 0)
         
         self.mission_active = False
         self.mission_slot: Optional[str] = None
@@ -907,13 +921,13 @@ class MasterOverlay:
 
     def _read_control_file(self) -> None:
         try:
-            mt = os.path.getmtime(MASTER_CONTROL_FILE)
+            mt = os.stat(MASTER_CONTROL_FILE).st_mtime_ns
             if mt == self._last_control_mtime:
                 return
-            self._last_control_mtime = mt
 
             with open(MASTER_CONTROL_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            self._last_control_mtime = mt
 
             self.control.show_hud = bool(data.get("show_hud", True))
             self.control.show_hitboxes = bool(data.get("show_hitboxes", True))
@@ -938,6 +952,21 @@ class MasterOverlay:
                 self.control.show_untech_panel = True
         except Exception:
             pass
+
+    def _read_customization(self) -> None:
+        from tvcgui.features.overlay import customization
+        try:
+            stamp = customization.FILE.stat().st_mtime_ns
+        except OSError:
+            stamp = 0
+        if stamp == self._last_customization_mtime:
+            return
+        self._last_customization_mtime = stamp
+        data = customization.load()
+        for key, value in data.items():
+            setattr(self.control, key, value)
+        if not self.control.edit_mode:
+            self._drag_team = None
     def _read_mission_mode_file(self) -> None:
         try:
             mt = os.path.getmtime(MISSION_MODE_FILE)
@@ -1138,14 +1167,20 @@ class MasterOverlay:
                 self.running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.control.edit_mode:
+                    from tvcgui.features.overlay import hud_renderer
+                    for team, rect in hud_renderer.EDITABLE_PANEL_RECTS.items():
+                        if rect.collidepoint(event.pos):
+                            self._drag_team = team
+                            self._drag_offset = (event.pos[0] - rect.x, event.pos[1] - rect.y)
+                            break
+                    continue
                 if self.mission_toggle_rect and self.mission_toggle_rect.collidepoint(event.pos):
                     self.mission_show_all = not self.mission_show_all
                     return
-
                 if self.mission_hint_rect and self.mission_hint_rect.collidepoint(event.pos):
                     self.mission_show_hint = not self.mission_show_hint
                     return
-
                 if self.mission_panel_rect and self.mission_panel_rect.collidepoint(event.pos):
                     for rect, mission_id in self.mission_click_rects:
                         if rect.collidepoint(event.pos):
@@ -1157,10 +1192,25 @@ class MasterOverlay:
                                 })
                             return
                 elif self.mission_overlay_data.get("selector_open"):
-                    self._write_mission_select_command({
-                        "action": "close",
-                    })
+                    self._write_mission_select_command({"action": "close"})
                     return
+
+            elif event.type == pygame.MOUSEMOTION and self._drag_team:
+                from tvcgui.features.overlay import hud_renderer
+                rect = hud_renderer.EDITABLE_PANEL_RECTS.get(self._drag_team)
+                if rect:
+                    x = max(0, min(self.w - rect.w, event.pos[0] - self._drag_offset[0]))
+                    y = max(0, min(self.h - rect.h, event.pos[1] - self._drag_offset[1]))
+                    positions = dict(self.control.positions or {})
+                    positions[self._drag_team] = [x / max(1, self.w - rect.w), y / max(1, self.h - rect.h)]
+                    self.control.positions = positions
+
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self._drag_team:
+                from tvcgui.features.overlay import customization
+                data = customization.load()
+                data["positions"] = self.control.positions or {}
+                customization.save(data)
+                self._drag_team = None
 
             # Keyboard hotkeys intentionally disabled; layer controls live in the main GUI.
 
@@ -3450,6 +3500,12 @@ class MasterOverlay:
 
         print("[master] started")
         print("[master] overlay controls are managed by the main GUI")
+        perf_since = time.perf_counter()
+        perf_frames = 0
+        perf_hit_update = 0.0
+        perf_hud_update = 0.0
+        perf_hit_draw = 0.0
+        perf_hud_draw = 0.0
 
         while self.running:
             try:
@@ -3467,6 +3523,7 @@ class MasterOverlay:
                 self.on_resize(w, h)
 
                 self._read_control_file()
+                self._read_customization()
                 self._read_mission_mode_file()
                 self._read_mission_overlay_file()
                 self._read_yami_name_overlay_file()
@@ -3476,14 +3533,7 @@ class MasterOverlay:
 
                 self.clear()
 
-                try:
-                    self.hitbox_renderer.update(dt, self.control)
-                except Exception as exc:
-                    print("[master] hitbox update failed")
-                    traceback.print_exc()
-                    self.hitbox_renderer = NullHitboxRenderer()
-                    self.hitbox_renderer.on_resize(self.w, self.h)
-
+                stage_start = time.perf_counter()
                 try:
                     self.hud_renderer.update(dt, self.control)
                 except Exception as exc:
@@ -3491,9 +3541,23 @@ class MasterOverlay:
                     traceback.print_exc()
                     self.hud_renderer = NullHudRenderer()
                     self.hud_renderer.on_resize(self.w, self.h)
+                perf_hud_update += time.perf_counter() - stage_start
 
                 self.update_mission_animations(dt)
                 self.update_celebration(dt)
+
+                # Sample live geometry at the last practical point before it
+                # is drawn. HUD work can take several milliseconds, during
+                # which Dolphin may advance to another game frame.
+                stage_start = time.perf_counter()
+                try:
+                    self.hitbox_renderer.update(dt, self.control)
+                except Exception as exc:
+                    print("[master] hitbox update failed")
+                    traceback.print_exc()
+                    self.hitbox_renderer = NullHitboxRenderer()
+                    self.hitbox_renderer.on_resize(self.w, self.h)
+                perf_hit_update += time.perf_counter() - stage_start
 
                 # Overlay OFF is the global visual master switch. Keep the
                 # compositor process and live model state running so all user
@@ -3503,6 +3567,7 @@ class MasterOverlay:
                     self.present()
                     continue
 
+                stage_start = time.perf_counter()
                 try:
                     self.hitbox_renderer.draw(self.screen, self.control)
                 except Exception as exc:
@@ -3510,7 +3575,9 @@ class MasterOverlay:
                     traceback.print_exc()
                     self.hitbox_renderer = NullHitboxRenderer()
                     self.hitbox_renderer.on_resize(self.w, self.h)
+                perf_hit_draw += time.perf_counter() - stage_start
 
+                stage_start = time.perf_counter()
                 try:
                     self.hud_renderer.draw(self.screen, self.control)
                 except Exception as exc:
@@ -3518,12 +3585,26 @@ class MasterOverlay:
                     traceback.print_exc()
                     self.hud_renderer = NullHudRenderer()
                     self.hud_renderer.on_resize(self.w, self.h)
+                perf_hud_draw += time.perf_counter() - stage_start
 
                 self.draw_yami_name_overlay()
                 self.draw_mission_overlay()
                 self.draw_master_debug(dt)
 
                 self.present()
+                perf_frames += 1
+                perf_now = time.perf_counter()
+                if perf_now - perf_since >= 5.0:
+                    fps = perf_frames / (perf_now - perf_since)
+                    if fps < 55.0:
+                        divisor = max(1, perf_frames)
+                        print(f"[overlay perf] {fps:.1f} FPS; hit update {perf_hit_update * 1000 / divisor:.1f}ms; "
+                              f"HUD update {perf_hud_update * 1000 / divisor:.1f}ms; "
+                              f"hit draw {perf_hit_draw * 1000 / divisor:.1f}ms; "
+                              f"HUD draw {perf_hud_draw * 1000 / divisor:.1f}ms", flush=True)
+                    perf_since = perf_now
+                    perf_frames = 0
+                    perf_hit_update = perf_hud_update = perf_hit_draw = perf_hud_draw = 0.0
 
             except Exception as exc:
                 pause_on_error("MasterLoopCrash", exc)

@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import time
 
-from tvcgui.platform.dolphin import rd32, wd32
-import tvcgui.platform.patch_manager as runtime_pm
+from tvcgui.platform.dolphin import rbytes, rd32, wd32
 
 def _ko_wd32(addr: int, value: int) -> bool:
     """Write a KO control word even while the select-write barrier is active."""
@@ -153,18 +152,45 @@ KO_REWIND_OFFSETS_U32 = (
 KO_REWIND_BAD_ACTIONS = {0x0000002A, 0x0000009A}
 
 
+def _ko_read_rewind_values(base: int) -> dict[int, int]:
+    """Capture the compact fighter control region with one guest read."""
+    offsets = KO_REWIND_OFFSETS_U32
+    start = min(offsets)
+    size = max(offsets) + 4 - start
+    try:
+        block = rbytes(int(base) + start, size)
+    except Exception:
+        block = None
+    if block is not None and len(block) == size:
+        return {
+            int(off): int.from_bytes(block[int(off) - start:int(off) - start + 4], "big")
+            for off in offsets
+        }
+    # Preserve the older reader for an unavailable or partial bulk read.
+    values = {}
+    for off in offsets:
+        try:
+            value = rd32(int(base) + int(off))
+        except Exception:
+            value = None
+        if value is not None:
+            values[int(off)] = int(value) & 0xFFFFFFFF
+    return values
+
+
 
 def _ko_code_wd32(addr: int, value: int) -> bool:
-    """Write one PPC instruction through the JIT-safe code lane."""
+    """Use the KO-specific DME write route from the working V41 build.
+
+    This is deliberately limited to KO Control. Dolphin Memory Engine writes
+    guest RAM directly; readback proves the bytes changed, but not that every
+    already compiled JIT block has been invalidated. Reassertion by auto mode
+    matches the behavior of commit f971adb.
+    """
     try:
         addr_i = int(addr) & 0xFFFFFFFF
         value_i = int(value) & 0xFFFFFFFF
-        return bool(runtime_pm.write_code_u32(
-            addr_i,
-            value_i,
-            key=f"ko:code:0x{addr_i:08X}",
-            force=True,
-        ))
+        return _ko_wd32(addr_i, value_i)
     except Exception:
         return False
 
@@ -175,7 +201,7 @@ def _write_code_u32_count(
     *,
     verify: bool = False,
 ) -> tuple[int, int, list]:
-    """JIT-safe counterpart to _write_u32_count for PPC code."""
+    """KO instruction write and optional guest RAM readback."""
     addr_i = int(addr) & 0xFFFFFFFF
     value_i = int(value) & 0xFFFFFFFF
 
@@ -209,56 +235,30 @@ def _write_code_packet_count(
     verify: bool = False,
     key: str = "ko:code:batch",
 ) -> tuple[int, int, list, int]:
-    """Apply a complete PPC instruction packet with one JIT reset."""
-
-    final = {}
-
+    """Restore originals then apply KO overrides in the V41 write order."""
     try:
-        for addr, value in pairs:
-            addr_i = int(addr) & 0xFFFFFFFF
-            value_i = int(value) & 0xFFFFFFFF
-            final[addr_i] = value_i.to_bytes(4, "big")
+        sequence = [
+            (int(addr) & 0xFFFFFFFF, int(value) & 0xFFFFFFFF)
+            for addr, value in pairs
+        ]
     except Exception:
         return 0, 0, [], 0
 
-    total = len(final)
+    total = len(sequence)
 
     if not total:
         return 0, 0, [], 0
 
-    try:
-        ok = bool(
-            runtime_pm.write_code_many(
-                final,
-                key=key,
-                priority=98,
-                force=True,
-            )
-        )
-    except Exception:
-        ok = False
-
-    if not ok:
-        failed = [
-            (
-                addr,
-                None,
-                int.from_bytes(payload, "big"),
-            )
-            for addr, payload in final.items()
-        ]
-        return 0, 0, failed, total
-
-    wrote = total
-
-    if not verify:
-        return wrote, 0, [], total
-
+    wrote = 0
     verified = 0
     failed = []
-
-    for addr, payload in final.items():
-        expected = int.from_bytes(payload, "big")
+    for addr, expected in sequence:
+        if not _ko_code_wd32(addr, expected):
+            failed.append((addr, None, expected))
+            continue
+        wrote += 1
+        if not verify:
+            continue
 
         try:
             rb = rd32(addr)
@@ -355,17 +355,8 @@ def capture_ko_rewind_baselines(snaps: dict, render_snap_by_slot: dict, existing
             continue
 
         previous = dict(out.get(str(slot)) or {})
-        values = {}
-        ok = 0
-        for off in KO_REWIND_OFFSETS_U32:
-            try:
-                v = rd32(base + int(off))
-            except Exception:
-                v = None
-            if v is not None:
-                values[int(off)] = int(v) & 0xFFFFFFFF
-                ok += 1
-        if ok >= 8:
+        values = _ko_read_rewind_values(base)
+        if len(values) >= 8:
             previous.update({"base": base, "values": values, "ts": now_ts, "act": act_now, "hp": hp_now})
 
         # Learn a clean neutral only before either team is fully KO'd. Require
@@ -381,14 +372,11 @@ def capture_ko_rewind_baselines(snaps: dict, render_snap_by_slot: dict, existing
         except Exception:
             pass
         if round_live and point_active and act_now == 1:
-            neutral_values = {}
-            for off in KO_NEUTRAL_RESTORE_OFFSETS_U32:
-                try:
-                    v = rd32(base + int(off))
-                except Exception:
-                    v = None
-                if v is not None:
-                    neutral_values[int(off)] = int(v) & 0xFFFFFFFF
+            neutral_values = {
+                int(off): values[int(off)]
+                for off in KO_NEUTRAL_RESTORE_OFFSETS_U32
+                if int(off) in values
+            }
             try:
                 raw_char_id = snap.get("char_id")
                 if raw_char_id is None:
@@ -933,6 +921,14 @@ KO_DOL_ORIGINALS_U32 = (
     (0x8015C8D4, 0x9421FFF0),
 )
 
+# The V41 auto controller did not touch these two later experimental gates.
+# They are part of the working FULL packet now, so SAFE and OFF must restore
+# their original instructions when the match returns to normal play.
+KO_CONTROL_V41_ORIGINALS_U32 = tuple(
+    (addr, value) for addr, value in KO_DOL_ORIGINALS_U32
+    if addr not in (0x80076820, 0x80076A80)
+)
+
 NO_CLEAR_75E_WRITES = tuple((addr, 0x60000000) for addr in (0x80075E50, 0x80075E54, 0x80075E58, 0x80075E5C, 0x80075E60, 0x80075E64, 0x80075E68))
 NO_CLEAR_763_WRITES = tuple((addr, 0x60000000) for addr in (0x80076384, 0x80076388, 0x8007638C, 0x80076390, 0x80076394, 0x80076398, 0x8007639C))
 NO_BUFFER_OUT_WRITES = ((0x8007646C, 0x60000000), (0x80076470, 0x60000000))
@@ -954,12 +950,11 @@ POST_KO_CONTROL_PACKET = KEEP_LOW_INPUT_BYTE + SKIP_64_RESULT_OVERRIDE + PATCH_8
 
 # Final-result resolver exception.
 #
-# 0x800447E0 is part of the normal action setup. It sets
-# fighter+0x60 |= 0x04000000, and controllable point fighters in the known-good
-# baseline carry that bit. Keep that instruction native. The result-only block
-# is the following conditional branch at 0x800447E8, which returns -2 instead
-# of entering ordinary action resolution when fighter+0x64 bit 0x40 is set.
+# V41 clears the final-result lock at 0x800447E0 and passes the early return
+# at 0x800447E8. Both changes belong to FULL after a team KO; SAFE leaves the
+# ordinary live-match resolver untouched.
 KO_RESULT_RESOLVER_UNLOCK_PACKET = (
+    (0x800447E0, 0x54600188),  # clear 0x04000000 result lock
     (0x800447E8, 0x4800000C),  # continue into native action resolution
 )
 
@@ -1006,18 +1001,16 @@ NO_ZERO_R31 = (
 # post-KO/result input sanitizer and the +0x64 result override; it does NOT
 # force the raw pad-feed path, so it should not leak P1 input into the CPU on
 # the next arcade match.
-KO_CONTROL_SAFE_PACKET = POST_KO_CONTROL_PACKET + KO_RESULT_RESOLVER_UNLOCK_PACKET
+KO_CONTROL_SAFE_PACKET = POST_KO_CONTROL_PACKET
 
 # FULL packet: this is the heavier Control+Full lab payload. It includes the
 # raw-pad / input-feed safety patches that helped post-KO control, including
 # preserving the decoded direction nibble after the result-state filter. These
 # can contaminate normal CPU input if left on before a match. Auto mode only
 # escalates to this after a full-team KO is detected, then drops back to SAFE.
-# Restored v22 reference packet.
-#
-# This is the last known working KO Ctrl model from the earlier project thread:
-# SAFE is armed during live play; FULL only comes on after a whole team is KO'd.
-# Deliberately DO NOT add later resolver/phase/live-fighter experiments here.
+# Commit f971adb's V41 packet covers result state 11. The live stuck case also
+# enters state 12: 0x80076820 skips the controller reader there, and 0x80076A80
+# strips direction bits. Keep those two result-only gates in FULL.
 KO_CONTROL_FULL_PACKET = (
     POST_KO_CONTROL_PACKET
     + FORCE_RESULT_PAD_ROUTE
@@ -1147,7 +1140,7 @@ def apply_ko_control_auto_mode(mode: str, *, verify: bool = True) -> dict:
     elif mode == "full":
         payload = KO_CONTROL_FULL_PACKET
 
-    packet = tuple(KO_DOL_ORIGINALS_U32) + tuple(payload)
+    packet = KO_DOL_ORIGINALS_U32 + tuple(payload)
 
     wrote, verified, failed, total = _write_code_packet_count(
         packet,
@@ -1326,13 +1319,13 @@ def _ko_ctrl_bridge_survivor_input(slot: str, base: int) -> dict:
         native_held = 0
 
     previous_token = int(_KO_SURVIVOR_INPUT_PREV.get(base_i, 0) or 0) & 0xFF
-    token_changed = token != previous_token
-    native_low = native_held & 0xFF
-    needs_bridge = native_low != token
+    native_directions = native_held & 0x0F
+    compact_directions = token & 0x0F
+    needs_bridge = bool(token and (native_held == 0 or native_directions != compact_directions))
 
     # If native input is already following the compact source, leave it alone.
     # Keep our edge baseline synchronized so a later fallback starts cleanly.
-    if not needs_bridge and not token_changed:
+    if not needs_bridge:
         _KO_SURVIVOR_INPUT_PREV[base_i] = token
         return {
             "bridged": 0, "wrote": 0, "slot": str(slot or "?"),
@@ -1409,6 +1402,10 @@ def _ko_ctrl_release_survivors(snaps: dict, state: dict, now: float, baseline_by
     This is deliberately survivor-only. It does not revive the losing team,
     rewind the round manager, alter HP, or touch camera/result globals.
     """
+    native_scene = read_ko_native_battle_state()
+    if native_scene not in KO_NATIVE_RESULT_STATES:
+        return {"released": 0, "bridged": 0, "wrote": 0, "slots": [], "input_slots": []}
+
     dead_team = ""
     if bool((state or {}).get("p1_dead")) and not bool((state or {}).get("p2_dead")):
         dead_team = "P1"
@@ -1470,6 +1467,8 @@ def _ko_ctrl_release_survivors(snaps: dict, state: dict, now: float, baseline_by
 
     for slot, snap, base, _point_active in candidates:
         action = _ko_ctrl_snap_u32(snap, "attA", base, 0x1E8, 0)
+        if action not in KO_SURVIVOR_RESULT_ACTIONS and action != 1:
+            continue
 
         last = float(_KO_SURVIVOR_RELEASE_LAST.get(base, 0.0) or 0.0)
         if (float(now) - last) < KO_SURVIVOR_RELEASE_INTERVAL_SEC:
@@ -1477,12 +1476,6 @@ def _ko_ctrl_release_survivors(snaps: dict, state: dict, now: float, baseline_by
         _KO_SURVIVOR_RELEASE_LAST[base] = float(now)
 
         baseline_entry = (baseline_by_slot or {}).get(slot) if isinstance(baseline_by_slot, dict) else None
-
-        # Once Win Pose has been released, do not keep rewriting the fighter's
-        # control words while it is action 1. The recomp shows the missing input
-        # is upstream in 0x800767B0: result states 9/12 can skip the native pad
-        # read entirely. With that gate patched, the game's own action resolver
-        # must be allowed to mutate the fighter state naturally.
 
         # Once result action 0x2A has already landed, move the survivor back to
         # the generic idle cluster. Stop touching the action as soon as the game
@@ -1512,6 +1505,23 @@ def _ko_ctrl_release_survivors(snaps: dict, state: dict, now: float, baseline_by
                     )
                 except Exception:
                     pass
+
+        elif action == 1:
+            # A survivor can already be in idle while its +0x60/+0x64 result
+            # control words still block movement. Restore only the character's
+            # own neutral control values captured before the KO; stop as soon
+            # as the game accepts a non-idle action.
+            neutral = _ko_ctrl_apply_neutral_controls(slot, base, snap, baseline_entry)
+            wrote += int(neutral.get("wrote") or 0)
+
+        # The result scene can continue updating the compact pad shadow while
+        # leaving the interpreter packet neutral. Feed only this living point
+        # fighter, and only while it is idle or trapped in the win pose.
+        bridge = _ko_ctrl_bridge_survivor_input(slot, base)
+        bridged += int(bridge.get("bridged") or 0)
+        wrote += int(bridge.get("wrote") or 0)
+        if bridge.get("bridged"):
+            input_slots.append(slot)
 
     return {
         "released": released, "bridged": bridged, "wrote": wrote,
@@ -1712,29 +1722,19 @@ def maintain_ko_survivor_control(enabled: bool, snaps: dict, now: float, baselin
 
 
 def tick_ko_control_auto(enabled: bool, live_active: bool, snaps: dict, now: float, last_apply: float, *, verify: bool = False, baseline_by_slot: dict | None = None) -> tuple[bool, float, dict | None, dict]:
-    """Auto-arm KO Control without leaking into the next arcade match.
-
-    SAFE stays armed during live play. FULL activates after a full-team KO,
-    lingers through the result transition, then returns to SAFE when both teams
-    are live again. Turning the button OFF restores the original instructions.
-    """
+    """Run the V41 SAFE/FULL timing and release a trapped winning fighter."""
     state = ko_ctrl_team_ko_state(snaps)
-    native_battle_state = read_ko_native_battle_state()
-    native_result_now = native_battle_state in KO_NATIVE_RESULT_STATES
     result = None
     now = float(now)
     last_apply = float(last_apply or 0.0)
 
     full_until = float(getattr(tick_ko_control_auto, "full_until", 0.0) or 0.0)
     safe_last = float(getattr(tick_ko_control_auto, "safe_last", 0.0) or 0.0)
-    post_ko_latched = bool(getattr(tick_ko_control_auto, "post_ko_latched", False))
 
     if not enabled:
+        maintain_ko_survivor_control(False, snaps, now, baseline_by_slot)
         tick_ko_control_auto.full_until = 0.0
         tick_ko_control_auto.safe_last = 0.0
-        tick_ko_control_auto.post_ko_latched = False
-        tick_ko_control_auto.last_mode = "off"
-        _ko_ctrl_reset_survivor_release_state()
         if live_active or (now - safe_last) > 0.01:
             result = apply_ko_control_auto_mode("off", verify=verify)
         return False, now, result, state
@@ -1742,76 +1742,37 @@ def tick_ko_control_auto(enabled: bool, live_active: bool, snaps: dict, now: flo
     both_live = bool(state.get("both_loaded") and not state.get("any_team_dead"))
     full_ko_now = bool(state.get("both_loaded") and state.get("any_team_dead"))
 
-    # Enter FULL as soon as either the snapshots prove a team KO or the game's
-    # own battle object enters a result phase. Once entered, stay latched. A
-    # post-KO action can move the native state out of 9..12 even though the
-    # defeated team is still dead, so native-state family membership is not a
-    # valid signal to turn FULL back off.
-    if full_ko_now or native_result_now:
-        post_ko_latched = True
-        tick_ko_control_auto.post_ko_latched = True
-        full_until = max(full_until, now + KO_SURVIVOR_FULL_LATCH_SEC)
+    if full_ko_now:
+        full_until = max(full_until, now + 10.0)
         tick_ko_control_auto.full_until = full_until
 
-    # A new live round is the only normal reset condition: the game is back in
-    # its known live battle state and both teams are loaded with no KO fighter.
-    # This lets FULL survive arbitrary result-state changes while the winner is
-    # moving post-KO, but drops the aggressive controller route as soon as the
-    # next real round/match is ready.
-    new_live_round = bool(post_ko_latched and native_battle_state == 4 and both_live)
-    if new_live_round:
-        post_ko_latched = False
-        tick_ko_control_auto.post_ko_latched = False
+    if both_live:
         full_until = 0.0
         tick_ko_control_auto.full_until = 0.0
-        _ko_ctrl_reset_survivor_release_state()
-
-    if post_ko_latched:
-        want = "full"
-        want_full = True
-    elif full_ko_now or native_result_now:
-        # Defensive fallback for the same tick that establishes the latch.
+        want = "safe"
+        want_full = False
+    elif full_ko_now or (now < full_until):
         want = "full"
         want_full = True
     else:
         want = "safe"
         want_full = False
 
-    prior_mode = str(getattr(tick_ko_control_auto, "last_mode", "") or "")
-    if want != prior_mode:
-        try:
-            print(
-                f"[ko control] auto -> {want.upper()} "
-                f"native_state={native_battle_state if native_battle_state is not None else '?'} "
-                f"snapshot={state.get('summary', '?')}",
-                flush=True,
-            )
-        except Exception:
-            pass
-        tick_ko_control_auto.last_mode = want
-
     interval = 0.75 if want == "full" else 1.50
     if (want_full != bool(live_active)) or ((now - last_apply) > interval):
         result = apply_ko_control_auto_mode(want, verify=verify)
-        applied_ok = bool(result.get("ok", False))
-        live_active = bool(want_full and applied_ok)
+        live_active = bool(want_full and result.get("ok", False))
         last_apply = now
-        if want == "safe" and applied_ok:
+        if want == "safe" and result.get("ok", False):
             tick_ko_control_auto.safe_last = now
 
-    release_result = {"released": 0, "wrote": 0, "slots": []}
-    if want_full and (bool(live_active) or bool(result and result.get("ok", False))):
-        release_result = _ko_ctrl_release_survivors(snaps, state, now, baseline_by_slot=baseline_by_slot)
-
     state = dict(state or {})
-    state["native_battle_state"] = native_battle_state
-    state["native_result_now"] = bool(native_result_now)
-    state["post_ko_latched"] = bool(post_ko_latched)
-    state["new_live_round"] = bool(new_live_round)
     state["auto_mode"] = want
     state["full_until"] = full_until
     state["apply_ok"] = bool(result.get("ok", True)) if isinstance(result, dict) else True
-    state["survivor_release"] = release_result
+    state["survivor_release"] = maintain_ko_survivor_control(
+        bool(want_full and live_active), snaps, now, baseline_by_slot
+    )
     return bool(live_active), float(last_apply or 0.0), result, state
 
 

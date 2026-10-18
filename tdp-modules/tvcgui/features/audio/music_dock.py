@@ -27,8 +27,8 @@ class MusicDock:
                     controller._message = f'Music selection failed: {ex!s}'
 
     def frame_mouse(self, *, visible: bool, inside: bool, left_pressed: bool):
-        # mixer operations happen on the existing pygame GUI thread.
-        controller.tick()
+        # Start the independent audio loop once; rendering never drives songs.
+        controller.ensure_audio_service()
         p = bool(left_pressed)
         if not visible:
             self._inside = False

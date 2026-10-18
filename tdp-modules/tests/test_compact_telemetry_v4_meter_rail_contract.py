@@ -42,4 +42,5 @@ def test_bbq_remains_character_owned_on_health_rows():
 def test_meter_rail_cost_is_included_in_panel_height():
     team = _body("_draw_compact_team_panel", "draw_overlay")
     assert "meter_rail_layout_extra = meter_rail_height + meter_rail_gap" in team
-    assert "+ meter_rail_layout_extra + research_layout_extra" in team
+    assert "if not show_meter_rail:\n        meter_rail_layout_extra = 0" in team
+    assert "+ meter_rail_layout_extra + frame_data_layout_extra" in team

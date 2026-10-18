@@ -10,12 +10,20 @@ import sys
 import threading
 import traceback
 import zipfile
+from collections import OrderedDict
 from datetime import datetime
 import pygame
 from tvcgui.core.subprocess_compat import frozen_exe
 
 
 from tvcgui.core.paths import resource_path
+from tvcgui.core.settings_bundle import apply_pending_settings
+
+# Import preferences before feature modules load their module-level settings.
+try:
+    apply_pending_settings()
+except Exception as error:
+    print(f"[settings] queued import could not be applied: {error!r}", flush=True)
 
 # Python 3.13 + pygame 2.6.1 can hard-abort inside pygame.event.get()
 # with PyEval_RestoreThread before Python can raise/catch an exception.
@@ -128,7 +136,7 @@ from tvcgui.features.frame_data.binding import (
 from tvcgui.features.training.flags import read_training_flags
 from tvcgui.ui.debug_panel import read_debug_flags, draw_debug_overlay
 
-from tvcgui.platform.dolphin import hook, rd8, rd32, wd8, wd32, wbytes, addr_in_ram, rbytes, prime_mem2_latch, set_emulated_write_quarantine
+from tvcgui.platform.dolphin import hook, rd8, rd32, wd8, wd32, wbytes, rbytes, set_emulated_write_quarantine
 from tvcgui.runtime.punish_training import (
     load_punish_trainer_config,
     save_punish_trainer_config,
@@ -221,9 +229,12 @@ from tvcgui.ui.portraits import (
     get_portrait_for_snap,
 )
 
-from tvcgui.tools.scanners.fighter_resolver import RESOLVER, pick_posy_off_no_jump
-from tvcgui.features.combat.meter import read_meter, METER_CACHE
-from tvcgui.tools.scanners.fighter_state import read_fighter, dist2
+from tvcgui.features.combat.meter import read_meter
+from tvcgui.tools.scanners.fighter_state import dist2
+from tvcgui.runtime.fighter_frames import (
+    read_fighter_frame, resolve_bases, compute_team_giant_solo,
+)
+from tvcgui.runtime.session_recording import recorder as session_recorder
 from tvcgui.features.combat.advantage import ADV_TRACK
 from tvcgui.features.combat.timing_engine import TIMING_ENGINE
 from tvcgui.features.combat.projectile_level_detector import PROJECTILE_LEVEL_DETECTOR
@@ -402,7 +413,6 @@ FIGHTER_BLOCK_SIZE = 0x120
 # Include 51 so generic hit logging also recognizes the low/crouching reaction lane.
 REACTION_STATES = {48, 51, 64, 65, 66, 73, 79, 80, 81, 82, 90, 92, 95, 96, 97}
 
-GIANT_IDS = {11, 22}
 
 from tvcgui.runtime.megacrash import (
     MissionMegacrashRealtime,
@@ -438,6 +448,7 @@ from tvcgui.runtime.utilities import (
     FD_MISSING_PROFILE_BUILD_DELAY_SEC,
     FD_MISSING_PROFILE_BUILD_MIN_INTERVAL_SEC,
     FD_WORKBENCH_PREWARM_ENABLED,
+    PERF_LOG_ENABLED,
     PERF_FRAME_WARN_MS,
     _PERF_LAST_ELAPSED_MS,
     _copy_to_clipboard,
@@ -533,16 +544,6 @@ def merged_debug_values():
     return core_flags + remaining_training
 
 
-def safe_read_fighter(base: int, yoff: int) -> dict | None:
-    try:
-        snap = read_fighter(base, yoff)
-    except Exception as e:
-        print(f"[safe_read_fighter] read_fighter raised {e!r} for base=0x{base:08X}")
-        return None
-    return snap if snap else None
-
-
-
 def _responsive_fonts(size: tuple[int, int]):
     """Build readable fonts that track the resized main window."""
     try:
@@ -582,51 +583,6 @@ def init_pygame():
         pygame.display.set_icon(icon)
 
     return screen, font, smallfont
-
-
-def resolve_bases(last_base_by_ptr: dict, y_off_by_base: dict) -> list:
-    resolved = []
-    for slotname, ptr_addr, teamtag in SLOTS:
-        raw_base = rd32(ptr_addr)
-        if raw_base is None or not addr_in_ram(raw_base):
-            base = None
-        else:
-            base = raw_base
-
-        changed = base is not None and last_base_by_ptr.get(ptr_addr) != base
-        if base:
-            # Non-blocking MEM2 primer. This keeps the tool armed when it was
-            # launched from menus: as soon as any live fighter pointer appears,
-            # dolphin_io can latch the correct MEM2 host map before read
-            # fighter/y-position data.
-            try:
-                prime_mem2_latch()
-            except Exception:
-                pass
-
-        if base and changed:
-            last_base_by_ptr[ptr_addr] = base
-            METER_CACHE.drop(base)
-            y_off_by_base[base] = pick_posy_off_no_jump(base)
-
-        resolved.append((slotname, teamtag, base))
-    return resolved
-
-
-def compute_team_giant_solo(snaps: dict) -> tuple[bool, bool]:
-    def team_solo(prefix: str) -> bool:
-        c1 = snaps.get(f"{prefix}-C1")
-        c2 = snaps.get(f"{prefix}-C2")
-        if not c1:
-            return False
-        if (c1.get("id") or 0) not in GIANT_IDS:
-            return False
-        if not c2:
-            return True
-        b1, b2 = c1.get("base"), c2.get("base")
-        return isinstance(b1, int) and isinstance(b2, int) and b1 == b2
-
-    return team_solo("P1"), team_solo("P2")
 
 
 def ensure_scan_now(last_scan_normals, last_scan_time):
@@ -798,6 +754,31 @@ def _meter_value_text_color(raw_meter: int | float) -> tuple[int, int, int]:
     return stops[-1][1]
 
 
+_PANEL_PORTRAIT_CACHE = OrderedDict()
+_PANEL_PORTRAIT_CACHE_LIMIT = 96
+
+
+def _panel_portrait(portrait: pygame.Surface, size: int, *, active: bool,
+                    ko: bool) -> pygame.Surface:
+    """Reuse the fixed-size card portrait until its source or state changes."""
+    key = (id(portrait), int(size), bool(active), bool(ko))
+    cached = _PANEL_PORTRAIT_CACHE.get(key)
+    if cached is not None and cached[0] is portrait:
+        _PANEL_PORTRAIT_CACHE.move_to_end(key)
+        return cached[1]
+    scaled = pygame.transform.smoothscale(portrait, (size, size))
+    if not active:
+        scaled = scaled.copy()
+        veil = pygame.Surface(scaled.get_size(), pygame.SRCALPHA)
+        veil.fill((18, 12, 12, 80) if ko else (0, 0, 0, 35))
+        scaled.blit(veil, (0, 0))
+    _PANEL_PORTRAIT_CACHE[key] = (portrait, scaled)
+    _PANEL_PORTRAIT_CACHE.move_to_end(key)
+    while len(_PANEL_PORTRAIT_CACHE) > _PANEL_PORTRAIT_CACHE_LIMIT:
+        _PANEL_PORTRAIT_CACHE.popitem(last=False)
+    return scaled
+
+
 def draw_panel_polished_stats(
     surf: pygame.Surface,
     rect: pygame.Rect,
@@ -892,12 +873,8 @@ def draw_panel_polished_stats(
     )
     if portrait is not None:
         try:
-            p = pygame.transform.smoothscale(portrait, (portrait_rect.width, portrait_rect.height))
-            if not is_active_panel:
-                p = p.copy()
-                veil = pygame.Surface(p.get_size(), pygame.SRCALPHA)
-                veil.fill((18, 12, 12, 80) if ko_state else (0, 0, 0, 35))
-                p.blit(veil, (0, 0))
+            p = _panel_portrait(portrait, portrait_rect.width,
+                                active=is_active_panel, ko=ko_state)
             surf.blit(p, portrait_rect.topleft)
         except Exception:
             pygame.draw.rect(surf, (28, 31, 42), portrait_rect, border_radius=4)
@@ -1241,13 +1218,19 @@ def legacy_main():
     ko_control_full_enabled = False
     ko_control_live_active = False
     ko_control_patch_watch_last = 0.0
+    ko_control_backend_error = ""
+    ko_baseline_next_capture = 0.0
     ko_global_hold_baseline = None
 
     # Off by default means the DOL addresses are restored when the GUI starts,
     # not merely that the button is visually off.
     try:
-        apply_ko_control_auto_mode("off", verify=False)
-        print("[ko control] default OFF; restored KO/input DOL originals", flush=True)
+        _ko_startup_restore = apply_ko_control_auto_mode("off", verify=False)
+        if bool(_ko_startup_restore.get("ok")):
+            print("[ko control] default OFF; restored KO/input DOL originals", flush=True)
+        else:
+            ko_control_backend_error = "KO Control unavailable: Dolphin code patch backend refused the patch"
+            print(f"[ko control] {ko_control_backend_error}", flush=True)
     except Exception as _e:
         print(f"[ko control] default OFF restore skipped: {_e!r}", flush=True)
 
@@ -1424,7 +1407,7 @@ def legacy_main():
 
     _profile_console = str(os.environ.get("TVC_PROFILE_CONSOLE", "")).strip().lower() in {"1", "true", "yes", "on"}
     _attack_property_console_value = str(
-        os.environ.get("TVC_ATTACK_PROPERTY_DEBUG", "1")
+        os.environ.get("TVC_ATTACK_PROPERTY_DEBUG", "0")
     ).strip().lower()
     _attack_property_console = _attack_property_console_value not in {
         "0", "false", "no", "off"
@@ -1456,8 +1439,8 @@ def legacy_main():
                 )
             else:
                 print(
-                    "[attack flags] raw console disabled by "
-                    "TVC_ATTACK_PROPERTY_DEBUG=0",
+                    "[attack flags] raw console off; set "
+                    "TVC_ATTACK_PROPERTY_DEBUG=1 to enable",
                     flush=True,
                 )
         except Exception as _runtime_attack_property_profiler_error:
@@ -1658,6 +1641,50 @@ def legacy_main():
         nonlocal hud_info_set
         hud_info_set = "CUSTOM"
 
+    def _apply_hud_settings(values: dict) -> None:
+        nonlocal show_interaction_card, show_combo_card, show_damage_badge
+        nonlocal show_untech_panel, show_damage_inactive, show_meter_panel
+        nonlocal show_red_health_panel, show_tag_card
+        from tvcgui.ui.hud_settings import HUD_KEYS
+        if not isinstance(values, dict) or set(values) != set(HUD_KEYS):
+            return
+        show_interaction_card = bool(values["show_interaction_card"])
+        show_combo_card = bool(values["show_combo_card"])
+        show_damage_badge = bool(values["show_damage_badge"])
+        show_untech_panel = bool(values["show_untech_panel"])
+        show_damage_inactive = False
+        show_meter_panel = bool(values["show_meter_panel"])
+        show_red_health_panel = bool(values["show_red_health_panel"])
+        show_tag_card = bool(values["show_tag_card"])
+        _mark_hud_info_set_custom()
+        _write_master_control()
+
+    def _hud_settings_snapshot() -> dict:
+        from tvcgui.features.overlay import customization as _overlay_customization
+        _appearance = _overlay_customization.load()
+        snapshot = {
+            "show_interaction_card": show_interaction_card,
+            "show_combo_card": show_combo_card,
+            "show_damage_badge": show_damage_badge,
+            "show_untech_panel": show_untech_panel,
+            "show_meter_panel": show_meter_panel,
+            "show_red_health_panel": show_red_health_panel,
+            "show_tag_card": show_tag_card,
+            "hud_info_set": hud_info_set,
+        }
+        for _key in ("show_health", "show_inputs", "show_move_timing", "show_meter_rail"):
+            snapshot[_key] = bool(_appearance[_key])
+        if _appearance["show_damage_scaling"] is not None:
+            snapshot["show_damage_badge"] = bool(_appearance["show_damage_scaling"])
+        snapshot["show_untech_panel"] = bool(snapshot["show_untech_panel"] and _appearance["show_stun"])
+        # CORE's legacy renderer keeps these two rows visible even though the
+        # saved dock flags are false. Show the effective state in HUD Settings.
+        if hud_info_set == "CORE":
+            if _appearance["show_damage_scaling"] is None:
+                snapshot["show_damage_badge"] = True
+            snapshot["show_untech_panel"] = bool(_appearance["show_stun"])
+        return snapshot
+
     def _launch_master_overlay():
         nonlocal master_overlay_proc, master_overlay_active
         try:
@@ -1851,8 +1878,10 @@ def legacy_main():
         }
         try:
             os.makedirs(os.path.dirname(MASTER_CONTROL_FILE), exist_ok=True)
-            with open(MASTER_CONTROL_FILE, "w", encoding="utf-8") as f:
+            temporary_control = MASTER_CONTROL_FILE + ".tmp"
+            with open(temporary_control, "w", encoding="utf-8") as f:
                 json.dump(payload, f, indent=2)
+            os.replace(temporary_control, MASTER_CONTROL_FILE)
         except Exception:
             pass
 
@@ -2109,6 +2138,14 @@ def legacy_main():
     chrsel_quarantine_next_tick = 0.0
     chrsel_quarantine_active = False
     CHRSEL_QUARANTINE_TICK_INTERVAL = 0.20
+    gui_perf_max_ms = {
+        key: 0.0 for key in (
+            "scan_result", "runtime", "draw", "draw_background", "draw_dock",
+            "draw_cards", "draw_workspace", "draw_status", "draw_flip",
+            "post_draw", "frame",
+        )
+    }
+    gui_perf_next_event = 0.0
 
     # ------------------------------------------------------------------
     # Main loop
@@ -2383,6 +2420,7 @@ def legacy_main():
                 except Exception as _frame_sheet_rich_export_error:
                     if frame_idx % 300 == 0:
                         print(f"[fd sheet] completed scan export failed: {_frame_sheet_rich_export_error!r}", flush=True)
+        _frame_scan_end = time.perf_counter()
 
         # Resolve slot bases
         resolved_slots = resolve_bases(last_base_by_ptr, y_off_by_base)
@@ -2402,15 +2440,13 @@ def legacy_main():
                 continue
 
             yoff = y_off_by_base.get(base, 0xF4)
-            snap = safe_read_fighter(base, yoff)
+            snap, blk = read_fighter_frame(base, yoff, FIGHTER_BLOCK_SIZE)
             if not snap:
                 continue
 
             snap["base"]     = base
             snap["teamtag"]  = teamtag
             snap["slotname"] = slotname
-
-            blk = rbytes(base, FIGHTER_BLOCK_SIZE)
 
             true_id_current = None
             if blk:
@@ -2616,6 +2652,20 @@ def legacy_main():
                 snap, portraits, placeholder_portrait
             )
 
+        # Capture the same snapshots that drive the HUD. Recording adds no
+        # extra fighter reads and stays idle until enabled in Settings.
+        if session_recorder.status()[0]:
+            try:
+                from tvcgui.features.audio.music_player import controller as music_controller
+                recording_context = music_controller.recording_context()
+            except Exception:
+                recording_context = {}
+            recording_context = dict(recording_context or {})
+            recording_context["ko_control_enabled"] = bool(ko_control_full_enabled)
+            recording_context["ko_control_active"] = bool(ko_control_live_active)
+            recording_context["ko_control_backend_error"] = str(ko_control_backend_error or "")
+            session_recorder.capture(frame_idx, now, snaps, context=recording_context)
+
         # Giant normalisation
         p1_giant_solo, p2_giant_solo = compute_team_giant_solo(snaps)
         if p1_giant_solo or p2_giant_solo:
@@ -2636,6 +2686,23 @@ def legacy_main():
                     verify=False,
                     baseline_by_slot=ko_rewind_baseline_by_slot,
                 )
+                _ko_release = _ko_auto_state.get("survivor_release") if isinstance(_ko_auto_state, dict) else {}
+                _ko_release_changed = int((_ko_release or {}).get("wrote") or 0) > 0
+                if isinstance(_ko_auto_result, dict) or (
+                    _ko_release_changed and frame_idx % 10 == 0
+                ):
+                    session_recorder.capture_event(now, "ko_control_tick", {
+                        "mode": _ko_auto_state.get("auto_mode"),
+                        "native_battle_state": _ko_auto_state.get("native_battle_state"),
+                        "team_state": _ko_auto_state.get("summary"),
+                        "patch_ok": _ko_auto_state.get("apply_ok"),
+                        "wrote": (_ko_auto_result or {}).get("wrote"),
+                        "total": (_ko_auto_result or {}).get("total"),
+                        "released": (_ko_release or {}).get("released"),
+                        "survivor_wrote": (_ko_release or {}).get("wrote"),
+                        "survivor_slots": (_ko_release or {}).get("slots"),
+                        "input_slots": (_ko_release or {}).get("input_slots"),
+                    })
                 if isinstance(_ko_auto_result, dict) and not bool(_ko_auto_result.get("ok", True)):
                     if frame_idx % 120 == 0:
                         print(f"[ko control] auto patch apply incomplete: {_ko_auto_result}", flush=True)
@@ -2870,8 +2937,16 @@ def legacy_main():
         megacrash_trainer_state = _tick_megacrash_trainer(megacrash_trainer_state, snaps, now, frame_idx)
         _perf_warn("megacrash_tick", _perf_section_start)
 
-        # KO lab v4: learn a rolling last-good pre-KO frame for each live slot.
-        ko_rewind_baseline_by_slot = capture_ko_rewind_baselines(snaps, render_snap_by_slot, ko_rewind_baseline_by_slot)
+        # The rewind reader touches dozens of guest addresses per fighter.
+        # A recent baseline is enough for KO release; keep it off the 60 FPS
+        # path when KO Control and the old lab holds are inactive.
+        if (ko_control_full_enabled or idle_restore_hold_until_by_slot) and now >= ko_baseline_next_capture:
+            _ko_baseline_perf_start = time.perf_counter()
+            ko_rewind_baseline_by_slot = capture_ko_rewind_baselines(
+                snaps, render_snap_by_slot, ko_rewind_baseline_by_slot
+            )
+            ko_baseline_next_capture = now + 0.25
+            _perf_warn("ko_baseline", _ko_baseline_perf_start)
 
         # KO lab: keep reapplying the rewind packet for a short burst after the
         # click.  This makes it obvious the button fired and fights the
@@ -3045,8 +3120,19 @@ def legacy_main():
         # ------------------------------------------------------------------
         # Rendering
         # ------------------------------------------------------------------
+        _frame_runtime_end = time.perf_counter()
         screen.fill(COL_BG)
         w, h = screen.get_size()
+
+        from tvcgui.ui.hud_settings import drain as _drain_hud_settings
+        for _hud_command, _hud_value in _drain_hud_settings():
+            if _hud_command == "builtin":
+                _apply_hud_info_set(_hud_value)
+                _write_master_control()
+            elif _hud_command == "hud":
+                _apply_hud_settings(_hud_value)
+            elif _hud_command == "research" and open_attack_resolver_window is not None:
+                open_attack_resolver_window()
 
         dock_anim_now = time.perf_counter()
         dock_anim_dt = max(0.0, min(0.05, dock_anim_now - dock_tools_anim_last))
@@ -3183,6 +3269,7 @@ def legacy_main():
             r.y = int(y)
             return r, max(0, min(255, alpha))
 
+        _draw_background_end = time.perf_counter()
         # Top command dock. The master process is a transparent compositor and
         # stays alive even when every individual HUD layer is currently hidden.
         _check_master_overlay_proc()
@@ -3222,6 +3309,7 @@ def legacy_main():
             char_test_active=_char_test_active_for_dock(),
             ko_control_enabled=bool(ko_control_full_enabled),
             ko_control_live_active=bool(ko_control_live_active),
+            ko_control_unavailable=bool(ko_control_backend_error),
             solo_team_active=_solo_team_active_for_dock(),
             action_spoof_active=punish_trainer_active,
             tools_open=bool(dock_tools_open),
@@ -3229,6 +3317,7 @@ def legacy_main():
             mouse_pos=(mx_h, my_h),
             t_ms=t_ms,
         )
+        _draw_dock_end = time.perf_counter()
 
         # Panel rects
         r_p1c1, a_p1c1 = anim_rect_and_alpha("P1-C1", layout["p1c1"])
@@ -3444,6 +3533,7 @@ def legacy_main():
             btn_p2c2         = pygame.Rect(0, 0, 0, 0)
             profile_btn_p2c2 = pygame.Rect(0, 0, 0, 0)
             mission_btn_p2c2 = pygame.Rect(0, 0, 0, 0)
+        _draw_cards_end = time.perf_counter()
 
         # Bottom inspector workspace: one active tab at a time. This prevents
         # the Normals Preview from being clipped while keeping Events, Debug,
@@ -3581,6 +3671,7 @@ def legacy_main():
         )
         hud_mgr.check_proc()
 
+        _draw_workspace_end = time.perf_counter()
         status_parts = []
         status_parts.append("Dolphin hooked")
         status_parts.append("Overlay ON" if overlay_enabled else "Overlay OFF")
@@ -3649,6 +3740,8 @@ def legacy_main():
             status_parts.append(punish_status)
         if bool(ko_control_full_enabled):
             status_parts.append("KO Ctrl ON")
+        elif ko_control_backend_error:
+            status_parts.append(ko_control_backend_error)
         if float(idle_restore_status.get("until", 0.0) or 0.0) > now:
             _idle_status_text = str(idle_restore_status.get("text") or "")
             if _idle_status_text:
@@ -3660,7 +3753,9 @@ def legacy_main():
             text=" | ".join(status_parts),
         )
 
+        _draw_status_end = time.perf_counter()
         pygame.display.flip()
+        _frame_draw_end = time.perf_counter()
 
         # ------------------------------------------------------------------
         # Click handling
@@ -3758,15 +3853,8 @@ def legacy_main():
                 continue
 
             elif info_set_btn_rect.collidepoint(mx, my):
-                next_set = {
-                    "CORE": "RESEARCH",
-                    "RESEARCH": "FULL",
-                    "FULL": "CORE",
-                    "CUSTOM": "CORE",
-                }.get(str(hud_info_set).upper(), "CORE")
-                _apply_hud_info_set(next_set)
-                _write_master_control()
-                _sync_master_overlay_state()
+                from tvcgui.ui.hud_settings_window import open_window as open_hud_settings
+                open_hud_settings(_hud_settings_snapshot())
                 mouse_clicked_pos = None
                 continue
 
@@ -3980,6 +4068,10 @@ def legacy_main():
                 continue
 
             elif ko_control_btn_rect.collidepoint(mx, my):
+                if ko_control_backend_error:
+                    idle_restore_status = {"text": ko_control_backend_error, "until": now + 5.0}
+                    mouse_clicked_pos = None
+                    continue
                 ko_control_full_enabled = not bool(ko_control_full_enabled)
                 ko_control_live_active = False
                 ko_dol_patch_index = -1
@@ -3987,9 +4079,25 @@ def legacy_main():
                 ko_global_hold_baseline = None
                 result = apply_ko_control_auto_mode("safe" if ko_control_full_enabled else "off", verify=True)
                 ko_control_patch_watch_last = now if ko_control_full_enabled else 0.0
+                if ko_control_full_enabled and not bool(result.get("ok")):
+                    ko_control_full_enabled = False
+                    ko_control_backend_error = "KO Control unavailable: Dolphin code patch backend refused the patch"
+                elif ko_control_full_enabled:
+                    ko_control_backend_error = ""
+                    ko_baseline_next_capture = 0.0
+                session_recorder.capture_event(now, "ko_control_toggle", {
+                    "enabled": bool(ko_control_full_enabled),
+                    "patch_ok": bool(result.get("ok")),
+                    "wrote": int(result.get("wrote") or 0),
+                    "total": int(result.get("total") or 0),
+                    "critical_ok": bool(result.get("critical_ok", True)),
+                })
                 if not ko_control_full_enabled:
                     maintain_ko_survivor_control(False, {}, now)
-                idle_restore_status = {"text": ko_dol_status_text(result), "until": now + 5.0}
+                status_text = (
+                    ko_control_backend_error or ko_dol_status_text(result)
+                )
+                idle_restore_status = {"text": status_text, "until": now + 5.0}
                 print(f"[ko control] {idle_restore_status['text']}", flush=True)
                 mouse_clicked_pos = None
                 continue
@@ -4618,7 +4726,41 @@ def legacy_main():
                     ])
             pending_hits.clear()
 
-        _perf_warn("frame_work", _frame_perf_start, threshold_ms=PERF_FRAME_WARN_MS)
+        _frame_work_end = time.perf_counter()
+        _gui_sections = {
+            "scan_result": (_frame_scan_end - _frame_perf_start) * 1000.0,
+            "runtime": (_frame_runtime_end - _frame_scan_end) * 1000.0,
+            "draw": (_frame_draw_end - _frame_runtime_end) * 1000.0,
+            "draw_background": (_draw_background_end - _frame_runtime_end) * 1000.0,
+            "draw_dock": (_draw_dock_end - _draw_background_end) * 1000.0,
+            "draw_cards": (_draw_cards_end - _draw_dock_end) * 1000.0,
+            "draw_workspace": (_draw_workspace_end - _draw_cards_end) * 1000.0,
+            "draw_status": (_draw_status_end - _draw_workspace_end) * 1000.0,
+            "draw_flip": (_frame_draw_end - _draw_status_end) * 1000.0,
+            "post_draw": (_frame_work_end - _frame_draw_end) * 1000.0,
+            "frame": (_frame_work_end - _frame_perf_start) * 1000.0,
+        }
+        if _gui_sections["frame"] > gui_perf_max_ms["frame"]:
+            gui_perf_max_ms = _gui_sections
+        if now >= gui_perf_next_event:
+            if PERF_LOG_ENABLED and gui_perf_max_ms["frame"] >= PERF_FRAME_WARN_MS:
+                print(
+                    "[perf] frame_work {frame:.1f}ms "
+                    "scan={scan_result:.1f} runtime={runtime:.1f} "
+                    "draw={draw:.1f} "
+                    "[bg={draw_background:.1f} dock={draw_dock:.1f} "
+                    "cards={draw_cards:.1f} workspace={draw_workspace:.1f} "
+                    "status={draw_status:.1f} flip={draw_flip:.1f}] "
+                    "post={post_draw:.1f}".format(**gui_perf_max_ms),
+                    flush=True,
+                )
+            if session_recorder.status()[0]:
+                session_recorder.capture_event(now, "gui_perf", {
+                    key: round(value, 1) for key, value in gui_perf_max_ms.items()
+                })
+            gui_perf_max_ms = {key: 0.0 for key in gui_perf_max_ms}
+            gui_perf_next_event = now + 1.0
+        _perf_warn("frame_work", _frame_perf_start, threshold_ms=float("inf"))
         clock.tick(TARGET_FPS)
         frame_idx += 1
 

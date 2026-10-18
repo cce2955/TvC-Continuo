@@ -39,6 +39,40 @@ def test_per_hit_clock_advances_from_native_timer_and_stops_at_target():
     assert expired["hitstun_untech_expired"] is True
 
 
+def test_stalled_native_clock_retires_after_twice_its_span_of_game_frames():
+    hs._LATCHES.clear()
+    def sample(frame, stamp):
+        state = _state(3, 1, loss=0, counter=0)
+        state.update(_hitstun_sample_ns=stamp, _hitstun_victim_action_id=0x55,
+                     _hitstun_victim_action_frame=frame)
+        return state
+    assert hs._apply_untech_latch("P1", sample(10, 100))["hitstun_clock_remaining"] == 3
+    for frame in range(11, 16):
+        assert hs._apply_untech_latch("P1", sample(frame, frame + 100))["hitstun_clock_remaining"] == 3
+    assert hs._apply_untech_latch("P1", sample(15, 200))["hitstun_clock_remaining"] == 3
+    assert hs._apply_untech_latch("P1", sample(16, 201))["hitstun_clock_remaining"] == 0
+
+
+def test_retired_clock_ignores_same_native_value_until_new_contact():
+    hs._LATCHES.clear()
+    def sample(frame, stamp, *, hp=900, combo=1, counter=0):
+        state = _state(3, combo, hp=hp, loss=0, counter=counter)
+        state.update(_hitstun_sample_ns=stamp, _hitstun_victim_action_id=0x55,
+                     _hitstun_victim_action_frame=frame)
+        return state
+    hs._apply_untech_latch("P1", sample(10, 100))
+    for frame in range(11, 17):
+        expired = hs._apply_untech_latch("P1", sample(frame, frame + 100))
+    assert expired["hitstun_clock_remaining"] == 0
+    # Even after neutral clears the geometry, the old nonzero native word
+    # cannot look like a fresh first timer.
+    assert hs._apply_untech_latch("P1", sample(17, 117, combo=0))["hitstun_clock_remaining"] == 0
+    assert hs._apply_untech_latch("P1", sample(18, 118, combo=0))["hitstun_clock_remaining"] == 0
+    # A genuine HP/combo edge can rearm an identical 3F value.
+    new_hit = hs._apply_untech_latch("P1", sample(19, 119, hp=800, combo=2))
+    assert new_hit["hitstun_clock_remaining"] == 3
+
+
 def test_new_shorter_hit_scraps_old_clock_immediately():
     hs._LATCHES.clear()
     hs._apply_untech_latch("P1", _state(21, 1, hp=900))

@@ -133,6 +133,14 @@ CHRSEL_SEQ_PTR_ADDRS = (
 )
 CHRSEL_SEQ_SIGNATURE_OFFSET = 0x40
 CHRSEL_SEQ_SIGNATURE = b"fpack/menu/001/0000.fpk\x00"
+# TvC's actual top-level menu has its own sequence object. Four recorded
+# menu snapshots have this signature at sequence+0x20 (not +0x40), with a
+# distinct header from character select. It is a valid menu-time MEM2 anchor.
+MAIN_MENU_SEQ_SIGNATURE_OFFSET = 0x20
+MAIN_MENU_SEQ_SIGNATURE = b"fpack/menu/010/0000.fpk\x00"
+MAIN_MENU_SEQ_HEADER = bytes.fromhex("00 00 00 08 00 00 00 80 00 00 00 40")
+MENU_OBJECT_PTR_ADDR = 0x809BCE28
+STAGE_CURSOR_ADDR = 0x809BCEE0
 CHRSEL_SEQ_HEADER = bytes.fromhex(
     "00 00 00 20 00 00 01 00 00 00 00 40 80 79 63 08"
 )
@@ -471,52 +479,106 @@ def _chrsel_sequence_pointer_candidates():
 
 
 def _latch_mem2_from_chrsel_sequence() -> bool:
-    """Latch MEM2 during Character Select from the loaded script signature."""
+    """Latch a trustworthy MEM2 mapping from a *live* TvC menu sequence.
+
+    Character select and the main menu use different fpack/menu objects. The
+    older routine only recognized character select, leaving MEM2 unlatched on
+    the main menu until fighter pointers appeared. Both signatures are checked
+    against each candidate 64-MB mapping before adopting a host base.
+    """
     global _mem2_host_base, _mem2_host_size, _mem2_latch_mode, _mem2_latch_note
 
     candidates = _chrsel_sequence_pointer_candidates()
     if not candidates:
-        _mem2_latch_note = "waiting for fighter or chrsel.seq pointer"
+        _mem2_latch_note = "waiting for fighter or live menu sequence pointer"
         return False
 
+    signatures = (
+        ('chrsel_sequence', CHRSEL_SEQ_SIGNATURE_OFFSET, CHRSEL_SEQ_HEADER,
+         CHRSEL_SEQ_SIGNATURE),
+        ('main_menu_sequence', MAIN_MENU_SEQ_SIGNATURE_OFFSET, MAIN_MENU_SEQ_HEADER,
+         MAIN_MENU_SEQ_SIGNATURE),
+    )
     for base, size, protect, state in _iter_regions(_mem2_proc_handle):
         if state != MEM_COMMIT:
             continue
-        prot = protect & 0xFF
-        if prot not in READABLE_PROTECT:
+        if (protect & 0xFF) not in READABLE_PROTECT or size < MEM2_SIZE:
             continue
-        if size < MEM2_SIZE:
-            continue
-
         for ptr_addr, seq_ea in candidates:
             seq_off = seq_ea - MEM2_LO
-            sig_off = seq_off + CHRSEL_SEQ_SIGNATURE_OFFSET
-            if seq_off < 0 or sig_off + len(CHRSEL_SEQ_SIGNATURE) > size:
-                continue
-            header = _rpm(_mem2_proc_handle, base + seq_off, len(CHRSEL_SEQ_HEADER))
-            if header != CHRSEL_SEQ_HEADER:
-                continue
-            signature = _rpm(
-                _mem2_proc_handle,
-                base + sig_off,
-                len(CHRSEL_SEQ_SIGNATURE),
-            )
-            if signature != CHRSEL_SEQ_SIGNATURE:
-                continue
-
-            _mem2_host_base = int(base)
-            _mem2_host_size = int(size)
-            _mem2_latch_mode = "chrsel_sequence"
-            _mem2_latch_note = f"chrsel ptr 0x{ptr_addr:08X}->0x{seq_ea:08X}"
-            print(
-                f"[MEM2 latch] chrsel.seq 0x{ptr_addr:08X}->0x{seq_ea:08X}; "
-                f"host=0x{base:X}"
-            )
-            return True
+            for label, sig_offset, expected_header, signature in signatures:
+                sig_off = seq_off + sig_offset
+                if seq_off < 0 or sig_off + len(signature) > size:
+                    continue
+                header = _rpm(_mem2_proc_handle, base + seq_off, len(expected_header))
+                if label == 'chrsel_sequence':
+                    # The fourth header word is a live MEM1 code pointer. It
+                    # changed from 0x80796308 in the earlier capture to
+                    # 0x80791C90 at P2 lock-in. The stable first three words
+                    # plus the full asset signature identify this sequence.
+                    if (header[:12] != CHRSEL_SEQ_HEADER[:12] or
+                            not MEM1_LO <= _u32be_from(header, 12) < MEM1_HI):
+                        continue
+                elif header != expected_header:
+                    continue
+                actual = _rpm(_mem2_proc_handle, base + sig_off, len(signature))
+                if actual != signature:
+                    continue
+                _mem2_host_base = int(base)
+                _mem2_host_size = int(size)
+                _mem2_latch_mode = label
+                _mem2_latch_note = f"{label} 0x{ptr_addr:08X}->0x{seq_ea:08X}"
+                print(f"[MEM2 latch] {_mem2_latch_note}; host=0x{base:X}")
+                return True
 
     ptrs = ", ".join(f"0x{ea:08X}" for _ptr, ea in candidates)
-    _mem2_latch_note = f"chrsel.seq pointer present but MEM2 map not found: {ptrs}"
+    _mem2_latch_note = f"menu pointer present but no verified MEM2 map: {ptrs}"
     return False
+
+
+def _latch_mem2_from_menu_object() -> bool:
+    """Find MEM2 through a self-linked menu or stage-select object.
+
+    Save-state jumps can leave the sequence pointer unavailable. The root
+    pointer is in MEM1; validate its type, self link, and stage cursor before
+    using it as a host-mapping anchor. This identifies the mapping only: music
+    still requires its own scene evidence before choosing a playlist.
+    """
+    global _mem2_host_base, _mem2_host_size, _mem2_latch_mode, _mem2_latch_note
+
+    root = _dme_rd32_be(MENU_OBJECT_PTR_ADDR)
+    if root is None or not MEM2_LO <= root < MEM2_HI or root & 3:
+        return False
+    global_cursor = _dme_rd32_be(STAGE_CURSOR_ADDR)
+    matches = []
+    for base, size, protect, state in _iter_regions(_mem2_proc_handle):
+        if (state != MEM_COMMIT or (protect & 0xFF) not in READABLE_PROTECT
+                or size < MEM2_SIZE):
+            continue
+        offset = root - MEM2_LO
+        if offset + 0x70 > size:
+            continue
+        block = _rpm(_mem2_proc_handle, base + offset, 0x70)
+        if not block or len(block) != 0x70:
+            continue
+        kind = _u32be_from(block, 4)
+        if _u32be_from(block, 0x4C) != root or kind not in (8, 15):
+            continue
+        if kind == 15 and _u32be_from(block, 0x6C) != global_cursor:
+            continue
+        matches.append((int(base), int(size), kind))
+    if not matches:
+        return False
+    # Dolphin can expose mirrored host regions with identical Wii contents.
+    # Every accepted candidate must agree on this root's type.
+    if len({kind for _base, _size, kind in matches}) != 1:
+        return False
+    base, size, kind = matches[0]
+    _mem2_host_base, _mem2_host_size = base, size
+    _mem2_latch_mode = 'stage_menu_object' if kind == 15 else 'main_menu_object'
+    _mem2_latch_note = f'{_mem2_latch_mode} 0x{MENU_OBJECT_PTR_ADDR:08X}->0x{root:08X}'
+    print(f'[MEM2 latch] {_mem2_latch_note}; host=0x{base:X}')
+    return True
 
 
 def _fighter_block_score(buf: bytes) -> int:
@@ -726,6 +788,9 @@ def _latch_mem2():
         return True
 
     if _latch_mem2_from_chrsel_sequence():
+        return True
+
+    if _latch_mem2_from_menu_object():
         return True
 
     # Do not fall back to the old fixed 0x9246B9C0 sentinel. In menu dumps that
@@ -983,6 +1048,8 @@ def mem2_latch_info():
 # Dolphin Memory Engine can read/write guest RAM, but offers no verified
 # public mechanism here for invalidating Dolphin's compiled PPC JIT blocks.
 # Do NOT silently replace synchronized code patches with raw RAM writes.
+# KO Control explicitly uses the historical DME route in runtime/ko_control.py;
+# these generic patch APIs remain unavailable to all other callers.
 _CODE_PATCH_WARNING_PRINTED = False
 
 

@@ -1001,6 +1001,7 @@ class HudOverlayManager:
             int(sample.get("decay_counter", 0) or 0),
             int(sample.get("state_flags_6c", 0) or 0) & 0xFFFFFFFF,
             int(sample.get("current_hp", 0) or 0),
+            int(sample.get("aux_hp", 0) or 0),
             int(sample.get("current_meter", 0) or 0),
             int(sample.get("action_id", 0) or 0),
             bool(sample.get("point_active", False)),
@@ -1036,6 +1037,7 @@ class HudOverlayManager:
             "base": int(sample.get("base", 0) or 0),
             "char_id": int(sample.get("char_id", 0) or 0),
             "current_hp": int(sample.get("current_hp", 0) or 0),
+            "aux_hp": int(sample.get("aux_hp", 0) or 0),
             "current_meter": int(sample.get("current_meter", 0) or 0),
             "action_id": int(sample.get("action_id", 0) or 0),
             "action_frame": max(0, int(sample.get("action_frame", 0) or 0)),
@@ -1087,7 +1089,11 @@ class HudOverlayManager:
                 del actions[:-24]
             if input_changed:
                 samples = state.setdefault("samples", [])
-                samples.append(dict(event))
+                # The input-history sidecar only consumes these five fields.
+                # Keeping combat/timing payloads in every ring entry made each
+                # input edge rewrite a much larger JSON file than necessary.
+                samples.append({key: event[key] for key in
+                                ("seq", "held", "pressed", "released", "sample_ns")})
                 del samples[:-96]
                 self._input_bridge_dirty = True
             # The stun/combat sidecar is intentionally tiny and lives in the OS
@@ -1170,7 +1176,7 @@ class HudOverlayManager:
             return {}
         # Keep the realtime stun transport intentionally tiny.
         keys = (
-            "seq", "sample_ns", "base", "char_id", "current_hp", "current_meter", "action_id", "action_frame",
+            "seq", "sample_ns", "base", "char_id", "current_hp", "aux_hp", "current_meter", "action_id", "action_frame",
             "blockstun_remaining", "hitstun_remaining", "untech_remaining",
             "impact_freeze_remaining", "fighter_combo_count", "decay_counter",
             "state_flags_6c", "point_active",
@@ -1489,6 +1495,8 @@ class HudOverlayManager:
                 "profile_label_override":   snap.get("profile_label_override", False),
                 "baroque_ready_local":    snap.get("baroque_ready_local", False),
                 "baroque_red_pct_max":    snap.get("baroque_red_pct_max", 0.0),
+                "baroque_local_hp32":     snap.get("baroque_local_hp32"),
+                "baroque_local_pool32":   snap.get("baroque_local_pool32"),
                 "baroque_cancel_raw":     snap.get("baroque_cancel_raw", False),
                 "baroque_cancel_latched": snap.get("baroque_cancel_latched", False),
                 "baroque_cancel_frames":  snap.get("baroque_cancel_latch_frames", 0),
@@ -1504,6 +1512,7 @@ class HudOverlayManager:
                 "realtime_current_hp":    int(input_packet.get("current_hp", snap.get("cur") or 0) or 0),
                 "realtime_action_id":     int(input_packet.get("action_id", cur_anim or 0) or 0),
                 "realtime_action_frame":  max(0, int(input_packet.get("action_frame", 0) or 0)),
+                "realtime_impact_freeze_remaining": max(0, int(input_packet.get("impact_freeze_remaining", 0) or 0)),
                 "realtime_hitstun_remaining": max(0, int(input_packet.get("hitstun_remaining", 0) or 0)),
                 "realtime_untech_remaining": max(0, int(input_packet.get("untech_remaining", 0) or 0)),
                 "realtime_fighter_combo_count": max(0, int(input_packet.get("fighter_combo_count", 0) or 0)),

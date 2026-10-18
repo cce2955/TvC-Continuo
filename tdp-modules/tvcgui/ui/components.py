@@ -60,8 +60,33 @@ GUI_SLOT_MUTED = {
 
 _GRADIENT_CACHE: "OrderedDict[tuple, tuple[pygame.Surface, int]]" = OrderedDict()
 _GRADIENT_CACHE_PIXELS = 0
-_GRADIENT_CACHE_PIXEL_LIMIT = 3_000_000
+# A 2560x1440 main canvas is over three million pixels; keep its reusable
+# gradients resident while bounding this RGBA cache to about 64 MiB.
+_GRADIENT_CACHE_PIXEL_LIMIT = 16_000_000
 _GRADIENT_CACHE_ENTRY_LIMIT = 64
+_TEXT_CACHE: "OrderedDict[tuple, pygame.Surface]" = OrderedDict()
+_TEXT_CACHE_ENTRY_LIMIT = 2048
+_OUTLINED_TEXT_CACHE: "OrderedDict[tuple, pygame.Surface]" = OrderedDict()
+_OUTLINED_TEXT_CACHE_ENTRY_LIMIT = 512
+_DOCK_FONT_CACHE: dict[int, pygame.font.Font] = {}
+
+
+def ko_control_button_label(enabled: bool, live_active: bool, unavailable: bool) -> str:
+    if unavailable:
+        return "KO: PATCH BLOCKED"
+    if live_active:
+        return "KO: ACTIVE"
+    if enabled:
+        return "KO: ARMED"
+    return "KO Control: OFF"
+
+
+def _cache_text(key: tuple, surface: pygame.Surface) -> pygame.Surface:
+    _TEXT_CACHE[key] = surface
+    _TEXT_CACHE.move_to_end(key)
+    while len(_TEXT_CACHE) > _TEXT_CACHE_ENTRY_LIMIT:
+        _TEXT_CACHE.popitem(last=False)
+    return surface
 
 
 def _cached_gradient_surface(
@@ -94,7 +119,7 @@ def _cached_gradient_surface(
         pygame.draw.line(grad, (r, g, b, int(alpha)), (0, y), (int(width), y))
 
     area = int(width) * int(height)
-    if area <= 500_000:
+    if area <= _GRADIENT_CACHE_PIXEL_LIMIT:
         _GRADIENT_CACHE[key] = (grad, area)
         _GRADIENT_CACHE_PIXELS += area
         while (
@@ -199,7 +224,7 @@ def _draw_horizontal_gradient(
             b = int(left_col[2] * (1.0 - t) + right_col[2] * t)
             pygame.draw.line(grad, (r, g, b, int(alpha)), (x, 0), (x, int(rect.height)))
         area = int(rect.width) * int(rect.height)
-        if area <= 500_000:
+        if area <= _GRADIENT_CACHE_PIXEL_LIMIT:
             _GRADIENT_CACHE[key] = (grad, area)
             _GRADIENT_CACHE_PIXELS += area
             while (
@@ -218,15 +243,20 @@ def _fit_text(
     max_width: int,
 ) -> pygame.Surface:
     text = str(text or "")
+    key = ("fit", font, text, tuple(color), int(max_width))
+    cached = _TEXT_CACHE.get(key)
+    if cached is not None:
+        _TEXT_CACHE.move_to_end(key)
+        return cached
     if max_width <= 8:
-        return font.render("", True, color)
+        return _cache_text(key, font.render("", True, color))
 
     surf = font.render(text, True, color)
     if surf.get_width() <= max_width:
-        return surf
+        return _cache_text(key, surf)
 
     if len(text) <= 1:
-        return font.render("", True, color)
+        return _cache_text(key, font.render("", True, color))
 
     low = 0
     high = len(text)
@@ -242,7 +272,7 @@ def _fit_text(
         else:
             high = mid - 1
 
-    return font.render(best, True, color)
+    return _cache_text(key, font.render(best, True, color))
 
 def _render_outlined_text(
     font: pygame.font.Font,
@@ -252,6 +282,12 @@ def _render_outlined_text(
     max_width: int,
     outline_px: int = 1,
 ) -> pygame.Surface:
+    key = (font, str(text), tuple(text_color), tuple(outline_color),
+           int(max_width), int(outline_px))
+    cached = _OUTLINED_TEXT_CACHE.get(key)
+    if cached is not None:
+        _OUTLINED_TEXT_CACHE.move_to_end(key)
+        return cached
     base = _fit_text(font, text, text_color, max_width)
 
     w = base.get_width()
@@ -272,6 +308,9 @@ def _render_outlined_text(
         out.blit(outline, (pad + ox, pad + oy))
 
     out.blit(base, (pad, pad))
+    _OUTLINED_TEXT_CACHE[key] = out
+    while len(_OUTLINED_TEXT_CACHE) > _OUTLINED_TEXT_CACHE_ENTRY_LIMIT:
+        _OUTLINED_TEXT_CACHE.popitem(last=False)
     return out
 
 
@@ -488,19 +527,9 @@ def _command_dock_layout(width: int, tools_open: bool) -> tuple[dict[str, tuple[
     section_gap = 5
 
     hud_specs = [
-        ("info_set_btn", 108),
         ("hud_btn", 100),
-        ("interaction_btn", 84),
-        ("combo_btn", 58),
-        ("damage_btn", 100),
-        ("untech_btn", 104),
-        ("meter_btn", 64),
-        ("red_health_btn", 68),
-        ("attack_props_btn", 86),
-        ("tag_btn", 46),
-        ("clear_btn", 54),
-        ("tools_btn", 76),
-        ("help_btn", 52),
+        ("info_set_btn", 104),
+        ("settings_btn", 74),
         ("custom_music", 106),  # A single setup button; output modes live in the music window
     ]
     section, rects = _layout_command_section(width_i, y, "HUD", hud_specs)
@@ -519,7 +548,12 @@ def _command_dock_layout(width: int, tools_open: bool) -> tuple[dict[str, tuple[
         ("ruler_lock", 92),
     ])
     visual_specs.extend((f"ruler_{slot}", 22) for slot in ("P1", "P2", "P3", "P4"))
-    section, rects = _layout_command_section(width_i, y, "VISUALS", visual_specs)
+    # Reserve the right edge for the expandable tools menu on every row width.
+    # It has its own click target, so it cannot collide with a wrapped chip.
+    more_w = 82
+    section, rects = _layout_command_section(width_i - more_w - 8, y, "VISUALS", visual_specs)
+    rects["tools_btn"] = pygame.Rect(width_i - more_w - 15, section.y + 5, more_w, 22)
+    section.width = max(section.width, width_i - 16)
     sections["visuals"] = (section, rects)
     y = section.bottom + section_gap
 
@@ -610,6 +644,7 @@ def draw_top_command_dock(
     char_test_active: bool = False,
     ko_control_enabled: bool = False,
     ko_control_live_active: bool = False,
+    ko_control_unavailable: bool = False,
     solo_team_active: bool = False,
     action_spoof_active: bool = False,
     tools_open: bool = False,
@@ -621,7 +656,7 @@ def draw_top_command_dock(
     global _CHAR_SELECT_VISUALS_RECT
     del megacrash_trainer_chance, megacrash_trainer_mode, megacrash_trainer_delay_frames
     del megacrash_trainer_cooldown_sec, megacrash_trainer_cooldown_remaining
-    del ko_control_live_active, solo_team_active
+    del solo_team_active
 
     mx, my = mouse_pos
     width, _height = screen.get_size()
@@ -649,10 +684,14 @@ def draw_top_command_dock(
     pygame.draw.line(screen, (49, 132, 174), (0, 0), (width, 0), 1)
     pygame.draw.line(screen, (31, 49, 67), (0, dock_rect.bottom - 1), (width, dock_rect.bottom - 1))
 
-    try:
-        dockfont = pygame.font.SysFont("consolas", 11 if width >= 760 else 10)
-    except Exception:
-        dockfont = smallfont
+    dock_size = 11 if width >= 760 else 10
+    dockfont = _DOCK_FONT_CACHE.get(dock_size)
+    if dockfont is None:
+        try:
+            dockfont = pygame.font.SysFont("consolas", dock_size)
+        except Exception:
+            dockfont = smallfont
+        _DOCK_FONT_CACHE[dock_size] = dockfont
 
     off = pygame.Rect(-10000, -10000, 0, 0)
     ps_btn_rect = off.copy()
@@ -701,18 +740,26 @@ def draw_top_command_dock(
 
     hud = draw_section("hud")
     hud_btn_rect = hud["hud_btn"]
-    interaction_card_btn_rect = hud["interaction_btn"]
-    combo_card_btn_rect = hud["combo_btn"]
+    interaction_card_btn_rect = off.copy()
+    combo_card_btn_rect = off.copy()
     info_set_btn_rect = hud["info_set_btn"]
-    damage_badge_btn_rect = hud["damage_btn"]
-    untech_panel_btn_rect = hud["untech_btn"]
-    meter_panel_btn_rect = hud["meter_btn"]
-    red_health_panel_btn_rect = hud["red_health_btn"]
-    attack_property_panel_btn_rect = hud["attack_props_btn"]
-    tag_card_btn_rect = hud["tag_btn"]
-    clear_card_btn_rect = hud["clear_btn"]
-    tools_btn_rect = hud["tools_btn"]
-    help_btn_rect = hud["help_btn"]
+    damage_badge_btn_rect = off.copy()
+    untech_panel_btn_rect = off.copy()
+    meter_panel_btn_rect = off.copy()
+    red_health_panel_btn_rect = off.copy()
+    attack_property_panel_btn_rect = off.copy()
+    tag_card_btn_rect = off.copy()
+    clear_card_btn_rect = off.copy()
+    tools_btn_rect = off.copy()
+    settings_btn_rect = hud["settings_btn"]
+    help_btn_rect = off.copy()
+    # This button owns its click bridge, keeping the legacy dock return tuple
+    # stable for existing HUD callers.
+    from tvcgui.ui.settings_dock import settings_dock
+    settings_dock.frame_mouse(
+        inside=settings_btn_rect.collidepoint(mx, my),
+        left_pressed=pygame.mouse.get_pressed(3)[0],
+    )
     # Standalone Music Setup opens from the top-right of the main HUD. Keep
     # the main.py tuple stable, and process click release only once each frame.
     music_button_rect = hud["custom_music"]
@@ -724,7 +771,7 @@ def draw_top_command_dock(
             inside=music_button_rect.collidepoint(mx, my),
             left_pressed=pygame.mouse.get_pressed(3)[0],
         )
-        music_active = _top_music.status().get('desired_enabled', False)
+        music_active = _top_music.dock_active()
         draw_glass_button(
             screen, music_button_rect, "Custom Music", dockfont,
             active=bool(music_active), hover=music_button_rect.collidepoint(mx, my),
@@ -739,16 +786,6 @@ def draw_top_command_dock(
         active=bool(overlay_enabled), hover=hud_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT,
         fill=(43, 58, 86) if overlay_enabled else (27, 33, 45), align="center",
     )
-    draw_glass_button(
-        screen, interaction_card_btn_rect, "Hit / Block", dockfont,
-        active=bool(show_interaction_card), hover=interaction_card_btn_rect.collidepoint(mx, my),
-        accent=GUI_ACCENT_BLUE, fill=(43, 58, 86) if show_interaction_card else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, combo_card_btn_rect, "Combo", dockfont,
-        active=bool(show_combo_card), hover=combo_card_btn_rect.collidepoint(mx, my),
-        accent=GUI_ACCENT_BLUE, fill=(43, 58, 86) if show_combo_card else (27, 33, 45), align="center",
-    )
     info_set_name = str(hud_info_set or "CUSTOM").strip().upper()
     info_set_accent = {
         "CORE": GUI_APP_ACCENT,
@@ -757,68 +794,30 @@ def draw_top_command_dock(
         "CUSTOM": GUI_ACCENT_PURPLE,
     }.get(info_set_name, GUI_ACCENT_PURPLE)
     draw_glass_button(
-        screen, info_set_btn_rect, f"Set: {info_set_name.title()}", dockfont,
+        screen, info_set_btn_rect, "HUD Settings", dockfont,
         active=True, hover=info_set_btn_rect.collidepoint(mx, my),
         accent=info_set_accent, fill=_mix_col((27, 33, 45), info_set_accent, 0.18), align="center",
     )
-    damage_mode_label = "Damage: ON" if show_damage_badge else "Damage: OFF"
     draw_glass_button(
-        screen, damage_badge_btn_rect, damage_mode_label, dockfont,
-        active=bool(show_damage_badge), hover=damage_badge_btn_rect.collidepoint(mx, my),
-        accent=GUI_WARNING, fill=(57, 49, 30) if show_damage_badge else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, untech_panel_btn_rect, "Hitstun: ON" if show_untech_panel else "Hitstun: OFF", dockfont,
-        active=bool(show_untech_panel), hover=untech_panel_btn_rect.collidepoint(mx, my),
-        accent=GUI_ACCENT_RED, fill=(59, 38, 43) if show_untech_panel else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, meter_panel_btn_rect, "Meter", dockfont,
-        active=bool(show_meter_panel), hover=meter_panel_btn_rect.collidepoint(mx, my),
-        accent=GUI_CONFIRM, fill=(31, 50, 43) if show_meter_panel else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, red_health_panel_btn_rect, "Red HP", dockfont,
-        active=bool(show_red_health_panel), hover=red_health_panel_btn_rect.collidepoint(mx, my),
-        accent=GUI_DANGER, fill=(57, 35, 43) if show_red_health_panel else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, attack_property_panel_btn_rect, "Research", dockfont,
-        active=bool(show_attack_property_panel), hover=attack_property_panel_btn_rect.collidepoint(mx, my),
-        accent=GUI_ACCENT_PURPLE, fill=(48, 40, 68) if show_attack_property_panel else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, tag_card_btn_rect, "Tag", dockfont,
-        active=bool(show_tag_card), hover=tag_card_btn_rect.collidepoint(mx, my),
-        accent=GUI_ACCENT_BLUE, fill=(43, 58, 86) if show_tag_card else (27, 33, 45), align="center",
-    )
-    cards_active = bool(
-        show_interaction_card
-        or show_combo_card
-        or show_damage_badge
-        or show_untech_panel
-        or show_meter_panel
-        or show_red_health_panel
-        or show_attack_property_panel
-        or show_tag_card
-    )
-    draw_glass_button(
-        screen, clear_card_btn_rect, "Clear", dockfont,
-        active=cards_active, hover=clear_card_btn_rect.collidepoint(mx, my), accent=GUI_ACCENT_RED,
-        fill=(59, 38, 43) if cards_active else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, tools_btn_rect, "Tools  ▴" if tools_open else "Tools  ▾", dockfont,
-        active=bool(tools_open), hover=tools_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT,
-        fill=(43, 58, 86) if tools_open else (27, 33, 45), align="center",
-    )
-    draw_glass_button(
-        screen, help_btn_rect, "Help", dockfont,
-        active=False, hover=help_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT,
+        screen, settings_btn_rect, "Settings", dockfont,
+        active=False, hover=settings_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT,
         fill=(27, 33, 45), align="center",
     )
 
     visual = draw_section("visuals")
+    tools_btn_rect = visual["tools_btn"]
+    draw_glass_button(
+        screen, tools_btn_rect, "More", dockfont,
+        active=bool(tools_open), hover=tools_btn_rect.collidepoint(mx, my), accent=GUI_ACCENT_GOLD,
+        fill=(74, 56, 30) if tools_open else (54, 43, 30), align="left",
+    )
+    arrow_x = tools_btn_rect.right - 14
+    arrow_y = tools_btn_rect.centery
+    if tools_open:
+        arrow = [(arrow_x - 4, arrow_y + 2), (arrow_x, arrow_y - 2), (arrow_x + 4, arrow_y + 2)]
+    else:
+        arrow = [(arrow_x - 4, arrow_y - 2), (arrow_x, arrow_y + 2), (arrow_x + 4, arrow_y - 2)]
+    pygame.draw.lines(screen, GUI_ACCENT_GOLD, False, arrow, 2)
     hb_btn_rect = visual["hb_btn"]
     hurt_btn_rect = visual["hurt_btn"]
     ruler_btn_rect = visual["ruler_btn"]
@@ -976,10 +975,16 @@ def draw_top_command_dock(
             active=False, hover=_visual_rect.collidepoint(mx, my), accent=GUI_ACCENT_PURPLE,
             fill=(43, 38, 68), align="center",
         )
+        ko_label = ko_control_button_label(
+            ko_control_enabled, ko_control_live_active, ko_control_unavailable
+        )
         draw_glass_button(
-            screen, ko_control_btn_rect, "KO Control: ON" if ko_control_enabled else "KO Control: OFF", dockfont,
-            active=bool(ko_control_enabled), hover=ko_control_btn_rect.collidepoint(mx, my), accent=GUI_ACCENT_GREEN,
-            fill=(31, 46, 40) if ko_control_enabled else (27, 33, 45), align="center",
+            screen, ko_control_btn_rect, ko_label, dockfont,
+            active=bool(ko_control_enabled and not ko_control_unavailable),
+            hover=ko_control_btn_rect.collidepoint(mx, my),
+            accent=GUI_DANGER if ko_control_unavailable else GUI_ACCENT_GREEN,
+            fill=(54, 31, 38) if ko_control_unavailable else (31, 46, 40) if ko_control_enabled else (27, 33, 45),
+            align="center",
         )
         dump_label = mem_dump_label if mem_dump_active and mem_dump_label else "Dump Memory"
         draw_glass_button(
@@ -1004,7 +1009,7 @@ def draw_top_command_dock(
         elif combo_card_btn_rect.collidepoint(mx, my):
             help_tip = "Combo controls only the live combo ledger."
         elif info_set_btn_rect.collidepoint(mx, my):
-            help_tip = "Set cycles CORE, RESEARCH, and FULL information density. CORE always includes Damage and Hitstun. Individual toggles switch the label to CUSTOM."
+            help_tip = "HUD Settings contains the display switches, built-in sets, and saved presets."
             help_accent = info_set_accent
         elif damage_badge_btn_rect.collidepoint(mx, my):
             help_tip = "Damage Mod adds branded C1 and C2 damage-scaling gauges beneath the character health rows."
@@ -1048,6 +1053,8 @@ def draw_top_command_dock(
             help_accent = GUI_WARNING
         elif tools_btn_rect.collidepoint(mx, my):
             help_tip = "Tools opens dedicated Training and Lab / Setup sections."
+        elif settings_btn_rect.collidepoint(mx, my):
+            help_tip = "Settings exports preferences and records read-only session replays."
         elif help_btn_rect.collidepoint(mx, my):
             help_tip = "Help opens the built-in guide for HUD controls, frame data, trainers, charge tracking, and setup tools."
             help_accent = GUI_APP_ACCENT

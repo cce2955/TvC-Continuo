@@ -1,0 +1,18 @@
+{
+  "show_health": true,
+  "show_stun": true,
+  "show_inputs": true,
+  "show_move_timing": true,
+  "show_meter_rail": true,
+  "show_damage_scaling": true,
+  "opacity": 1.0,
+  "p1_color": "#ff6464",
+  "p2_color": "#5aa0ff",
+  "positions": {
+    "P1": [
+      0.0,
+      0.0
+    ]
+  },
+  "edit_mode": false
+}

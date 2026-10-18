@@ -14,6 +14,7 @@ class CharacterSelectServiceThrottleTests(unittest.TestCase):
             "monotonic": runtime.time.monotonic,
             "last": runtime._CHAR_TEST_LAST_SERVICE,
             "queue": list(runtime._ROSTER_QUEUE),
+            "roster_state": dict(runtime._ROSTER_STATE),
         }
         self.now = 100.0
         self.calls = 0
@@ -22,6 +23,8 @@ class CharacterSelectServiceThrottleTests(unittest.TestCase):
         runtime.time.monotonic = lambda: self.now
         runtime._CHAR_TEST_LAST_SERVICE = 0.0
         runtime._ROSTER_QUEUE.clear()
+        runtime._ROSTER_STATE["extra_characters_requested"] = True
+        runtime._ROSTER_STATE["extra_characters_enabled"] = False
 
     def tearDown(self) -> None:
         runtime.char_test_needs_service = self.saved["needs"]
@@ -30,6 +33,8 @@ class CharacterSelectServiceThrottleTests(unittest.TestCase):
         runtime._CHAR_TEST_LAST_SERVICE = self.saved["last"]
         runtime._ROSTER_QUEUE.clear()
         runtime._ROSTER_QUEUE.extend(self.saved["queue"])
+        runtime._ROSTER_STATE.clear()
+        runtime._ROSTER_STATE.update(self.saved["roster_state"])
 
     def _called(self) -> None:
         self.calls += 1

@@ -19,6 +19,8 @@ from tvcgui.features.overlay.manager import (
 class _FakeOverlayManager:
     def __init__(self):
         self.payload = None
+        self._mission_event_manager = None
+        self._mission_event_stream = types.SimpleNamespace(events_since=lambda *_args: [])
 
     def _set_input_sampler_targets(self, _snaps):
         return None
@@ -26,12 +28,21 @@ class _FakeOverlayManager:
     def _input_snapshot_for_slot(self, _slot, _base):
         return ({}, [])
 
+    def _refresh_realtime_fd_timing(self, _last_scan_normals):
+        return None
+
+    def _arm_realtime_hs_move(self, *_args, **_kwargs):
+        return None
+
     def _queue_payload(self, payload):
         self.payload = payload
 
 
 class _FakeMissionManager:
     active_slot = None
+
+    def set_event_provider(self, _provider):
+        return None
 
     def var_state(self, _slot, _snaps):
         return {}

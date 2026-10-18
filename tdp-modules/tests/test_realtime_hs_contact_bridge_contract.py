@@ -165,3 +165,27 @@ def test_native_renderer_clock_pauses_when_game_counter_holds_and_resets_on_new_
     assert reset["remaining"] == 12
     assert reset["elapsed"] == 0
     assert reset["generation"] != first["generation"]
+
+
+def test_stuck_native_hitstun_expires_after_twice_its_span_of_fighter_frames():
+    clock = _extract_function(HUD, "_realtime_hs_contact_clock")
+    anim = {}
+    event = {
+        "generation": 1, "target": 3, "clock_source": "hitstun",
+        "native_hitstun_current": 3, "native_action_id_current": 0x55,
+        "native_action_frame_current": 10, "native_current_sample_ns": 100,
+    }
+    assert clock(anim, {"realtime_hs_contact": event})["remaining"] == 3
+    for frame in range(11, 16):
+        event = dict(event, native_action_frame_current=frame, native_current_sample_ns=100 + frame)
+        assert clock(anim, {"realtime_hs_contact": event})["remaining"] == 3
+    # Repeated HUD draws and a paused action frame cannot consume the budget.
+    assert clock(anim, {"realtime_hs_contact": event})["remaining"] == 3
+    paused = dict(event, native_current_sample_ns=200)
+    assert clock(anim, {"realtime_hs_contact": paused})["remaining"] == 3
+    expired = dict(event, native_action_frame_current=16, native_current_sample_ns=201)
+    assert clock(anim, {"realtime_hs_contact": expired})["remaining"] == 0
+    stale_same_hit = dict(expired, native_action_frame_current=17, native_current_sample_ns=203)
+    assert clock(anim, {"realtime_hs_contact": stale_same_hit})["remaining"] == 0
+    new_hit = dict(expired, generation=2, native_action_frame_current=1, native_current_sample_ns=202)
+    assert clock(anim, {"realtime_hs_contact": new_hit})["remaining"] == 3
