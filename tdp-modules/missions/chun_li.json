@@ -462,6 +462,8 @@
       "mission_id": "chun_007",
       "name": "Challenge",
       "notes": "Some moves are missing, can you find the missing moves and link them together?",
+      "setup_meter_refill": true,
+      "setup_meter_refill_bars": 3,
       "steps": [
         {
           "label": "3C"

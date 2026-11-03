@@ -85,8 +85,8 @@ MEM2_PRIME_INTERVAL = 0.75  # recover menu mappings after a save-state jump
 END_PHASE_SAMPLES = 2  # reject a single bad native phase read
 AUDIO_INTERVAL = 0.06  # smooth host-side fades without blocking the UI
 TRANSITION_AUDIO_INTERVAL = 0.02
-AX_PENDING_RETRY_INTERVAL = 0.025
-AX_MATCH_VERIFY_INTERVAL = 0.025  # catch rebuilt BGM routes within about two GUI frames
+AX_PENDING_RETRY_INTERVAL = 0.010
+AX_MATCH_VERIFY_INTERVAL = 0.010  # audio-service watchdog catches rebuilt routes between GUI frames
 FADE_OUT_SECONDS = 0.30
 BGM_VERIFY_INTERVAL = 0.40  # throttle DME reads/writes on the GUI thread
 STABLE_SCENE_SAMPLES = 2
@@ -953,6 +953,30 @@ class MusicController:
             self._dir_for(f'low_health/characters/{cid:02d}_{_slug(name)}').mkdir(parents=True, exist_ok=True)
         return self.root
 
+    def cleanup_empty_library_folders(self) -> None:
+        """Remove empty catalog folders on exit without touching user tracks.
+
+        The library root and top-level categories stay in place so settings and
+        any populated folders remain available on the next launch.
+        """
+        root = self.root
+        if not root.is_dir():
+            return
+        categories = ('stages', 'characters', 'low_health', 'menus', 'extras',
+                      'menu', 'character_select', 'stage_select')
+        for category in categories:
+            base = root / category
+            if not base.is_dir() or base.is_symlink():
+                continue
+            for directory, _, _ in os.walk(base, topdown=False, followlinks=False):
+                path = Path(directory)
+                if path == base or path.is_symlink():
+                    continue
+                try:
+                    path.rmdir()  # succeeds only when no files or folders remain
+                except OSError:
+                    pass
+
     def set_music_root(self, selected: str | Path) -> Path:
         """Choose any writable library folder, including while Custom is on.
 
@@ -1630,13 +1654,13 @@ class MusicController:
         live_rebuild = (self._match_latched and self._fight_opened and
                         not self._match_end_seen and not self._round_transition_seen)
         if mute and result.muted:
-            if getattr(result, 'rerouted', False) and live_rebuild and (
-                    self._ax_rebuild_match_candidate or
-                                 (self._native_zero_confirmed and self._current_file and
-                                  self._last_native_phase == 4)):
+            if (getattr(result, 'rerouted', False) and live_rebuild
+                    and self._ax_rebuild_match_candidate
+                    and self._pending_match_boundary):
                 # A restart may remove the old AX pair altogether. Once the
-                # replacement pair is verified, advance exactly once even
-                # though the old file was stopped during that gap.
+                # replacement pair is verified, advance exactly once when a
+                # native restart boundary was also observed. A voice rebuild
+                # at READY/FIGHT alone belongs to the current match.
                 self._match_serial += 1
                 self._pending_match_boundary = False
                 self._interrupted_track = None
@@ -1980,13 +2004,21 @@ class MusicController:
         while not stop_event.is_set():
             try:
                 self.tick()
+                # The playlist can stay on its normal cadence; the guest may
+                # rebuild AX voices at any point, including menu transitions.
+                # Recheck the isolated BGM pair independently of scene scans.
+                with self._lock:
+                    if self.enabled and self._requested_mute:
+                        self._maintain_bgm()
             except Exception as ex:
                 with self._lock:
                     self._message = f'Music service error: {ex!s}'
             with self._lock:
                 if not (self.enabled or self._desired_enabled or self._ax_gate.needs_restore):
                     return
-            self._audio_wakeup.wait(TRANSITION_AUDIO_INTERVAL)
+                wait_interval = (AX_MATCH_VERIFY_INTERVAL if self.enabled and self._requested_mute
+                                 else TRANSITION_AUDIO_INTERVAL)
+            self._audio_wakeup.wait(wait_interval)
             self._audio_wakeup.clear()
 
     def _observe_native_phase(self, phase: int | None) -> None:
@@ -2573,4 +2605,11 @@ try:
     controller.ensure_library()
 except OSError as error:
     controller._message = f'Could not create music folders: {error}'
-atexit.register(controller.stop)
+def _shutdown_music_controller() -> None:
+    try:
+        controller.stop()
+    finally:
+        controller.cleanup_empty_library_folders()
+
+
+atexit.register(_shutdown_music_controller)

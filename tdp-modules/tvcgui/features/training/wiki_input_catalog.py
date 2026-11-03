@@ -39,6 +39,9 @@ WIKI_INPUT_CATALOG = {
         ('air', 'JB'),
     ),
     'batsu ichimonji': (
+        ('air divekick a', 'AIR 214A'),
+        ('air divekick b', 'AIR 214B'),
+        ('air divekick c', 'AIR 214C'),
         ('heavy shooting star kick air', 'AIR 214A / AIR 214B / AIR 214C'),
         ('light shooting star kick air', 'AIR 214A / AIR 214B / AIR 214C'),
         ('mid shooting star kick air', 'AIR 214A / AIR 214B / AIR 214C'),
@@ -736,6 +739,10 @@ def infer_wiki_input_notation(character_name: str, candidates: list[str]) -> str
     for alias, notation in entries:
         alias_tokens = set(alias.split())
         for candidate, base in candidate_forms:
+            # The catalog's generic "air" normal alias must not swallow an
+            # airborne special whose proper move name is not in the catalog.
+            if alias == "air" and candidate != "air":
+                continue
             score = -1
 
             if alias == candidate:
@@ -755,9 +762,9 @@ def infer_wiki_input_notation(character_name: str, candidates: list[str]) -> str
                 if meaningful and meaningful.issubset(alias_tokens):
                     score = 600 + sum(len(token) for token in meaningful)
 
-            if score > best_score or (
+            if score >= 0 and (score > best_score or (
                 score == best_score and len(alias) > len(best_alias)
-            ):
+            )):
                 best_score = score
                 best_alias = alias
                 best_notation = notation

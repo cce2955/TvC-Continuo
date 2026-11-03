@@ -268,9 +268,10 @@ class V19MissionRedesignContractTests(unittest.TestCase):
         self.assertIn("compact_complete = bool(mission_done and (self._mission_hold_frames > 0 or self._toast_phase > 0.0))", source)
         self.assertNotIn('done_text = self.smallfont.render("DONE"', source)
 
-    def test_completion_hold_duration_is_90_frames(self):
+    def test_completion_hold_duration_is_one_second(self):
         source = read(MASTER)
-        self.assertIn("self._mission_hold_duration_frames: int = 90", source)
+        self.assertIn("MISSION_COMPLETE_HOLD_FRAMES = 60", source)
+        self.assertIn("self._mission_hold_duration_frames: int = MISSION_COMPLETE_HOLD_FRAMES", source)
 
     def test_completion_can_fall_back_without_token(self):
         source = function_source(MASTER, "update_mission_animations")
@@ -292,10 +293,10 @@ class V19MissionRedesignContractTests(unittest.TestCase):
         self.assertIn("pygame.BLEND_RGBA_ADD", source)
 
     def test_completion_badge_phase_enters_holds_and_exits(self):
-        start = mission_hud._mission_complete_badge_progress(0, 90)
-        entered = mission_hud._mission_complete_badge_progress(14, 90)
-        held = mission_hud._mission_complete_badge_progress(45, 90)
-        exiting = mission_hud._mission_complete_badge_progress(86, 90)
+        start = mission_hud._mission_complete_badge_progress(0, 60)
+        entered = mission_hud._mission_complete_badge_progress(14, 60)
+        held = mission_hud._mission_complete_badge_progress(35, 60)
+        exiting = mission_hud._mission_complete_badge_progress(56, 60)
         self.assertEqual(start[0], 0.0)
         self.assertGreater(entered[0], 0.9)
         self.assertGreater(held[0], 0.9)

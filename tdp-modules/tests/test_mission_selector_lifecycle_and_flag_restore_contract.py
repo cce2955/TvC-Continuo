@@ -253,6 +253,45 @@ def test_mission_without_cpu_action_forces_idle_once() -> None:
     assert writes.count(("CpuAction", 0)) == 1
 
 
+def test_damage_challenges_allow_dummy_state_changes_and_restore_baroque() -> None:
+    for filename, mission_id in (("roll.json", "roll_008"), ("tekkaman_blade.json", "tekkaman_blade_008")):
+        pack = json.loads((ROOT / "missions" / filename).read_text(encoding="utf-8"))
+        mission = next(item for item in pack["missions"] if item["mission_id"] == mission_id)
+        assert mission["allow_dummy_state"] is True
+        assert mission["setup_debug_flags"] == {"BaroquePct": 0}
+
+        manager = _manager()
+        values = {"CpuAction": 2, "BaroquePct": 7}
+        manager._read_debug_flag = lambda name: values.get(name, 0)
+
+        def write(name: str, value: int) -> bool:
+            values[name] = value
+            return True
+
+        manager._write_debug_flag = write
+        payload = {
+            "active": True,
+            "slot": "P1-C1",
+            "character": filename,
+            "active_mission_id": mission_id,
+            "active_mission_setup_debug_flags": mission["setup_debug_flags"],
+            "active_mission_allow_dummy_state": mission["allow_dummy_state"],
+        }
+        manager._sync_debug_overrides(payload)
+        assert values["CpuAction"] == 2
+        assert values["BaroquePct"] == 0
+
+        values["CpuAction"] = 3
+        manager._sync_debug_overrides(payload)
+        assert values["CpuAction"] == 3
+
+        manager._sync_debug_overrides({**payload, "just_cleared": True})
+        assert values["CpuAction"] == 3
+        assert values["BaroquePct"] == 7
+        manager._sync_debug_overrides(payload)
+        assert values["CpuAction"] == 3
+
+
 def test_regular_mission_clears_prior_guard_and_pushblock_setup() -> None:
     manager = _manager()
     manager.active_slot = "P1-C1"
@@ -317,6 +356,27 @@ def test_five_bar_refill_pauses_for_hitstun_and_stops_at_full_meter() -> None:
     before = list(writes)
     manager._update_meter_refill(payload, "P1-C1", snap)
     assert writes == before
+
+
+def test_three_bar_refill_stops_at_chun_target_and_restores_flags() -> None:
+    manager = _manager()
+    values = {"P1Meter": 4, "BaroquePct": 7}
+    manager._read_debug_flag = lambda name: values.get(name, 0)
+    manager._write_debug_flag = lambda name, value: values.__setitem__(name, value) or True
+    manager._opponent_in_hitstun = lambda *_args: False
+    payload = {
+        "active": True, "slot": "P1-C1", "active_mission_id": "chun_007",
+        "active_mission_setup_meter_refill": True,
+        "active_mission_setup_meter_refill_bars": 3,
+    }
+    snaps = {"P1-C1": {"meter": 29000}}
+    manager._update_meter_refill(payload, "P1-C1", snaps)
+    assert values["P1Meter"] == 1
+    snaps["P1-C1"]["meter"] = 30000
+    manager._update_meter_refill(payload, "P1-C1", snaps)
+    assert values["P1Meter"] == 0
+    manager._update_meter_refill({"active": False}, "P1-C1", snaps)
+    assert values == {"P1Meter": 4, "BaroquePct": 7}
 
 
 def test_saki_shell_refill_rearms_for_each_load_step_and_restores_meter() -> None:

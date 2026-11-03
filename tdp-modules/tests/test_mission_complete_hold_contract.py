@@ -6,7 +6,7 @@ RENDERER = ROOT / "tvcgui" / "features" / "overlay" / "master_renderer.py"
 
 def test_completion_badge_has_at_least_sixty_rendered_frames() -> None:
     source = RENDERER.read_text(encoding="utf-8")
-    assert "MISSION_COMPLETE_HOLD_FRAMES = 90" in source
+    assert "MISSION_COMPLETE_HOLD_FRAMES = 60" in source
     assert "self._mission_hold_duration_frames: int = MISSION_COMPLETE_HOLD_FRAMES" in source
 
 

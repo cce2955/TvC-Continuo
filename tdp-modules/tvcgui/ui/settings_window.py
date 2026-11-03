@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -9,7 +10,7 @@ from tkinter import filedialog, messagebox
 from tvcgui.core.paths import user_data_path
 from tvcgui.core.settings_bundle import export_settings, schedule_settings_import
 from tvcgui.core.tk_host import tk_call
-from tvcgui.runtime.session_recording import load_session, recorder
+from tvcgui.runtime.session_recording import load_session_payload, recorder
 
 
 _WINDOW = None
@@ -89,6 +90,64 @@ def _show_replay(parent, frames: list[dict]) -> None:
     show()
 
 
+def _show_mission_events(parent, events: list[dict]) -> None:
+    mission_events = [event for event in events if str(event.get("kind", "")).startswith("mission_")]
+    window = tk.Toplevel(parent)
+    window.title("Continuo  |  Mission hit trace")
+    window.geometry("1000x620")
+    window.configure(bg=BG)
+    tk.Label(window, text=f"Mission hit trace  |  {len(mission_events)} events",
+             bg=BG, fg=ACCENT, font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=14, pady=(12, 4))
+    tk.Label(window, text="Select an action or damage event to compare the sampled evidence with the mission decision.",
+             bg=BG, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w", padx=14)
+    body = tk.Frame(window, bg=BG)
+    body.pack(fill="both", expand=True, padx=14, pady=10)
+    rows = tk.Listbox(body, bg=PANEL, fg=TEXT, selectbackground="#315778",
+                      font=("Consolas", 9), exportselection=False)
+    rows.pack(side="left", fill="both", expand=True)
+    scrollbar = tk.Scrollbar(body, command=rows.yview)
+    scrollbar.pack(side="left", fill="y")
+    rows.configure(yscrollcommand=scrollbar.set)
+    detail = tk.Text(window, height=12, bg=PANEL, fg=TEXT, insertbackground=TEXT,
+                     font=("Consolas", 9), wrap="none")
+    detail.pack(fill="x", padx=14, pady=(0, 14))
+    detail.configure(state="disabled")
+    for event in mission_events:
+        values = event.get("values") or {}
+        kind = event.get("kind", "")
+        if kind == "mission_event":
+            summary = (f"{values.get('kind', ''):16} {values.get('slot', ''):6} "
+                       f"action {values.get('action_id', 0):>4}  "
+                       f"{str(values.get('labels', ''))[:26]:26}  "
+                       f"damage {values.get('damage', 0):>5}  HP {values.get('hp', 0):>6}")
+        elif kind == "mission_decision":
+            summary = (f"DECISION {values.get('kind', ''):7} step {values.get('step', 0):>2} "
+                       f"{str(values.get('current', ''))[:26]:26}  "
+                       f"pending {str(values.get('pending', False)):5}  "
+                       f"window {values.get('pending_earliest_hit_ns', 0)}")
+        else:
+            summary = (f"RESULT   step {values.get('step', 0):>2} "
+                       f"{str(values.get('current', ''))[:26]:26}  "
+                       f"pending {str(values.get('pending', False)):5}  "
+                       f"restart {values.get('restart', '')}")
+        rows.insert("end", f"{float(event.get('time', 0)):12.3f}  {summary}")
+
+    def selected(_event=None):
+        selection = rows.curselection()
+        if not selection:
+            return
+        event = mission_events[selection[0]]
+        detail.configure(state="normal")
+        detail.delete("1.0", "end")
+        detail.insert("1.0", json.dumps(event, indent=2))
+        detail.configure(state="disabled")
+
+    rows.bind("<<ListboxSelect>>", selected)
+    if mission_events:
+        rows.selection_set(0)
+        selected()
+
+
 def _show_window(root):
     global _WINDOW
     if _WINDOW is not None and _WINDOW.winfo_exists():
@@ -144,7 +203,7 @@ def _show_window(root):
     tk.Frame(win, height=1, bg="#2b3b4d").pack(fill="x", padx=18, pady=15)
     tk.Label(win, text="Recorded session", bg=BG, fg=TEXT,
              font=("Segoe UI", 11, "bold")).pack(anchor="w", padx=18)
-    tk.Label(win, text="Records HUD snapshots, music changes, and stage route diagnostics. Replay is read-only.",
+    tk.Label(win, text="Records HUD, music, mission actions, damage, and hit decisions. Replay is read-only.",
              bg=BG, fg=MUTED, font=("Segoe UI", 9)).pack(anchor="w", padx=18, pady=(2, 8))
     status = tk.StringVar(value="")
     buttons = tk.Frame(win, bg=BG)
@@ -181,7 +240,9 @@ def _show_window(root):
         if not selected:
             return
         try:
-            _show_replay(win, load_session(Path(selected)))
+            payload = load_session_payload(Path(selected))
+            _show_replay(win, payload["frames"])
+            _show_mission_events(win, payload["events"])
         except Exception as error:
             messagebox.showerror("Replay failed", str(error), parent=win)
 

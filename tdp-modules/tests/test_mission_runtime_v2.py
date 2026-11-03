@@ -6,8 +6,10 @@ from tvcgui.runtime.mission_events import (
     EVENT_COMBO_CHANGE,
     EVENT_COMBO_END,
     EVENT_DAMAGE,
+    EVENT_HITSTUN_BEGIN,
     EVENT_INPUT,
     EVENT_JUMP,
+    EVENT_RECOVERY_IDLE,
     MissionEvent,
 )
 
@@ -68,6 +70,78 @@ def test_damage_step_advances_only_after_damage_edge():
     result = consume(runtime, [ev(2, EVENT_DAMAGE, slot="P2-C1", damage=1000)])
     assert result.cleared
     assert result.progress_index == 1
+
+
+def test_recording_observer_sees_each_hit_decision_and_pending_window():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["5C"]}])
+    decisions = []
+    runtime.consume(
+        [ev(1, EVENT_ACTION, action_id=0x102),
+         ev(2, EVENT_DAMAGE, slot="P2-C1", damage=1000)],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=resolver,
+        event_observer=lambda event, result, diagnostics:
+            decisions.append((event.kind, result.progress_index, diagnostics)),
+    )
+    assert [(kind, step) for kind, step, _ in decisions] == [
+        (EVENT_ACTION, 0), (EVENT_DAMAGE, 1),
+    ]
+    assert decisions[0][2]["pending_action_id"] == 0x102
+    assert decisions[1][2]["pending_action_id"] == 0
+
+
+def test_recorded_jc_damage_survives_owner_knockdown_transition():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["j.C"]}])
+    names = {267: ["j.C"], 161: ["Hard Knockdown"]}
+    result = runtime.consume(
+        [ev(1, EVENT_ACTION, ns=1_000_000_000, action_id=267),
+         ev(2, EVENT_ACTION, ns=1_150_000_000, action_id=161),
+         ev(3, EVENT_DAMAGE, slot="P2-C1", ns=1_169_000_000,
+            damage=1315, current_hp=27093)],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        newest_sequence=3,
+    )
+    assert result.cleared
+
+
+def test_batsu_divekick_strength_survives_native_contact_phase():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["Air Divekick B"]}])
+    names = {324: ["Air Divekick B"], 328: ["Divekick"]}
+    result = runtime.consume(
+        [ev(1, EVENT_ACTION, ns=1_000_000_000, action_id=324),
+         ev(2, EVENT_ACTION, ns=1_085_000_000,
+            action_id=328, previous_action_id=324),
+         ev(3, EVENT_DAMAGE, slot="P2-C1", ns=1_095_000_000,
+            damage=500, current_hp=40000)],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        newest_sequence=3,
+    )
+    assert result.cleared
+
+
+def test_recorded_one_hp_opening_uses_attacker_combo_and_enemy_reaction():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["5A"]}, {"labels": ["5B"]}])
+    names = {256: ["5A"], 257: ["5B"]}
+    result = runtime.consume(
+        [ev(1, EVENT_ACTION, ns=1_000_000_000, action_id=256),
+         ev(2, EVENT_HITSTUN_BEGIN, slot="P2-C1", ns=1_090_000_000,
+            current_hp=1, point_active=True),
+         ev(3, EVENT_COMBO_BEGIN, slot="P1-C1", ns=1_160_000_000,
+            combo_count=1),
+         ev(4, EVENT_ACTION, ns=1_220_000_000, action_id=257),
+         ev(5, EVENT_COMBO_CHANGE, slot="P1-C1", ns=1_350_000_000,
+            combo_count=2)],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        newest_sequence=5,
+    )
+    assert result.cleared
 
 
 def test_native_chain_hit_keeps_source_move_ownership_until_damage():
@@ -388,6 +462,97 @@ def test_ryu_second_jb_hit_cannot_confirm_jc_before_jc_is_active():
     assert final.cleared
 
 
+def test_ryu_jc_second_native_phase_keeps_first_phases_pending_hit():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["j.C"]}])
+    names = {0x10B: ["j.C"], 0x10D: ["j.C"]}
+    result = runtime.consume(
+        [
+            ev(1, EVENT_ACTION, ns=100_000_000, action_id=0x10B, action_frame=1),
+            ev(2, EVENT_ACTION, ns=150_000_000, action_id=0x10D,
+               previous_action_id=0x10B, action_frame=1),
+            ev(3, EVENT_DAMAGE, slot="P2-C1", ns=160_000_000, damage=100),
+        ],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        action_startup_resolver=lambda _action: 11,
+        newest_sequence=3,
+    )
+    assert result.cleared
+
+
+def test_linked_jc_hit_phase_overrides_stale_startup_gate():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["5C"]}, {"labels": ["j.C"]}])
+    names = {0x102: ["5C"], 0x10B: ["j.C"], 0x10D: ["j.C"]}
+    result = runtime.consume(
+        [
+            ev(1, EVENT_ACTION, ns=100_000_000, action_id=0x102),
+            ev(2, EVENT_DAMAGE, slot="P2-C1", ns=150_000_000, damage=100),
+            ev(3, EVENT_ACTION, ns=200_000_000, action_id=0x10B, action_frame=1),
+            ev(4, EVENT_ACTION, ns=220_000_000, action_id=0x10D,
+               previous_action_id=0x10B, action_frame=1),
+            ev(5, EVENT_DAMAGE, slot="P2-C1", ns=225_000_000, damage=100),
+        ],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        action_startup_resolver=lambda action_id: 11 if action_id == 0x10B else 2,
+        newest_sequence=5,
+    )
+    assert result.cleared
+
+
+def test_ryu_jc_confirms_from_new_combo_at_one_hp():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["j.B"]}, {"labels": ["j.C"]}])
+    names = {0x10A: ["j.B"], 0x10B: ["j.C"]}
+    result = runtime.consume(
+        [
+            ev(1, EVENT_ACTION, ns=100_000_000, action_id=0x10A),
+            ev(2, EVENT_DAMAGE, slot="P2-C1", ns=180_000_000,
+               damage=100, current_hp=1, combo_count=1),
+            ev(3, EVENT_COMBO_END, slot="P2-C1", ns=250_000_000, combo_count=0),
+            ev(4, EVENT_ACTION, ns=300_000_000, action_id=0x10B, action_frame=1),
+            ev(5, EVENT_COMBO_BEGIN, slot="P2-C1", ns=370_000_000,
+               combo_count=1, current_hp=1),
+        ],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        action_startup_resolver=lambda _action: 8,
+        newest_sequence=5,
+    )
+    assert result.cleared
+
+
+def test_opening_hit_at_one_hp_needs_defender_reaction_and_combo_rise():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [{"labels": ["5A"]}, {"labels": ["5B"]}, {"labels": ["5C"]}])
+    names = {0x100: ["5A"]}
+    result = runtime.consume(
+        [
+            ev(1, EVENT_ACTION, ns=100_000_000, action_id=0x100),
+            ev(2, EVENT_COMBO_BEGIN, slot="P2-C1", ns=140_000_000,
+               current_hp=1, combo_count=1, point_active=True),
+        ],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        newest_sequence=2,
+    )
+    assert result.progress_index == 0
+    result = runtime.consume(
+        [
+            ev(3, EVENT_HITSTUN_BEGIN, slot="P2-C1", ns=150_000_000,
+               current_hp=1, point_active=True),
+            ev(4, EVENT_COMBO_CHANGE, slot="P2-C1", ns=160_000_000,
+               current_hp=1, combo_count=2, point_active=True),
+        ],
+        owner_slot="P1-C1", label_matcher=matcher,
+        action_label_resolver=lambda event: names.get(event.action_id, []),
+        newest_sequence=4,
+    )
+    assert result.progress_index == 1
+
+
 def test_chun_legs_followup_waits_for_jb_hit_not_late_legs_hit():
     runtime = MissionRuntimeV2()
     configure(runtime, [{"labels": ["Legs C"]}, {"labels": ["j.B"]}])
@@ -501,6 +666,59 @@ def test_combo_damage_goal_uses_damage_events():
     ])
     assert result.cleared
     assert result.goal_damage == 1550
+
+
+def test_damage_under_hits_keeps_first_hp_edge_before_late_combo_begin():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [], goal={"type": "damage_under_hits", "damage": 11000, "max_hits": 2})
+    first_ns = 100_000_000
+    result = consume(runtime, [
+        ev(1, EVENT_DAMAGE, slot="P2-C1", ns=first_ns, damage=8000, combo_count=1),
+        ev(2, EVENT_COMBO_BEGIN, slot="P1-C1", ns=first_ns + 800_000_000, combo_count=1),
+    ])
+    assert not result.cleared
+    assert (result.goal_damage, result.goal_hits) == (8000, 1)
+
+    result = consume(runtime, [
+        ev(3, EVENT_DAMAGE, slot="P2-C1", damage=4000, combo_count=2),
+        ev(4, EVENT_COMBO_CHANGE, slot="P2-C1", combo_count=2),
+    ])
+    assert result.cleared
+    assert (result.goal_damage, result.goal_hits) == (12000, 2)
+
+    # A later global counter update must not revoke the clear before the GUI
+    # sees it; this exact sequence occurred in the recorded Roll attempt.
+    result = consume(runtime, [ev(5, EVENT_COMBO_BEGIN, slot="P1-C1", combo_count=2)])
+    assert result.cleared
+    assert (result.goal_damage, result.goal_hits) == (12000, 2)
+
+
+def test_damage_under_hits_resets_after_combo_end():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [], goal={"type": "damage_under_hits", "damage": 11000, "max_hits": 2})
+    result = consume(runtime, [
+        ev(1, EVENT_DAMAGE, slot="P2-C1", ns=100_000_000, damage=8000, combo_count=1),
+        ev(2, EVENT_COMBO_BEGIN, slot="P2-C1", ns=100_000_000, combo_count=1),
+        ev(3, EVENT_COMBO_END, slot="P2-C1", combo_count=0),
+        ev(4, EVENT_DAMAGE, slot="P2-C1", ns=200_000_000, damage=4000, combo_count=1),
+        ev(5, EVENT_COMBO_BEGIN, slot="P2-C1", ns=200_000_000, combo_count=1),
+    ])
+    assert not result.cleared
+    assert (result.goal_damage, result.goal_hits) == (4000, 1)
+
+
+def test_damage_under_hits_separates_recovered_attempts_without_combo_counter():
+    runtime = MissionRuntimeV2()
+    configure(runtime, [], goal={"type": "damage_under_hits", "damage": 11000, "max_hits": 2})
+    result = consume(runtime, [
+        ev(1, EVENT_DAMAGE, slot="P2-C1", damage=4500, combo_count=0),
+        ev(2, EVENT_RECOVERY_IDLE, slot="P2-C1"),
+        ev(3, EVENT_DAMAGE, slot="P2-C1", damage=4800, combo_count=0),
+        ev(4, EVENT_DAMAGE, slot="P2-C1", damage=7200, combo_count=0),
+        ev(5, EVENT_COMBO_BEGIN, slot="P1-C1", combo_count=2),
+    ])
+    assert result.cleared
+    assert (result.goal_damage, result.goal_hits) == (12000, 2)
 
 
 def test_state_duration_goal_uses_native_blockstun_count():

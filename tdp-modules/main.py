@@ -1901,10 +1901,6 @@ def legacy_main():
         if os.path.exists(MASTER_CONTROL_FILE):
             with open(MASTER_CONTROL_FILE, "r", encoding="utf-8") as f:
                 _existing_master = json.load(f)
-            # The core Overlay intentionally starts ON every app launch. The
-            # saved file still preserves the independent card switches below,
-            # but a prior session's Overlay OFF state is not restored.
-            overlay_enabled = True
             show_interaction_card = bool(_existing_master.get("show_interaction_card", show_interaction_card))
             show_combo_card = bool(_existing_master.get("show_combo_card", show_combo_card))
             defaults_version = int(
@@ -1929,6 +1925,9 @@ def legacy_main():
                 show_tag_card = bool(_existing_master.get("show_tag_card", show_tag_card))
                 restored_set = str(_existing_master.get("hud_info_set", "CUSTOM") or "CUSTOM").strip().upper()
                 hud_info_set = restored_set if restored_set in {"CORE", "RESEARCH", "FULL", "CUSTOM"} else "CUSTOM"
+            # Restore the user's choice after preset migration, which may set
+            # the HUD on while updating its other defaults.
+            overlay_enabled = bool(_existing_master.get("show_hud", True))
     except Exception:
         pass
 

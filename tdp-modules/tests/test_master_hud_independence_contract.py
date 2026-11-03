@@ -26,8 +26,7 @@ def test_modified_modules_parse() -> None:
 def test_master_compositor_is_not_owned_by_overlay_toggle() -> None:
     src = _text(MAIN)
     assert "overlay_enabled       = True" in src
-    assert "a prior session's Overlay OFF state is not restored" in src
-    assert '_existing_master.get("show_hud"' not in src
+    assert 'overlay_enabled = bool(_existing_master.get("show_hud", True))' in src
     start = src.index("    def _sync_master_overlay_state():")
     end = src.index("\n    try:\n        if os.path.exists(MASTER_CONTROL_FILE):", start)
     block = src[start:end]

@@ -213,6 +213,7 @@
       "mission_id": "roll_008",
       "name": "Two-Hit Challenge",
       "notes": "Deal 11,000 damage in two hits or fewer. Baroque is locked. A third hit fails the attempt.",
+      "allow_dummy_state": true,
       "setup_debug_flags": {
         "BaroquePct": 0
       },

@@ -1144,6 +1144,27 @@ class MissionManager:
                 )
                 return max(0, int(info.get("startup", 0) or 0)) if isinstance(info, dict) else 2
 
+            def _record_decision(event: MissionEvent, result, diagnostics: dict) -> None:
+                session_recorder.capture_event(
+                    event.timestamp_ns / 1_000_000_000.0,
+                    "mission_decision",
+                    {
+                        "mission": str(context.get("mission_id") or ""),
+                        "seq": int(event.sequence),
+                        "kind": str(event.kind),
+                        "slot": str(event.slot),
+                        "action_id": int(event.action_id),
+                        "damage": int(event.damage),
+                        "attempt": int(result.attempt_id),
+                        "step": int(result.progress_index),
+                        "current": str(result.current_step_label or ""),
+                        "pending": bool(result.prediction_active),
+                        "cleared": bool(result.cleared),
+                        "restart": str(result.last_restart_reason or ""),
+                        **diagnostics,
+                    },
+                )
+
             with self._mission_realtime_lock:
                 result = self._mission_runtime_v2.consume(
                     events,
@@ -1154,6 +1175,7 @@ class MissionManager:
                     action_timeout_resolver=_action_timeout_ns,
                     action_startup_resolver=_action_startup_frames,
                     newest_sequence=newest,
+                    event_observer=_record_decision if recording else None,
                 )
                 if result != self._mission_realtime_result:
                     self._mission_realtime_result_revision += 1
@@ -1571,6 +1593,7 @@ class MissionManager:
                 payload["fighter_loaded"] = fighter_loaded
                 payload["selector_open"] = bool(self._selector["open"])
                 payload["selector_index"] = int(self._selector["selected_index"])
+                payload["selector_command_sequence"] = int(self._selector.get("command_sequence", 0) or 0)
                 payload["selector_hint"] = "Mission Mode: Down, Down, Taunt opens Mission Select"
                 payload["selector_controls"] = "Up/Down: Move  Right: Lock  Left: Unlock  Taunt: Select"
                 payload["scanlines"] = True
@@ -1806,9 +1829,10 @@ class MissionManager:
         """Release mission-owned flags immediately when the route clears."""
         if mission_key is None:
             return
+        allow_dummy_state = bool(self._setup_state.get("allow_dummy_state"))
         if self._setup_state.get("mission_key") is not None:
-            self._restore_debug_overrides(force_cpu_idle=True)
-        elif self._setup_state.get("idle_mission_key") != mission_key:
+            self._restore_debug_overrides(force_cpu_idle=not allow_dummy_state)
+        elif not allow_dummy_state and self._setup_state.get("idle_mission_key") != mission_key:
             self._write_debug_flag("CpuAction", 0)
             print("[mission restore] CpuAction -> 0")
         self._setup_state["completed_mission_key"] = mission_key
@@ -1893,7 +1917,11 @@ class MissionManager:
             )
             writes = (("P1Meter", desired),)
         else:
-            desired = int(meter < 50000 and not self._opponent_in_hitstun(route_slot, snaps_dict))
+            try:
+                target_bars = max(1, min(5, int(payload.get("active_mission_setup_meter_refill_bars", 5))))
+            except (TypeError, ValueError):
+                target_bars = 5
+            desired = int(meter < target_bars * 10000 and not self._opponent_in_hitstun(route_slot, snaps_dict))
             writes = (("BaroquePct", 1), ("P1Meter", desired))
         for name, value in writes:
             if self._read_debug_flag(name) != value:
@@ -1901,6 +1929,7 @@ class MissionManager:
 
     def _sync_debug_overrides(self, payload: dict) -> None:
         mission_key = self._mission_debug_key(payload)
+        allow_dummy_state = bool(payload.get("active_mission_allow_dummy_state")) if isinstance(payload, dict) else False
         if mission_key is None:
             if self._setup_state.get("mission_key") is not None:
                 self._restore_debug_overrides(force_cpu_idle=True)
@@ -1915,7 +1944,7 @@ class MissionManager:
         if self._setup_state.get("completed_mission_key") == mission_key:
             # Completion owns CpuAction until the user explicitly selects a
             # mission again. Reassert idle if any later system changes it.
-            if self._read_debug_flag("CpuAction") != 0:
+            if not allow_dummy_state and self._read_debug_flag("CpuAction") != 0:
                 self._write_debug_flag("CpuAction", 0)
             self._setup_state["idle_mission_key"] = mission_key
             return
@@ -1929,14 +1958,17 @@ class MissionManager:
 
             self._setup_state["completed_mission_key"] = None
             self._setup_state["idle_mission_key"] = None
+            self._setup_state["allow_dummy_state"] = allow_dummy_state
 
             # Training defaults for dummy behavior are explicit. Restoring a
             # previous mission's saved bytes may revive guard or pushblock.
             for name in ("CpuAction", "CpuGuard", "CpuPushblock"):
+                if name == "CpuAction" and allow_dummy_state:
+                    continue
                 if name not in overrides and self._read_debug_flag(name) != 0:
                     self._write_debug_flag(name, 0)
 
-            if "CpuAction" not in overrides:
+            if "CpuAction" not in overrides and not allow_dummy_state:
                 self._setup_state["idle_mission_key"] = mission_key
 
             if not overrides:
@@ -1971,7 +2003,7 @@ class MissionManager:
 
         # Unless this mission explicitly owns CpuAction, idle is the permanent
         # mission default rather than a one-frame cleanup write.
-        if "CpuAction" not in overrides and self._read_debug_flag("CpuAction") != 0:
+        if not allow_dummy_state and "CpuAction" not in overrides and self._read_debug_flag("CpuAction") != 0:
             self._write_debug_flag("CpuAction", 0)
             self._setup_state["idle_mission_key"] = mission_key
 
@@ -2212,6 +2244,9 @@ class MissionManager:
         for command in commands or ():
             if not isinstance(command, MissionMenuCommand):
                 continue
+            self._selector["command_sequence"] = max(
+                int(self._selector.get("command_sequence", 0) or 0), int(command.sequence)
+            )
             kind = str(command.kind or "")
             slot = str(command.slot or "")
 
@@ -5706,6 +5741,7 @@ class MissionManager:
             "active_mission_name": None,
             "active_mission_steps": [],
             "active_mission_setup_meter_refill": False,
+            "active_mission_setup_meter_refill_bars": 5,
             "missions": [],
             "completed_step_count": 0,
             "confirmed_step_count": 0,

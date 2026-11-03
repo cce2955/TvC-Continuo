@@ -50,6 +50,8 @@ class MissionDef:
     notes: str = ""
     setup_debug_flags: Dict[str, int] = field(default_factory=dict)
     setup_meter_refill: bool = False
+    setup_meter_refill_bars: int = 5
+    allow_dummy_state: bool = False
     setup_megacrash_trainer: Dict[str, Any] = field(default_factory=dict)
     goal: Dict[str, Any] = field(default_factory=dict)
 
@@ -58,6 +60,49 @@ class MissionDef:
 class MissionPack:
     character: str
     missions: List[MissionDef] = field(default_factory=list)
+
+
+# Authored move labels, checked against the local character action map. The
+# 0x200/0x300 action ranges alone are insufficient: they also contain throws,
+# special moves, hit phases and non-meter states. Keep this list conservative.
+MISSION_SUPER_COSTS: Dict[str, Dict[str, int]] = {
+    "alex": {"boomerang raid": 1, "hyperbomb": 3},
+    "batsu": {"air super guts bullet": 1},
+    "casshan": {"brutal axe": 1, "super destruction beam": 3},
+    "chun-li": {"shichei": 3},
+    "doronjo": {"in the beginning": 1, "supreme evil plan": 3},
+    "frank west": {"dead rising": 1, "real megabuster": 1, "zombie charge": 3},
+    "gold lightan": {"gold crash": 1, "air gold crash": 1, "gold finger crash": 2},
+    "ippatsuman": {"final reversal breaker": 1},
+    "jun the swan": {"phoenix": 3},
+    "karas": {"hiei zangetsu": 3},
+    "ken the eagle": {"phoenix": 3},
+    "morrigan": {"darkness illusion": 3},
+    "polimar": {"one handed vacuum spin": 1, "illusion fist": 3},
+    "ptx": {"l-p buster": 3},
+    "ptx 40a": {"l-p buster": 3},
+    "roll": {"mop up turbo": 1},
+    "ryu": {"shin sho": 3, "shinkuu": 1},
+    "saki": {"positron storm": 1},
+    "soki": {"oni tactics": 1, "purification": 1},
+    "tekkaman": {"voltekka air": 1},
+    "tekkaman blade": {"crash intrude": 1, "omnidirectional voltekka": 3},
+    "viewtiful joe": {"slow and zoom": 3},
+    "volnutt": {"air machine gun super": 1, "max drill upper": 1},
+    "yatterman 2": {"yatter passion": 1},
+    "yatterman 1": {"yatter wan flame": 1},
+    "zero": {"air hyper zero blaster": 1, "hyper zero blaster": 1,
+             "rekkoha": 1, "dark hold": 3},
+}
+
+
+def _authored_super_meter_bars(character: str, steps: List[MissionStep]) -> int:
+    character_key = str(character or "").strip().lower().replace("_", " ").replace("-", " ")
+    costs = MISSION_SUPER_COSTS.get(character_key, {})
+    return min(5, sum(
+        max((costs.get(str(label or "").strip().lower(), 0) for label in step.labels), default=0)
+        for step in steps
+    ))
 
 
 _MISSION_PACK_CACHE: Dict[str, tuple[int, int, MissionPack]] = {}
@@ -328,6 +373,12 @@ def _infer_step_input_notation(character_name: str, labels: List[str], display: 
     if any("jump cancel" in value for value in lowered):
         return "7 / 8 / 9"
 
+    if _safe_slug(character_name) == "batsu":
+        for value in candidates:
+            divekick = re.fullmatch(r"air\s+divekick\s+([ABC])", value, flags=re.IGNORECASE)
+            if divekick:
+                return f"j.214{divekick.group(1).upper()}"
+
     # Normals already contain their own notation. Jump normals stay literal.
     # A second j.A is still j.A, not a motion command inferred from the wiki.
     for value in candidates:
@@ -421,6 +472,10 @@ def _load_mission_pack_uncached(character_name: str) -> MissionPack:
             setup_meter_refill = raw_setup_meter_refill.strip().lower() in {"1", "true", "yes", "on"}
         else:
             setup_meter_refill = bool(raw_setup_meter_refill)
+        try:
+            setup_meter_refill_bars = max(1, min(5, int(entry.get("setup_meter_refill_bars", 5))))
+        except (TypeError, ValueError):
+            setup_meter_refill_bars = 5
 
         setup_megacrash_trainer: Dict[str, Any] = {}
         raw_setup_mega = (
@@ -514,6 +569,16 @@ def _load_mission_pack_uncached(character_name: str) -> MissionPack:
         if not mission_id or (not steps and not goal):
             continue
 
+        # A verified super in a route needs enough starting meter to execute
+        # every authored super. Explicit mission setup always takes priority.
+        if ("setup_meter_refill" not in entry and "P1Meter" not in setup_debug_flags
+                and not any("load super armor piercing shell" in label.lower()
+                            for step in steps for label in step.labels)):
+            inferred_bars = _authored_super_meter_bars(character_name, steps)
+            if inferred_bars:
+                setup_meter_refill = True
+                setup_meter_refill_bars = inferred_bars
+
         missions.append(
             MissionDef(
                 mission_id=mission_id,
@@ -523,6 +588,8 @@ def _load_mission_pack_uncached(character_name: str) -> MissionPack:
                 notes=notes,
                 setup_debug_flags=setup_debug_flags,
                 setup_meter_refill=setup_meter_refill,
+                setup_meter_refill_bars=setup_meter_refill_bars,
+                allow_dummy_state=bool(entry.get("allow_dummy_state", False)),
                 setup_megacrash_trainer=setup_megacrash_trainer,
                 goal=goal,
             )
@@ -772,6 +839,8 @@ def build_overlay_payload(character_name: str) -> Dict[str, Any]:
         "active_mission_goal": dict(active.goal) if active else {},
         "active_mission_setup_debug_flags": dict(active.setup_debug_flags) if active else {},
         "active_mission_setup_meter_refill": bool(active.setup_meter_refill) if active else False,
+        "active_mission_setup_meter_refill_bars": active.setup_meter_refill_bars if active else 5,
+        "active_mission_allow_dummy_state": bool(active.allow_dummy_state) if active else False,
         "active_mission_setup_megacrash_trainer": dict(active.setup_megacrash_trainer) if active else {},
         "selected_mission_id": selected_id,
         "locked_mission_id": locked_id,
@@ -798,6 +867,8 @@ def build_overlay_payload(character_name: str) -> Dict[str, Any]:
                 "goal": dict(mission.goal),
                 "setup_debug_flags": dict(mission.setup_debug_flags),
                 "setup_meter_refill": bool(mission.setup_meter_refill),
+                "setup_meter_refill_bars": mission.setup_meter_refill_bars,
+                "allow_dummy_state": bool(mission.allow_dummy_state),
                 "setup_megacrash_trainer": dict(mission.setup_megacrash_trainer),
             }
             for mission in pack.missions

@@ -99,7 +99,7 @@ MASH_REQUIRED_COUNT = 3
 JUMP_CONFIRM_WINDOW_NS = 150_000_000
 PENDING_ACTION_FALLBACK_NS = int(45 * (1_000_000_000 / 60.0))
 BUFFERED_NEXT_HIT_MAX_NS = 55_000_000
-MISSION_RUNTIME_DIAGNOSTIC_REVISION = "chain-lineage-hp-floor-20261018"
+MISSION_RUNTIME_DIAGNOSTIC_REVISION = "recorded-hit-handoff-20261023"
 
 
 class AttemptPhase(str, Enum):
@@ -169,6 +169,8 @@ class AttemptState:
     combo_live: bool = False
     combo_count: int = 0
     defender_current_hp: int = -1
+    opening_reaction_slot: str = ""
+    opening_reaction_ns: int = 0
     reaction_live: bool = False
     native_stun_live: bool = False
     special_reaction_live: bool = False
@@ -374,6 +376,10 @@ class MissionRuntimeV2:
             "pending_action_id": int(pending.action_id) if pending else 0,
             "pending_chain_id": int(pending.continuation_action_id) if pending else 0,
             "pending_combo_baseline": int(pending.combo_baseline) if pending else 0,
+            "pending_started_ns": int(pending.timestamp_ns) if pending else 0,
+            "pending_earliest_hit_ns": int(pending.earliest_hit_ns) if pending else 0,
+            "pending_deadline_ns": int(pending.deadline_ns) if pending else 0,
+            "buffered_next_action_id": int(state.buffered_next_action[0].action_id) if state.buffered_next_action else 0,
             "combo_count": int(state.combo_count),
             "defender_slot": str(state.continuity_defender_slot),
             "defender_hp": int(state.defender_current_hp),
@@ -747,6 +753,45 @@ class MissionRuntimeV2:
                 pending.continuation_action_id or pending.action_id
             )
         )
+        # A multi-hit normal can enter a second native action before the
+        # defender's HP edge is published. Keep the first phase's hit window
+        # when the new phase has the same authored identity and is linked by
+        # previous_action_id; replacing it makes that real hit look too early.
+        same_move_phase = bool(
+            pending is not None
+            and matched
+            and int(event.action_id) != int(pending.continuation_action_id or pending.action_id)
+            and int(event.previous_action_id) == int(pending.continuation_action_id or pending.action_id)
+        )
+        if same_move_phase:
+            pending.continuation_action_id = int(event.action_id)
+            pending.deadline_ns = max(pending.deadline_ns, int(event.timestamp_ns) + PENDING_ACTION_FALLBACK_NS)
+            # The native transition to the linked hit phase is stronger
+            # evidence than a startup estimate from frame data. A hit sampled
+            # immediately after this transition belongs to this move even if
+            # the original estimate says its active frames are still ahead.
+            pending.earliest_hit_ns = min(
+                int(pending.earliest_hit_ns), int(event.timestamp_ns)
+            )
+            return
+        # Batsu's A/B/C air divekicks use 323-325, then switch to shared
+        # recovery/bounce/contact actions 326-328. Keep the strength-specific
+        # candidate through those native phases until the defender HP edge.
+        if (
+            pending is not None
+            and int(pending.action_id) in (323, 324, 325)
+            and int(event.action_id) in (326, 327, 328)
+            and any("air divekick" in label.lower() for label in pending.labels)
+        ):
+            pending.continuation_action_id = int(event.action_id)
+            pending.deadline_ns = min(
+                pending.deadline_ns, int(event.timestamp_ns) + 100_000_000
+            )
+            pending.superseded_by_next = True
+            pending.earliest_hit_ns = min(
+                int(pending.earliest_hit_ns), int(event.timestamp_ns)
+            )
+            return
         if chain_continuation:
             pending.continuation_action_id = int(event.action_id)
         delayed_pending = bool(
@@ -791,6 +836,13 @@ class MissionRuntimeV2:
             and not (preserve_pending_for_jump or chain_continuation)
             and not delayed_pending
         ):
+            # The owner can enter a native hit/knockdown state after an attack
+            # connects but before the defender's slower HP sample arrives.
+            # Keep only a short handoff window for that already-armed attack.
+            if int(event.action_id) in MISSION_REACTION_ACTIONS or int(event.action_id) in MISSION_KNOCKDOWN_ACTIONS:
+                pending.deadline_ns = min(pending.deadline_ns, int(event.timestamp_ns) + 55_000_000)
+                pending.superseded_by_next = True
+                return
             self._state.pending_action = None
             self._state.buffered_next_action = None
 
@@ -1129,16 +1181,25 @@ class MissionRuntimeV2:
             )
             return
 
-        if event.kind == EVENT_COMBO_BEGIN:
-            state.combo_live = True
-            state.combo_count = max(0, int(event.combo_count or 0))
-            return
-        if event.kind == EVENT_COMBO_CHANGE:
+        if event.kind in (EVENT_COMBO_BEGIN, EVENT_COMBO_CHANGE):
             new_count = max(0, int(event.combo_count or 0))
             previous_count = int(state.combo_count)
             state.combo_live = new_count > 0
             state.combo_count = new_count
             pending = state.pending_action
+            established_defender_at_one_hp = bool(
+                state.continuity_started
+                and state.continuity_defender_slot
+                and state.defender_current_hp == 1
+            )
+            opening_defender_at_one_hp = bool(
+                state.progress_index == 0
+                and not state.continuity_started
+                and state.opening_reaction_slot
+                and state.defender_current_hp == 1
+                and 0 <= int(event.timestamp_ns) - state.opening_reaction_ns <= 500_000_000
+                and (is_owner or str(event.slot) == state.opening_reaction_slot)
+            )
             # Training can hold the defender at 1 HP. A later attack then
             # increases the native combo counter and reaction without creating
             # an HP-delta event. The already-bound defender and a rise beyond
@@ -1146,10 +1207,7 @@ class MissionRuntimeV2:
             if (
                 pending is not None
                 and pending.step_index == state.progress_index
-                and state.continuity_started
-                and bool(state.continuity_defender_slot)
-                and state.defender_current_hp == 1
-                and pending.combo_baseline > 0
+                and (established_defender_at_one_hp or opening_defender_at_one_hp)
                 and new_count > max(previous_count, pending.combo_baseline)
                 and int(event.timestamp_ns or 0) >= int(pending.timestamp_ns)
                 and int(event.timestamp_ns or 0) >= int(pending.earliest_hit_ns or 0)
@@ -1157,7 +1215,7 @@ class MissionRuntimeV2:
                 self._confirm_pending_hit(
                     event, label_matcher, action_timeout_resolver,
                     action_startup_resolver,
-                    defender_slot=state.continuity_defender_slot,
+                    defender_slot=state.continuity_defender_slot or state.opening_reaction_slot,
                 )
             return
         if event.kind == EVENT_COMBO_END:
@@ -1170,14 +1228,22 @@ class MissionRuntimeV2:
 
         if is_enemy and state.continuity_defender_slot and str(event.slot or "") != str(state.continuity_defender_slot):
             return
-        if is_enemy and not state.continuity_defender_slot:
-            # Before the first confirmed hit there is no defender to recover.
+        if is_enemy and not state.continuity_defender_slot and event.kind not in (
+            EVENT_HITSTUN_BEGIN, EVENT_MEGACRASH_BEGIN, EVENT_REACTION_BEGIN,
+        ):
+            # Before the first confirmed hit there is no defender to recover,
+            # but an opening reaction is valid hit evidence at the 1 HP floor.
             return
 
         if is_enemy and event.kind in (EVENT_HITSTUN_BEGIN, EVENT_MEGACRASH_BEGIN):
             state.native_stun_live = True
             state.reaction_live = True
             state.reaction_seen = True
+            if (not state.continuity_started and state.progress_index == 0
+                    and event.point_active is not False and int(event.current_hp) == 1):
+                state.opening_reaction_slot = str(event.slot)
+                state.opening_reaction_ns = int(event.timestamp_ns)
+                state.defender_current_hp = 1
             return
         if is_enemy and event.kind == EVENT_REACTION_BEGIN:
             state.special_reaction_live = True
@@ -1253,9 +1319,10 @@ class MissionRuntimeV2:
         if goal_type in {"combo_damage", "damage_under_hits"}:
             if event.kind == EVENT_COMBO_BEGIN:
                 self._state.combo_live = True
-                self._state.goal_damage = 0
-                self._state.goal_hits = max(0, int(event.combo_count or 0))
-                self._state.goal_failed = False
+                # The HP edge can precede the global combo counter by many
+                # samples. Recovery/COMBO_END separates attempts; this late
+                # begin must not erase damage already observed for this one.
+                self._state.goal_hits = max(self._state.goal_hits, int(event.combo_count or 0))
             elif event.kind == EVENT_COMBO_CHANGE:
                 self._state.combo_live = int(event.combo_count or 0) > 0
                 self._state.goal_hits = max(self._state.goal_hits, int(event.combo_count or 0))
@@ -1263,10 +1330,18 @@ class MissionRuntimeV2:
                 self._state.goal_damage += max(0, int(event.damage or 0))
                 if int(event.combo_count or 0) > 0:
                     self._state.goal_hits = max(self._state.goal_hits, int(event.combo_count or 0))
-                elif self._state.goal_hits <= 0:
+                else:
                     self._state.goal_hits += 1
             elif event.kind == EVENT_COMBO_END:
                 self._state.combo_live = False
+                self._state.goal_damage = 0
+                self._state.goal_hits = 0
+                self._state.goal_failed = False
+            elif event.kind == EVENT_RECOVERY_IDLE and is_enemy:
+                self._state.combo_live = False
+                self._state.goal_damage = 0
+                self._state.goal_hits = 0
+                self._state.goal_failed = False
 
     def _goal_cleared(self) -> bool:
         goal_type = str(self._goal.get("type") or "").strip().lower()
@@ -1348,6 +1423,7 @@ class MissionRuntimeV2:
         action_timeout_resolver: ActionTimeoutResolver | None = None,
         action_startup_resolver: ActionTimeoutResolver | None = None,
         newest_sequence: int = 0,
+        event_observer: Callable[[MissionEvent, RuntimeResult, dict], None] | None = None,
     ) -> RuntimeResult:
         owner_team = self._team(owner_slot)
         ordered = sorted(
@@ -1372,10 +1448,10 @@ class MissionRuntimeV2:
             self._state.last_event_ns = max(self._state.last_event_ns, int(event.timestamp_ns or 0))
             self._latest_sequence = max(self._latest_sequence, int(event.sequence))
             if self._goal:
-                self._consume_goal_event(event, owner_team=owner_team)
-                if self._goal_cleared():
-                    self._state.phase = AttemptPhase.CLEAR
-                    break
+                if self._state.phase is not AttemptPhase.CLEAR:
+                    self._consume_goal_event(event, owner_team=owner_team)
+                    if self._goal_cleared():
+                        self._state.phase = AttemptPhase.CLEAR
             else:
                 self._consume_route_event(
                     event,
@@ -1395,6 +1471,8 @@ class MissionRuntimeV2:
                 # latched until the defender actually reaches a recovery
                 # boundary (or authored grace expires). Stopping here used to
                 # discard wakeup/Idle events later in the same provider batch.
+            if event_observer is not None and event.kind in (EVENT_ACTION, EVENT_DAMAGE):
+                event_observer(event, self._result(cursor=int(event.sequence)), self.diagnostics())
 
         cursor = max(self._latest_sequence, int(newest_sequence or 0))
         return self._result(cursor=cursor)

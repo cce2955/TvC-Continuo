@@ -191,7 +191,7 @@ def _mission_complete_plate_progress(phase: float) -> tuple[float, float, float]
     return alpha, lock, sheen
 
 
-MISSION_COMPLETE_HOLD_FRAMES = 42
+MISSION_COMPLETE_HOLD_FRAMES = 60  # one second at 60 FPS; visible without delaying the next trial
 MISSION_COMPLETE_MIN_BODY_HEIGHT = 96
 
 
@@ -867,7 +867,7 @@ class MasterOverlay:
         return (170, 120, 255)
 
     def _mission_portrait_watermark(self, character: str, size: int) -> pygame.Surface | None:
-        """Cache a feathered, low-opacity portrait for mission nameplates."""
+        """Cache the complete portrait scaled to its allotted square icon area."""
         key = re.sub(r"[^a-z0-9]", "", str(character or "").lower())
         cache_key = (key, int(size))
         if cache_key in self._mission_portrait_cache:
@@ -890,24 +890,9 @@ class MasterOverlay:
             self._mission_portrait_cache[cache_key] = None
             return None
         try:
-            source = pygame.transform.smoothscale(pygame.image.load(path), (size, size))
-            portrait = pygame.Surface((size, size), pygame.SRCALPHA)
-            center = (size - 1) / 2.0
-            radius = max(1.0, center)
-            for y in range(size):
-                dy = (y - center) / radius
-                for x in range(size):
-                    dx = (x - center) / radius
-                    feather = max(0.0, 1.0 - dx * dx - dy * dy) ** 1.4
-                    if feather <= 0.0:
-                        continue
-                    r, g, b, source_alpha = source.get_at((x, y))
-                    chroma = max(r, g, b) - min(r, g, b)
-                    shade = (r + g + b) / 3.0
-                    detail = max(min(1.0, chroma / 75.0), min(0.65, max(0.0, (100.0 - shade) / 100.0)))
-                    alpha = int(source_alpha * feather * (0.025 + 0.60 * detail))
-                    if alpha:
-                        portrait.set_at((x, y), (r, g, b, alpha))
+            source = pygame.image.load(path)
+            portrait = pygame.transform.smoothscale(source, (size, size))
+            portrait.set_alpha(205)
         except (OSError, pygame.error, ValueError):
             portrait = None
         self._mission_portrait_cache[cache_key] = portrait
@@ -1188,6 +1173,8 @@ class MasterOverlay:
         if (
             int(visual.get("updated_ns", 0) or 0) >= self._mission_menu_visual_start_ns
             and str(visual.get("slot") or "") == str(display.get("slot") or "")
+            and int(visual.get("sequence", 0) or 0)
+            > int(display.get("selector_command_sequence", 0) or 0)
         ):
             display["selector_open"] = bool(visual.get("open"))
             display["selector_index"] = int(visual.get("index", 0) or 0)
@@ -2581,8 +2568,9 @@ class MasterOverlay:
             - 22
         )
         character_display = str(character or "Unknown")
+        icon_size = max(18, header_chip_h - 6)
         while (
-            self.font.size(character_display)[0] + 20 > max(70, reserved_left_w)
+            self.font.size(character_display)[0] + icon_size + 28 > max(70, reserved_left_w)
             and len(character_display) > 4
         ):
             character_display = character_display[:-4].rstrip() + "..."
@@ -2592,7 +2580,7 @@ class MasterOverlay:
             theme_color,
         )
         character_chip_w = min(
-            max(110, character_surf.get_width() + 20),
+            max(110, character_surf.get_width() + icon_size + 28),
             max(110, reserved_left_w),
         )
         character_chip_rect = pygame.Rect(
@@ -2607,15 +2595,17 @@ class MasterOverlay:
         )
         pygame.draw.rect(
             character_chip_layer,
-            (10, 22, 38, 236),
+            (*_mission_tint((10, 22, 38), theme_color, 0.22), 244),
             character_chip_layer.get_rect(),
             border_radius=6,
         )
-        portrait = self._mission_portrait_watermark(character, 68)
+        portrait = self._mission_portrait_watermark(character, icon_size)
         if portrait is not None:
+            icon_rect = pygame.Rect(character_chip_w - icon_size - 3, 3, icon_size, icon_size)
+            pygame.draw.rect(character_chip_layer, (*fighter_accent, 48), icon_rect, border_radius=4)
             character_chip_layer.blit(
                 portrait,
-                (character_chip_w - portrait.get_width() + 8, (header_chip_h - portrait.get_height()) // 2),
+                icon_rect.topleft,
             )
         pygame.draw.rect(
             character_chip_layer,
@@ -3102,6 +3092,13 @@ class MasterOverlay:
                 1,
                 border_radius=7,
             )
+            impact = max(0.0, 1.0 - abs(float(hold_elapsed_frames) - 11.0) / 12.0)
+            pygame.draw.line(
+                complete_layer,
+                (150, 208, 255, int((180 + 75 * impact) * badge_alpha)),
+                (18, 4), (complete_layer.get_width() - 18, 4),
+                max(2, int(3 + 2 * impact)),
+            )
 
             # Side wings slide inward and lock around the title.
             wing_offset = int(round((1.0 - slide_progress) * 34.0))
@@ -3140,11 +3137,11 @@ class MasterOverlay:
                 2,
             )
 
-            title_font = pygame.font.SysFont("consolas", 24, bold=True)
+            title_font = pygame.font.SysFont("consolas", 27, bold=True)
             subtitle_font = pygame.font.SysFont("consolas", 15, bold=True)
             title = title_font.render("MISSION COMPLETE", True, (236, 243, 252))
             title_scale = 0.90 + 0.10 * title_lock
-            pulse = 1.0 + 0.025 * max(0.0, 1.0 - abs(float(hold_elapsed_frames) - 18.0) / 8.0)
+            pulse = 1.0 + 0.075 * max(0.0, 1.0 - abs(float(hold_elapsed_frames) - 14.0) / 10.0)
             title_scale *= pulse
             scaled_title = pygame.transform.smoothscale(
                 title,
@@ -3497,17 +3494,27 @@ class MasterOverlay:
             # Header.
             content_x = panel_pad
             header_y = panel_pad - 1
+            namebox = pygame.Rect(content_x, header_y, max(180, box_w - panel_pad * 2 - 126), header_h)
+            pygame.draw.rect(panel, (*_mission_tint((14, 25, 40), theme_color, 0.24), 236),
+                             namebox, border_radius=6)
+            pygame.draw.rect(panel, (*fighter_accent, 165), namebox, 1, border_radius=6)
+            pygame.draw.rect(panel, (*fighter_accent, 230),
+                             (namebox.x, namebox.y + 4, 4, namebox.height - 8), border_radius=2)
             kicker = self.smallfont.render("MISSION SELECT", True, fighter_accent)
             char_label = f"{character}  ·  {display_slot}"
+            icon_size = max(20, min(52, header_h - 6))
+            available_label_width = max(40, namebox.width - icon_size - 24)
+            while self.font.size(char_label)[0] > available_label_width and len(char_label) > 4:
+                char_label = char_label[:-4].rstrip() + "..."
             char_surf = self.font.render(char_label, True, (239, 243, 250))
-            portrait = self._mission_portrait_watermark(character, 92)
+            portrait = self._mission_portrait_watermark(character, icon_size)
             if portrait is not None:
-                old_clip = panel.get_clip()
-                panel.set_clip(pygame.Rect(content_x, header_y, box_w - panel_pad * 2, header_h))
-                panel.blit(portrait, (content_x + 24, header_y - 8))
-                panel.set_clip(old_clip)
-            panel.blit(kicker, (content_x, header_y))
-            panel.blit(char_surf, (content_x, header_y + kicker.get_height() + 2))
+                icon_rect = pygame.Rect(namebox.right - icon_size - 3, namebox.y + 3,
+                                        icon_size, icon_size)
+                pygame.draw.rect(panel, (*fighter_accent, 48), icon_rect, border_radius=4)
+                panel.blit(portrait, icon_rect.topleft)
+            panel.blit(kicker, (content_x + 11, header_y + 3))
+            panel.blit(char_surf, (content_x + 11, header_y + kicker.get_height() + 4))
 
             progress_text = f"{completed_missions}/{mission_count} CLEAR"
             progress_s = self.smallfont.render(progress_text, True, (176, 221, 195) if completed_missions else (177, 190, 210))

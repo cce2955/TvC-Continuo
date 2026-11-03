@@ -37,12 +37,7 @@ secrets/
 
 # Runtime captures and logs
 data/runtime/
-runtime/
-# Keep new source modules in the runtime package visible to Git.
-!tdp-modules/tvcgui/runtime/
-tdp-modules/tvcgui/runtime/*
-!tdp-modules/tvcgui/runtime/fighter_frames.py
-!tdp-modules/tvcgui/runtime/session_recording.py
+/runtime/
 logs/
 *.log
 *.jsonl
@@ -102,6 +97,7 @@ private_research/
 *.obj
 
 # Recorder exports that may contain private or proprietary process data
+TvCContinuo-session-*.json
 runtime_*_events.csv
 runtime_*_profiles.json
 runtime_*_contacts.csv

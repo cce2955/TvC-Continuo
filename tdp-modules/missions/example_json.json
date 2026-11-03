@@ -14,7 +14,8 @@
         "setup_debug_flags": "Training/debug values automatically applied while this mission is active.",
         "steps": "Ordered list of required actions.",
         "goal": "Optional alternate clear condition instead of steps.",
-        "setup_meter_refill": "When true, fills Player 1 to five bars before the route and disables refill while the combo is active.",
+        "setup_meter_refill": "When true, fills Player 1 to the configured bar target before the route and disables refill while the combo is active.",
+        "setup_meter_refill_bars": "Optional target from 1 to 5 bars. Defaults to 5 when setup_meter_refill is true.",
         "delayed_confirm_frames": "Optional generic extended hit-confirm window for traps, summons, stored attacks, cinematic phases, or moves that require a later trigger. It changes detection only and is not shown as a player hint."
       },
       "mission_id": "example_001",

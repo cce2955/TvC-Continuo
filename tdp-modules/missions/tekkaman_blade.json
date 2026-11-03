@@ -310,6 +310,7 @@
       "mission_id": "tekkaman_blade_008",
       "name": "Special Challenge",
       "notes": "Deal 10,000 damage in three hits or fewer. Baroque is locked, but a certain training mode setting may help.",
+      "allow_dummy_state": true,
       "setup_debug_flags": {
         "BaroquePct": 0
       },

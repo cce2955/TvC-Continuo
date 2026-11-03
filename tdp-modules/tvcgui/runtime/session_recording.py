@@ -104,8 +104,8 @@ class SessionRecorder:
         return len(frames)
 
 
-def load_session(source: Path) -> list[dict]:
-    """Load a recording for offline, read-only timeline playback."""
+def load_session_payload(source: Path) -> dict:
+    """Load validated frames and recorded events for offline inspection."""
     source = Path(source)
     if source.stat().st_size > MAX_SESSION_BYTES:
         raise ValueError("Recording exceeds the size limit")
@@ -122,7 +122,22 @@ def load_session(source: Path) -> list[dict]:
                 any(not isinstance(fighter, dict)
                     for fighter in frame["fighters"].values())):
             raise ValueError("Recording contains an invalid frame")
-    return frames
+    events = payload.get("events", [])
+    if not isinstance(events, list) or len(events) > MAX_EVENTS:
+        raise ValueError("Recording contains an invalid event timeline")
+    if any(
+        not isinstance(event, dict)
+        or not isinstance(event.get("kind"), str)
+        or not isinstance(event.get("values"), dict)
+        for event in events
+    ):
+        raise ValueError("Recording contains an invalid event")
+    return {"frames": frames, "events": events}
+
+
+def load_session(source: Path) -> list[dict]:
+    """Load a recording for offline, read-only frame playback."""
+    return load_session_payload(source)["frames"]
 
 
 recorder = SessionRecorder()

@@ -9,10 +9,45 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from tvcgui.features.audio import music_player
+from tvcgui.features.audio.music_catalog import BY_KEY
 from tvcgui.platform import dolphin
 
 
 class MusicLibraryLocationTests(unittest.TestCase):
+    def test_shutdown_cleanup_removes_only_empty_catalog_folders(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp) / 'music'
+            controller = music_player.MusicController(root=root, start_sampler=False)
+            controller.ensure_library()
+            empty_stage = root / 'stages' / music_player.STAGE_NAMES[1]
+            populated_stage = root / 'stages' / music_player.STAGE_NAMES[2]
+            song = populated_stage / 'theme.ogg'
+            song.write_bytes(b'user music')
+            settings = root / 'loop_points.json'
+            settings.write_text('{}', encoding='utf-8')
+
+            controller.cleanup_empty_library_folders()
+
+            self.assertFalse(empty_stage.exists())
+            self.assertEqual(song.read_bytes(), b'user music')
+            self.assertEqual(settings.read_text(encoding='utf-8'), '{}')
+            self.assertTrue((root / 'stages').is_dir())
+
+    def test_auto_select_uses_distinct_stage_and_character_menu_folders(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            stage_song = root / BY_KEY['s_bgm_25'].folder / 'stage.ogg'
+            character_song = root / BY_KEY['s_bgm_24'].folder / 'character.ogg'
+            stage_song.parent.mkdir(parents=True)
+            character_song.parent.mkdir(parents=True)
+            stage_song.write_bytes(b'placeholder')
+            character_song.write_bytes(b'placeholder')
+            controller = music_player.MusicController(root=root, start_sampler=False)
+            self.assertEqual(controller._context({'scene': 'stage_select'}),
+                             ('stage_select', [stage_song]))
+            self.assertEqual(controller._context({'scene': 'character_select'}),
+                             ('character_select', [character_song]))
+
     def test_native_selection_retries_restore_after_ax_pair_returns(self):
         restored = threading.Event()
 
@@ -192,7 +227,7 @@ class MusicLibraryLocationTests(unittest.TestCase):
             controller._maintain_bgm()
             self.assertEqual(calls, [1.0, 1.03, 2.01])
 
-    def test_verified_ax_rebuild_marks_restart_but_not_round_start(self):
+    def test_ax_rebuild_at_ready_fight_does_not_advance_playlist(self):
         with TemporaryDirectory() as temp:
             controller = music_player.MusicController(root=Path(temp), start_sampler=False)
             controller.enabled = True
@@ -209,11 +244,11 @@ class MusicLibraryLocationTests(unittest.TestCase):
                 muted=True, ready=True, text='verified', rerouted=True)
 
             controller._maintain_bgm(force=True)
-            self.assertEqual(controller._match_serial, 1)
+            self.assertEqual(controller._match_serial, 0)
             controller._observe_native_phase(5)
             controller._observe_native_phase(4)
             controller._maintain_bgm(force=True)
-            self.assertEqual(controller._match_serial, 1)
+            self.assertEqual(controller._match_serial, 0)
 
     def test_restart_advances_after_ax_pair_disappears_and_returns(self):
         class Music:
@@ -236,6 +271,7 @@ class MusicLibraryLocationTests(unittest.TestCase):
             controller._match_latched = True
             controller._fight_opened = True
             controller._last_native_phase = 4
+            controller._pending_match_boundary = True
             controller._backend = lambda: object()
             controller._write_protected = lambda: False
             results = iter((SimpleNamespace(muted=False, ready=False,

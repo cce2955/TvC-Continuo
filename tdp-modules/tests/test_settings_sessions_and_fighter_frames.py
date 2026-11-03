@@ -12,7 +12,7 @@ from tvcgui.core.settings_bundle import (
     export_settings, import_settings, schedule_settings_import,
 )
 from tvcgui.runtime.fighter_frames import read_fighter_frame, resolve_bases
-from tvcgui.runtime.session_recording import SessionRecorder, load_session
+from tvcgui.runtime.session_recording import SessionRecorder, load_session, load_session_payload
 from tvcgui.ui.settings_dock import SettingsDock
 from tvcgui.ui.components import _command_dock_layout
 
@@ -111,6 +111,7 @@ class SessionRecordingTests(unittest.TestCase):
             self.assertEqual(frames[-1]["context"]["stage"], 9)
             events = json.loads(destination.read_text())["events"]
             self.assertEqual([event["kind"] for event in events], ["music_raw", "music_scene"])
+            self.assertEqual(load_session_payload(destination)["events"], events)
 
     def test_fighter_block_is_shared_with_parser(self):
         block = bytes(range(32))
