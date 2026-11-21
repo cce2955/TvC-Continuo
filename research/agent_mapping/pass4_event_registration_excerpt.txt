@@ -1,0 +1,108 @@
+WII RUNTIME 0x80156588 -> DOL FILE OFFSET 0x00140a68
+QUERY 0x140a68 FUNCTION 00140a68 FUN_00140a68
+ENTRY REFERENCES: 00140a48
+
+void FUN_00140a68(int param_1)
+
+{
+  int unaff_r13;
+  
+  if (param_1 == 0) {
+    param_1 = -0x7fb89480;
+  }
+  *(int *)(unaff_r13 + -0x6740) = param_1;
+  return;
+}
+
+
+
+WII RUNTIME 0x801565a4 -> DOL FILE OFFSET 0x00140a84
+QUERY 0x140a84 FUNCTION 00140a84 FUN_00140a84
+ENTRY REFERENCES: 000ca760
+
+undefined4 FUN_00140a84(void)
+
+{
+  int unaff_r13;
+  
+  return *(undefined4 *)(unaff_r13 + -0x6740);
+}
+
+
+
+WII RUNTIME 0x801565e0 -> DOL FILE OFFSET 0x00140ac0
+QUERY 0x140ac0 FUNCTION 00140ac0 FUN_00140ac0
+ENTRY REFERENCES: 0011e318, 00120e2c, 000ca184, 000ca308, 000cb870, 000cb9b8
+
+undefined4 FUN_00140ac0(int param_1,undefined4 param_2,int param_3)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  int unaff_r13;
+  
+  iVar1 = FUN_00139e50(param_3 + 0x30);
+  if (iVar1 == 0) {
+    uVar2 = 0;
+  }
+  else {
+    uVar2 = FUN_001409a8(*(int *)(unaff_r13 + -0x6740) + param_1 * 0x30,iVar1,param_2);
+  }
+  return uVar2;
+}
+
+
+
+WII RUNTIME 0x80156644 -> DOL FILE OFFSET 0x00140b24
+QUERY 0x140b24 FUNCTION 00140b24 FUN_00140b24
+ENTRY REFERENCES: 000cb8f8, 000ca228, 00056d24, 001292cc, 0005ffa4, 0005faf8, 0005fb38, 0005fed8, 0011b664, 00064f94, 000ca0d8, 000cb7e0, 00178034, 00178084
+
+undefined4 FUN_00140b24(int param_1,undefined4 param_2,int param_3)
+
+{
+  int iVar1;
+  int iVar2;
+  undefined4 uVar3;
+  int unaff_r13;
+  
+  iVar2 = FUN_00139e50(param_3 + 0x30);
+  if (iVar2 == 0) {
+    uVar3 = 0;
+  }
+  else {
+    param_1 = param_1 + 1;
+    iVar1 = param_1 / 0x1e + (param_1 >> 0x1f);
+    uVar3 = FUN_00140bb0(*(int *)(unaff_r13 + -0x6740) +
+                         (param_1 + (iVar1 - (iVar1 >> 0x1f)) * -0x1e) * 0x30,iVar2,param_2);
+  }
+  return uVar3;
+}
+
+
+
+WII RUNTIME 0x80156704 -> DOL FILE OFFSET 0x00140be4
+QUERY 0x140be4 FUNCTION 00140be4 FUN_00140be4
+ENTRY REFERENCES: 000027ec, 00005768, 000064b4, 0000786c, 0000797c, 00009bac, 0000c96c, 0000e294, 00010134, 00011ec4, 00012fac, 000148cc, 00015dfc, 00016ebc, 000181d8, 000190e8, 0001a010, 0001b2e0, 0001cb50, 0001e58c, 0001f3dc, 00020a60, 000219a4, 00125160, 00162344, 0006c970
+
+undefined4 FUN_00140be4(int param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  int iVar1;
+  int iVar2;
+  undefined4 uVar3;
+  int unaff_r13;
+  
+  iVar2 = FUN_00140bc0(param_3);
+  if (iVar2 == 0) {
+    uVar3 = 0;
+  }
+  else {
+    param_1 = param_1 + 1;
+    iVar1 = param_1 / 0x1e + (param_1 >> 0x1f);
+    uVar3 = FUN_00140bb0(*(int *)(unaff_r13 + -0x6740) +
+                         (param_1 + (iVar1 - (iVar1 >> 0x1f)) * -0x1e) * 0x30,iVar2,param_2);
+    *(undefined4 *)(iVar2 + 0xc) = param_3;
+  }
+  return uVar3;
+}
+

@@ -65,9 +65,9 @@ class MissionMenuInputInterpreter:
         Left -> UNLOCK
         Taunt -> SELECT
 
-    Point ownership comes from fighter+0x44A0 sampled on the realtime lane. A
-    real tag immediately moves ownership to the new point slot and clears the
-    old fighter's partial gesture. Assist activity cannot steal ownership.
+    Ownership follows the point-active indication supplied by the realtime
+    sampler. A change clears the previous slot's partial gesture. The raw
+    fighter+0x44A0 field is not, by itself, a validated sole-owner identifier.
     """
 
     def __init__(

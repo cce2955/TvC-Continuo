@@ -137,6 +137,7 @@ from tvcgui.features.training.flags import read_training_flags
 from tvcgui.ui.debug_panel import read_debug_flags, draw_debug_overlay
 
 from tvcgui.platform.dolphin import hook, rd8, rd32, wd8, wd32, wbytes, rbytes, set_emulated_write_quarantine
+from tvcgui.platform import dolphin as dolphin_platform
 from tvcgui.runtime.punish_training import (
     load_punish_trainer_config,
     save_punish_trainer_config,
@@ -146,6 +147,8 @@ from tvcgui.runtime.punish_training import (
     punish_trainer_overlay_payload,
 )
 from tvcgui.features.training.punish_training_window import open_punish_training_window
+from tvcgui.features.analysis.store import archive_history_path, has_analysis_data, store as analysis_store
+from tvcgui.features.analysis.window import open_analysis_window
 
 try:
     from tvcgui.features.training.stun_profiler import RuntimeStunProfiler
@@ -482,7 +485,7 @@ from tvcgui.ui.components import (
     draw_status_rail,
     get_top_dock_height,
     draw_top_command_dock,
-    character_select_visuals_hit_test,
+
 )
 
 def _char_test_active_for_dock() -> bool:
@@ -1050,15 +1053,29 @@ def draw_panel_polished_stats(
 # ---------------------------------------------------------------------------
 
 def legacy_main():
-    print("HUD: waiting for Dolphin...")
-    hook()
-    print("HUD: hooked Dolphin.")
-
     move_map, global_map = load_move_map(GENERIC_MAPPING_CSV, PAIR_MAPPING_CSV)
     punish_trainer_state = load_punish_trainer_config()
 
     screen, font, smallfont = init_pygame()
     clock = pygame.time.Clock()
+
+    attach_stop = threading.Event()
+
+    def _attach_when_available():
+        while not attach_stop.is_set():
+            if hook(stop_event=attach_stop):
+                print("HUD: hooked Dolphin.", flush=True)
+                while not attach_stop.wait(0.5):
+                    try:
+                        if not dolphin_platform.dme.is_hooked():
+                            break
+                    except Exception:
+                        break
+
+    attach_thread = threading.Thread(target=_attach_when_available, daemon=True,
+                                     name="ContinuoDolphinAttach")
+    attach_thread.start()
+    print("HUD: ready; waiting for Dolphin in the background.", flush=True)
 
     placeholder_portrait = load_portrait_placeholder()
     portraits = load_portraits_from_dir(resource_path("assets", "portraits"))
@@ -1992,6 +2009,19 @@ def legacy_main():
     }
 
     def _overseer_state_snapshot() -> dict:
+        connection = dolphin_platform.connection_info()
+        try:
+            recent_events = [
+                {
+                    "seq": event.sequence, "kind": event.kind,
+                    "slot": event.slot, "action": f"0x{event.action_id:04X}",
+                    "damage": event.damage, "combo": event.combo_count,
+                }
+                for event in mission_event_stream.snapshot()
+                if event.kind in {"ACTION", "DAMAGE", "COMBO_BEGIN", "COMBO_CHANGE", "COMBO_END"}
+            ][-12:]
+        except Exception:
+            recent_events = []
         slot_state = {}
         try:
             for _slot_label in ("P1-C1", "P1-C2", "P2-C1", "P2-C2"):
@@ -2049,7 +2079,11 @@ def legacy_main():
         except Exception as e:
             patch_state = {"error": repr(e)}
         return {
-            "hooked": True,
+            "hooked": connection["hooked"],
+            "dolphin": connection,
+            "recent_events": recent_events,
+            "overlay_enabled": overlay_enabled,
+            "ko_control": "ACTIVE" if ko_control_live_active else "ARMED" if ko_control_full_enabled else "OFF",
             "slots": slot_state,
             "megacrash": mega_state,
             "hud_editor": hud_state,
@@ -2806,6 +2840,35 @@ def legacy_main():
             if frame_idx % 300 == 0:
                 print(f"[timing engine] update failed: {_timing_engine_error!r}", flush=True)
 
+        if analysis_store.enabled or analysis_store.match_tracking:
+            try:
+                _, _analysis_events = mission_event_stream.events_since(analysis_store.cursor)
+                _analysis_point = {
+                    _slot: bool(mission_event_stream.snapshot_for_slot(_slot).get("point_active"))
+                    for _slot in ("P1-C1", "P1-C2", "P2-C1", "P2-C2")
+                }
+                if analysis_store.enabled:
+                    analysis_store.ingest(
+                        _analysis_events, snaps, now=time.monotonic(),
+                        label_for=lambda char_id, action_id: move_label_for(
+                            action_id, char_id, move_map, global_map
+                        ),
+                        point_slots=_analysis_point,
+                    )
+                else:
+                    analysis_store.ingest_match_background(
+                        _analysis_events, snaps, _analysis_point, now=time.monotonic()
+                    )
+                analysis_store.ingest_timing(timing_results)
+                if analysis_store.match_tracking:
+                    from tvcgui.features.audio.music_player import _read_native_phase
+                    analysis_store.observe_match(
+                        _read_native_phase(dolphin_platform), snaps, _analysis_point
+                    )
+            except Exception as _analysis_error:
+                if frame_idx % 300 == 0:
+                    print(f"[analysis] capture failed: {_analysis_error!r}", flush=True)
+
         # Punish Trainer uses the game's own one-shot action mailbox. It waits
         # for the selected fighter to return to a non-attack state, requests the
         # chosen move, then starts the cooldown after the move finishes.
@@ -3278,7 +3341,7 @@ def legacy_main():
 
         punish_trainer_active = bool(punish_trainer_state.get("enabled", False))
 
-        hb_btn_rect, hurt_btn_rect, ps_btn_rect, as_btn_rect, hud_btn_rect, megacrash_btn_rect, memdump_btn_rect, win_counter_btn_rect, overseer_btn_rect, select_probe_btn_rect, yami_stage_btn_rect, ko_control_btn_rect, action_spoof_btn_rect, cancel_mapper_btn_rect, cancel_lab_btn_rect, action_recorder_btn_rect, timing_probe_btn_rect, interaction_card_btn_rect, combo_card_btn_rect, info_set_btn_rect, damage_badge_btn_rect, untech_panel_btn_rect, meter_panel_btn_rect, red_health_panel_btn_rect, attack_property_panel_btn_rect, tag_card_btn_rect, clear_card_btn_rect, tools_btn_rect, help_btn_rect, hb_filter_rects, hurt_filter_rects, ruler_btn_rect, ruler_axis_h_rect, ruler_axis_v_rect, ruler_envelope_rect, ruler_lock_rect, ruler_filter_rects = draw_top_command_dock(
+        dock = draw_top_command_dock(
             screen,
             smallfont,
             hitbox_slots=hitbox_slots,
@@ -3299,6 +3362,7 @@ def legacy_main():
             show_red_health_panel=show_red_health_panel,
             show_attack_property_panel=show_attack_property_panel,
             show_tag_card=show_tag_card,
+            analysis_active=bool(analysis_store.enabled),
             megacrash_trainer_enabled=bool(megacrash_trainer_state.get("enabled", False)),
             megacrash_trainer_chance=int(megacrash_trainer_state.get("chance", MEGACRASH_TRAINER_DEFAULT_CHANCE)),
             megacrash_trainer_mode=str(megacrash_trainer_state.get("mode", MEGACRASH_TRAINER_DEFAULT_MODE)),
@@ -3673,8 +3737,17 @@ def legacy_main():
 
         _draw_workspace_end = time.perf_counter()
         status_parts = []
-        status_parts.append("Dolphin hooked")
-        status_parts.append("Overlay ON" if overlay_enabled else "Overlay OFF")
+        _connection = dolphin_platform.connection_info()
+        _candidates = _connection["candidates"]
+        if not _connection["hooked"]:
+            status_parts.append("Dolphin: waiting")
+        elif len(_candidates) > 1:
+            status_parts.append(f"Dolphin: hooked; {len(_candidates)} instances (see Tool Status)")
+        elif _candidates:
+            status_parts.append(f"Dolphin: hooked PID {_candidates[0]['pid']}")
+        else:
+            status_parts.append("Dolphin: hooked; process path unavailable")
+        status_parts.append("Core HUD ON" if overlay_enabled else "Core HUD OFF")
         if any(hitbox_slots.values()):
             active_hitbox_slots = ", ".join(k for k, v in hitbox_slots.items() if v)
             status_parts.append(f"Hitboxes {active_hitbox_slots}")
@@ -3738,8 +3811,10 @@ def legacy_main():
         punish_status = punish_trainer_status(punish_trainer_state)
         if punish_status and (bool(punish_trainer_state.get("enabled", False)) or time.monotonic() - float(punish_trainer_state.get("last_status_at", 0.0) or 0.0) < 6.0):
             status_parts.append(punish_status)
-        if bool(ko_control_full_enabled):
-            status_parts.append("KO Ctrl ON")
+        if bool(ko_control_live_active):
+            status_parts.append("KO Ctrl ACTIVE")
+        elif bool(ko_control_full_enabled):
+            status_parts.append("KO Ctrl ARMED")
         elif ko_control_backend_error:
             status_parts.append(ko_control_backend_error)
         if float(idle_restore_status.get("until", 0.0) or 0.0) > now:
@@ -3763,17 +3838,17 @@ def legacy_main():
         if mouse_clicked_pos is not None:
             mx, my = mouse_clicked_pos
 
-            if help_btn_rect.collidepoint(mx, my):
+            if dock.help_btn_rect.collidepoint(mx, my):
                 open_help_window()
                 mouse_clicked_pos = None
                 continue
 
-            if tools_btn_rect.collidepoint(mx, my):
+            if dock.tools_btn_rect.collidepoint(mx, my):
                 dock_tools_open = not bool(dock_tools_open)
                 mouse_clicked_pos = None
                 continue
 
-            if hb_btn_rect.collidepoint(mx, my):
+            if dock.hb_btn_rect.collidepoint(mx, my):
                 had_hitboxes = any(hitbox_slots.values())
                 new_state = not had_hitboxes
                 for k in hitbox_slots:
@@ -3784,7 +3859,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif hurt_btn_rect.collidepoint(mx, my):
+            elif dock.hurt_btn_rect.collidepoint(mx, my):
                 new_state = not any(hurtbox_slots.values())
                 for k in hurtbox_slots:
                     hurtbox_slots[k] = new_state
@@ -3794,7 +3869,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif ruler_btn_rect.collidepoint(mx, my):
+            elif dock.ruler_btn_rect.collidepoint(mx, my):
                 ruler_enabled = not bool(ruler_enabled)
                 _write_hitbox_filter()
                 _write_master_control()
@@ -3802,7 +3877,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif ruler_axis_h_rect.collidepoint(mx, my):
+            elif dock.ruler_axis_h_rect.collidepoint(mx, my):
                 ruler_axes["horizontal"] = not bool(ruler_axes.get("horizontal", False))
                 _write_hitbox_filter()
                 _write_master_control()
@@ -3810,7 +3885,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif ruler_axis_v_rect.collidepoint(mx, my):
+            elif dock.ruler_axis_v_rect.collidepoint(mx, my):
                 ruler_axes["vertical"] = not bool(ruler_axes.get("vertical", False))
                 _write_hitbox_filter()
                 _write_master_control()
@@ -3818,7 +3893,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif ruler_envelope_rect.collidepoint(mx, my):
+            elif dock.ruler_envelope_rect.collidepoint(mx, my):
                 ruler_envelope_enabled = not bool(ruler_envelope_enabled)
                 _write_hitbox_filter()
                 _write_master_control()
@@ -3826,12 +3901,12 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif ruler_lock_rect.collidepoint(mx, my):
+            elif dock.ruler_lock_rect.collidepoint(mx, my):
                 _open_ruler_lock_picker()
                 mouse_clicked_pos = None
                 continue
 
-            elif ps_btn_rect.collidepoint(mx, my):
+            elif dock.ps_btn_rect.collidepoint(mx, my):
                 def _get_active_chars():
                     return [s.get("name") for slot in ["P1-C1","P1-C2","P2-C1","P2-C2"]
                             for s in [render_snap_by_slot.get(slot)]
@@ -3840,25 +3915,25 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif as_btn_rect.collidepoint(mx, my):
+            elif dock.as_btn_rect.collidepoint(mx, my):
                 open_assist_scanner_window()
                 mouse_clicked_pos = None
                 continue
 
-            elif hud_btn_rect.collidepoint(mx, my):
+            elif dock.hud_btn_rect.collidepoint(mx, my):
                 overlay_enabled = not overlay_enabled
                 _write_master_control()
                 _sync_master_overlay_state()
                 mouse_clicked_pos = None
                 continue
 
-            elif info_set_btn_rect.collidepoint(mx, my):
+            elif dock.info_set_btn_rect.collidepoint(mx, my):
                 from tvcgui.ui.hud_settings_window import open_window as open_hud_settings
                 open_hud_settings(_hud_settings_snapshot())
                 mouse_clicked_pos = None
                 continue
 
-            elif clear_card_btn_rect.collidepoint(mx, my):
+            elif dock.clear_card_btn_rect.collidepoint(mx, my):
                 # Keep the core HUD alive; this is a one-click declutter for
                 # the optional live cards only.
                 show_interaction_card = False
@@ -3876,7 +3951,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif interaction_card_btn_rect.collidepoint(mx, my):
+            elif dock.interaction_card_btn_rect.collidepoint(mx, my):
                 show_interaction_card = not show_interaction_card
                 _mark_hud_info_set_custom()
                 _write_master_control()
@@ -3884,7 +3959,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif combo_card_btn_rect.collidepoint(mx, my):
+            elif dock.combo_card_btn_rect.collidepoint(mx, my):
                 show_combo_card = not show_combo_card
                 _mark_hud_info_set_custom()
                 _write_master_control()
@@ -3892,7 +3967,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif damage_badge_btn_rect.collidepoint(mx, my):
+            elif dock.damage_badge_btn_rect.collidepoint(mx, my):
                 show_damage_badge = not show_damage_badge
                 show_damage_inactive = False
                 _mark_hud_info_set_custom()
@@ -3901,7 +3976,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif untech_panel_btn_rect.collidepoint(mx, my):
+            elif dock.untech_panel_btn_rect.collidepoint(mx, my):
                 show_untech_panel = not show_untech_panel
                 _mark_hud_info_set_custom()
                 _write_master_control()
@@ -3909,7 +3984,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif meter_panel_btn_rect.collidepoint(mx, my):
+            elif dock.meter_panel_btn_rect.collidepoint(mx, my):
                 show_meter_panel = not show_meter_panel
                 _mark_hud_info_set_custom()
                 _write_master_control()
@@ -3917,7 +3992,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif red_health_panel_btn_rect.collidepoint(mx, my):
+            elif dock.red_health_panel_btn_rect.collidepoint(mx, my):
                 show_red_health_panel = not show_red_health_panel
                 _mark_hud_info_set_custom()
                 _write_master_control()
@@ -3925,7 +4000,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif attack_property_panel_btn_rect.collidepoint(mx, my):
+            elif dock.attack_property_panel_btn_rect.collidepoint(mx, my):
                 # Raw attack research lives in a dedicated read-only window.
                 # The transparent match overlay never receives the old panel.
                 show_attack_property_panel = False
@@ -3938,7 +4013,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif tag_card_btn_rect.collidepoint(mx, my):
+            elif dock.tag_card_btn_rect.collidepoint(mx, my):
                 show_tag_card = not show_tag_card
                 _mark_hud_info_set_custom()
                 _write_master_control()
@@ -3946,7 +4021,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif megacrash_btn_rect.collidepoint(mx, my):
+            elif dock.megacrash_btn_rect.collidepoint(mx, my):
                 if open_megacrash_trainer_window is not None:
                     open_megacrash_trainer_window(megacrash_trainer_state, _save_megacrash_trainer_config, lambda: _megacrash_roster_context(render_snap_by_slot))
                 else:
@@ -3954,7 +4029,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif memdump_btn_rect.collidepoint(mx, my):
+            elif dock.memdump_btn_rect.collidepoint(mx, my):
                 if _start_memory_dump(mem_dump_state):
                     print("[memdump] started", flush=True)
                 else:
@@ -3962,7 +4037,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif select_probe_btn_rect.collidepoint(mx, my):
+            elif dock.select_probe_btn_rect.collidepoint(mx, my):
                 if toggle_extra_characters is not None:
                     result = toggle_extra_characters()
                     # Wake the debounced char-test tick immediately for the
@@ -3974,13 +4049,21 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif character_select_visuals_hit_test((mx, my)):
+            elif dock.character_select_visuals.collidepoint(mx, my):
                 if toggle_extra_characters is not None:
                     toggle_extra_characters()
                 mouse_clicked_pos = None
                 continue
 
-            elif yami_stage_btn_rect.collidepoint(mx, my):
+            elif dock.research_recorder.collidepoint(mx, my):
+                from tvcgui.features.combat.research_window import open_research_recorder
+                open_research_recorder(
+                    lambda: {key: dict(value) for key, value in dict(render_snap_by_slot).items() if isinstance(value, dict)}
+                )
+                mouse_clicked_pos = None
+                continue
+
+            elif dock.yami_stage_btn_rect.collidepoint(mx, my):
                 if open_stage_select_window is not None:
                     open_stage_select_window()
                     print("[stage select] window opened", flush=True)
@@ -3989,7 +4072,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif cancel_mapper_btn_rect.collidepoint(mx, my):
+            elif dock.cancel_mapper_btn_rect.collidepoint(mx, my):
                 _mapper_rows = _cancel_mapper_ready_rows()
                 if _mapper_rows:
                     _initial_slot = next(
@@ -4017,7 +4100,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif cancel_lab_btn_rect.collidepoint(mx, my):
+            elif dock.cancel_lab_btn_rect.collidepoint(mx, my):
                 _lab_rows = _cancel_mapper_ready_rows()
                 if _lab_rows:
                     _initial_slot = next(
@@ -4045,7 +4128,12 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif action_recorder_btn_rect.collidepoint(mx, my):
+            elif dock.analysis_btn_rect.collidepoint(mx, my):
+                open_analysis_window(lambda: mission_event_stream.latest_sequence)
+                mouse_clicked_pos = None
+                continue
+
+            elif dock.action_recorder_btn_rect.collidepoint(mx, my):
                 if open_action_recorder_window is not None:
                     open_action_recorder_window(move_map, global_map, "P1-C1")
                     print("[action recorder] window opened", flush=True)
@@ -4054,7 +4142,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif timing_probe_btn_rect.collidepoint(mx, my):
+            elif dock.timing_probe_btn_rect.collidepoint(mx, my):
                 if open_timing_probe_window is not None:
                     open_timing_probe_window(move_map, global_map, "P1-C1")
                     print("[timing probe] window opened", flush=True)
@@ -4063,7 +4151,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif action_spoof_btn_rect.collidepoint(mx, my):
+            elif dock.action_spoof_btn_rect.collidepoint(mx, my):
                 open_punish_training_window(
                     punish_trainer_state,
                     save_punish_trainer_config,
@@ -4073,7 +4161,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif ko_control_btn_rect.collidepoint(mx, my):
+            elif dock.ko_control_btn_rect.collidepoint(mx, my):
                 if ko_control_backend_error:
                     idle_restore_status = {"text": ko_control_backend_error, "until": now + 5.0}
                     mouse_clicked_pos = None
@@ -4108,7 +4196,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif win_counter_btn_rect.collidepoint(mx, my):
+            elif dock.win_counter_btn_rect.collidepoint(mx, my):
                 if open_hud_editor_window is not None:
                     open_hud_editor_window()
                 else:
@@ -4116,7 +4204,7 @@ def legacy_main():
                 mouse_clicked_pos = None
                 continue
 
-            elif overseer_btn_rect.collidepoint(mx, my):
+            elif dock.overseer_btn_rect.collidepoint(mx, my):
                 if open_overseer_window is not None:
                     open_overseer_window(_overseer_state_snapshot, _overseer_safe_restore, _overseer_hard_reset, _overseer_dump_state)
                 else:
@@ -4126,7 +4214,7 @@ def legacy_main():
 
             else:
                 clicked_filter = False
-                for slot_name, cb_rect in hb_filter_rects.items():
+                for slot_name, cb_rect in dock.hb_filter_rects.items():
                     if cb_rect.collidepoint(mx, my):
                         hitbox_slots[slot_name] = not hitbox_slots[slot_name]
                         _write_hitbox_filter()
@@ -4135,7 +4223,7 @@ def legacy_main():
                         clicked_filter = True
                         break
                 if not clicked_filter:
-                    for slot_name, cb_rect in hurt_filter_rects.items():
+                    for slot_name, cb_rect in dock.hurt_filter_rects.items():
                         if cb_rect.collidepoint(mx, my):
                             hurtbox_slots[slot_name] = not hurtbox_slots[slot_name]
                             _write_hitbox_filter()
@@ -4144,7 +4232,7 @@ def legacy_main():
                             clicked_filter = True
                             break
                 if not clicked_filter:
-                    for slot_name, cb_rect in ruler_filter_rects.items():
+                    for slot_name, cb_rect in dock.ruler_filter_rects.items():
                         if cb_rect.collidepoint(mx, my):
                             ruler_slots[slot_name] = not bool(ruler_slots.get(slot_name, True))
                             _write_hitbox_filter()
@@ -4334,6 +4422,7 @@ def legacy_main():
                             or snaps.get(_slot)
                             or {}
                         ),
+                        lambda: {key: dict(value) for key, value in dict(render_snap_by_slot).items() if isinstance(value, dict)},
                     )
                     mouse_clicked_pos = None
                     break
@@ -4387,7 +4476,7 @@ def legacy_main():
         if mouse_right_clicked_pos is not None:
             mx, my = mouse_right_clicked_pos
 
-            if megacrash_btn_rect.collidepoint(mx, my):
+            if dock.megacrash_btn_rect.collidepoint(mx, my):
                 if open_megacrash_trainer_window is not None:
                     open_megacrash_trainer_window(megacrash_trainer_state, _save_megacrash_trainer_config, lambda: _megacrash_roster_context(render_snap_by_slot))
                 else:
@@ -4773,6 +4862,20 @@ def legacy_main():
     # ------------------------------------------------------------------
     # Shutdown
     # ------------------------------------------------------------------
+    if analysis_store.enabled:
+        try:
+            analysis_store.stop()
+            _analysis_final = analysis_store.snapshot()
+            if has_analysis_data(_analysis_final):
+                analysis_store.save(archive_history_path(_analysis_final["started_at"]))
+        except Exception as _analysis_save_error:
+            print(f"[analysis] shutdown save failed: {_analysis_save_error!r}", flush=True)
+    try:
+        analysis_store.shutdown()
+    except Exception as _match_save_error:
+        print(f"[analysis] match summary save failed: {_match_save_error!r}", flush=True)
+    attach_stop.set()
+    attach_thread.join(timeout=0.5)
     try:
         mission_mgr.close()
     except Exception:

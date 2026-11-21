@@ -1,0 +1,30 @@
+WII RUNTIME 0x800278ec -> DOL FILE OFFSET 0x00011dcc
+QUERY 0x11dcc FUNCTION 00011dcc FUN_00011dcc
+ENTRY REFERENCES: 00011d3c, 00089868, 0008c670, 0008ccb4, 00045100, 000414d0, 0008a008, 0008a04c, 000a0efc, 000a0f18, 000a0f5c, 000a0f74, 0006e318, 000b2650, 0011514c, 00108e28, 001838ec, 002db6e8
+
+/* WARNING: Removing unreachable block (ram,0x00011e34) */
+
+double FUN_00011dcc(double param_1)
+
+{
+  int unaff_r2;
+  undefined4 in_GQR0;
+  double dVar1;
+  undefined8 in_f31;
+  undefined1 auStack_8 [8];
+  
+  __psq_st0(auStack_8,(int)((ulonglong)in_f31 >> 0x20),in_GQR0);
+  __psq_st1(auStack_8,(int)in_f31,in_GQR0);
+  if (param_1 < (double)*(float *)(unaff_r2 + -0x7e60)) {
+    FUN_002bfc20(0x80364afc,0x273,0x80364ad8);
+  }
+  dVar1 = (double)*(float *)(unaff_r2 + -0x7e60);
+  if (dVar1 < param_1) {
+    dVar1 = (double)FUN_003186b0(param_1);
+    dVar1 = (double)(float)(param_1 * dVar1);
+  }
+  __psq_l0(auStack_8,in_GQR0);
+  __psq_l1(auStack_8,in_GQR0);
+  return dVar1;
+}
+

@@ -1,0 +1,2 @@
+0005cc90 HitData_DebugPrint
+0011f680 debug_printf_or_OSReport

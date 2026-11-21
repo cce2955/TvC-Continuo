@@ -227,6 +227,8 @@ if _IS_WINDOWS:
 
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel32.CloseHandle.restype = wintypes.BOOL
+    kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
 
     kernel32.ReadProcessMemory.argtypes = [
         wintypes.HANDLE,
@@ -799,7 +801,11 @@ def _latch_mem2():
 
 
 def _mem2_is_latched() -> bool:
-    return _mem2_proc_handle is not None and _mem2_host_base is not None
+    if _mem2_proc_handle is None or _mem2_host_base is None:
+        return False
+    if _IS_WINDOWS and kernel32.WaitForSingleObject(_mem2_proc_handle, 0) == 0:
+        return False  # Dolphin exited; the next read will relatch the new PID.
+    return True
 
 
 def _mem2_host_addr(ea: int) -> int:
@@ -851,10 +857,12 @@ def prime_mem2_latch() -> bool:
 # PUBLIC API
 # ============================================================
 
-def hook():
-    """Attach to the real Dolphin.exe; keep MEM2 optional until a live scene."""
+def hook(stop_event=None):
+    """Attach to Dolphin; allow a background caller to cancel its retry loop."""
     attempts = 0
     while True:
+        if stop_event is not None and stop_event.is_set():
+            return False
         try:
             if dme.is_hooked():
                 break
@@ -867,12 +875,57 @@ def hook():
         attempts += 1
         if attempts % 25 == 0:
             print("[Dolphin] Waiting for a Dolphin.exe memory connection...", flush=True)
-        time.sleep(0.2)
+        if stop_event is not None:
+            stop_event.wait(0.2)
+        else:
+            time.sleep(0.2)
 
     print("[Dolphin] Dolphin Memory Engine attached.", flush=True)
     # MEM2's host mapping is optional from menus. A valid fighter pointer or
     # character-select signature will latch it later without blocking startup.
     _ensure_mem2_latched(max_attempts=1, sleep=0.0, force=True)
+    return True
+
+
+_CONNECTION_CACHE: dict = {}
+_CONNECTION_CACHE_AT = 0.0
+
+
+def connection_info() -> dict:
+    """Report the observable Dolphin attachment without guessing DME's PID."""
+    global _CONNECTION_CACHE, _CONNECTION_CACHE_AT
+    now = time.monotonic()
+    if now - _CONNECTION_CACHE_AT < 1.0:
+        return dict(_CONNECTION_CACHE)
+    try:
+        hooked = bool(dme.is_hooked())
+    except Exception:
+        hooked = False
+    candidates = []
+    if _IS_WINDOWS:
+        try:
+            import psutil
+            for process in psutil.process_iter(['pid', 'name', 'exe']):
+                if str(process.info.get('name') or '').casefold() == DOLPHIN_EXE.casefold():
+                    candidates.append({
+                        'pid': int(process.info['pid']),
+                        'path': str(process.info.get('exe') or ''),
+                    })
+        except Exception:
+            pass
+    candidates.sort(key=lambda row: row['pid'])
+    mem2_pid = _mem2_pid if _mem2_is_latched() else None
+    mem2_path = next((row['path'] for row in candidates if row['pid'] == mem2_pid), '')
+    _CONNECTION_CACHE = {
+        'hooked': hooked,
+        'candidates': candidates,
+        'mem2_pid': mem2_pid,
+        'mem2_path': mem2_path,
+        'mem2_latched': _mem2_is_latched(),
+        'mem2_note': _mem2_latch_note,
+    }
+    _CONNECTION_CACHE_AT = now
+    return dict(_CONNECTION_CACHE)
 
 def addr_in_ram(a):
     if a is None:

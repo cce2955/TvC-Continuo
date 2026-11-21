@@ -1,0 +1,2 @@
+001f6e68 | FUN_001f6e2c | lfs f2,-0x4808(r2)
+001f6e6c | FUN_001f6e2c | lfs f0,-0x4804(r2)

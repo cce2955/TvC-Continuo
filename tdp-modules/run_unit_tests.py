@@ -16,6 +16,10 @@ import os
 import sys
 import unittest
 
+# The repository's packaging checks inspect the application tree for cache
+# artifacts. Test discovery should not create new bytecode files there.
+sys.dont_write_bytecode = True
+
 
 def _module_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))

@@ -1,0 +1,435 @@
+WII RUNTIME 0x801215d8 -> DOL FILE OFFSET 0x0010bab8
+QUERY 0x10bab8 FUNCTION 0010bab8 FUN_0010bab8
+ENTRY REFERENCES: 
+
+void FUN_0010bab8(undefined4 param_1,undefined4 param_2,int param_3,int param_4,undefined4 param_5,
+                 int param_6,int param_7)
+
+{
+  byte bVar1;
+  int unaff_r2;
+  int iVar2;
+  short *psVar3;
+  int *piVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  uint uVar8;
+  int unaff_r13;
+  undefined8 uVar9;
+  
+  uVar9 = FUN_00193384();
+  iVar7 = (int)((ulonglong)uVar9 >> 0x20);
+  iVar2 = FUN_0010bd48(iVar7,param_3,param_4);
+  if ((iVar2 != 0) &&
+     (psVar3 = (short *)FUN_00109b64((int)uVar9,*(undefined1 *)(param_3 + 5)),
+     psVar3 != (short *)0x0)) {
+    FUN_001062d8();
+    iVar2 = FUN_0010d170();
+    if (iVar2 != 0) {
+      *(undefined1 *)(iVar2 + 0x19) = 2;
+      piVar4 = (int *)FUN_0010cde8();
+      iVar5 = FUN_001e47e0(param_5);
+      piVar4[0x2d] = iVar5;
+      if (iVar5 < 0) {
+        uVar6 = FUN_001062d8();
+        FUN_0010d1c8(uVar6,iVar2);
+      }
+      else {
+        iVar5 = FUN_001e4ae8(iVar5,piVar4 + 3);
+        if (iVar5 == 1) {
+          FUN_00108310(iVar2,1);
+          bVar1 = *(byte *)(param_3 + 4);
+          *(undefined1 *)(iVar2 + 0x18) = *(undefined1 *)(param_3 + 3);
+          *(char *)(iVar2 + 0x1a) = (char)param_4;
+          if ((bVar1 & 1) == 0) {
+            *(uint *)(iVar2 + 0x14) =
+                 (uint)*(byte *)(param_3 + 7) << 8 | param_4 << 0x18 | (uint)*(byte *)(param_3 + 6);
+          }
+          else {
+            *(uint *)(iVar2 + 0x14) =
+                 (uint)*(byte *)(param_3 + 7) << 8 | *(byte *)(param_3 + 6) | 0xff010000;
+          }
+          iVar5 = thunk_FUN_00109c3c((int)uVar9,(int)*psVar3);
+          *piVar4 = iVar5;
+          if (iVar5 == 0) {
+            uVar6 = FUN_001062d8();
+            FUN_0010d1c8(uVar6,iVar2);
+          }
+          else {
+            if (*(int *)(iVar7 + 0x10) < 0x10) {
+              iVar7 = FUN_0010b6ac(iVar7);
+              piVar4[0x24] = iVar7;
+              if (iVar7 == 0) {
+                uVar6 = FUN_001062d8();
+                FUN_0010d1c8(uVar6,iVar2);
+                goto LAB_0010bd30;
+              }
+            }
+            else {
+              FUN_00108310(iVar2,0x1000000);
+            }
+            uVar8 = *(uint *)(unaff_r13 + -0x68b8);
+            if (*(int *)*piVar4 == 0) {
+              uVar8 = uVar8 >> 1;
+            }
+            piVar4[0x25] = uVar8;
+            if (*(int *)*piVar4 - 1U < 2) {
+              iVar7 = FUN_001b01f0(0x1f,0x8011f794,iVar2);
+              piVar4[1] = iVar7;
+              piVar4[2] = 0;
+            }
+            else if (*(int *)*piVar4 == 0) {
+              iVar7 = FUN_001b01f0(0x1f,0x8011f794,iVar2);
+              piVar4[1] = iVar7;
+              iVar7 = FUN_001b01f0(0x1f,0x8011f794,iVar2);
+              piVar4[2] = iVar7;
+            }
+            if (piVar4[1] == 0) {
+              uVar6 = FUN_001062d8();
+              FUN_0010d1c8(uVar6,iVar2);
+            }
+            else {
+              if (param_6 == 1) {
+                piVar4[0x26] = *(int *)(unaff_r2 + -0x5ddc);
+                piVar4[0x1d] = 0;
+                FUN_00108310(iVar2,0x80000);
+              }
+              else {
+                piVar4[0x26] = *(int *)(unaff_r2 + -0x5de0);
+              }
+              if (param_7 == 1) {
+                FUN_00108310(iVar2,0x200);
+              }
+              FUN_00109cb4(piVar4,param_3,psVar3,param_4);
+            }
+          }
+        }
+        else {
+          uVar6 = FUN_001062d8();
+          FUN_0010d1c8(uVar6,iVar2);
+        }
+      }
+    }
+  }
+LAB_0010bd30:
+  FUN_001933d0();
+  return;
+}
+
+
+
+WII RUNTIME 0x80121a64 -> DOL FILE OFFSET 0x0010bf44
+QUERY 0x10bf44 FUNCTION 0010bf44 FUN_0010bf44
+ENTRY REFERENCES: 
+
+void FUN_0010bf44(int *param_1,int param_2,int param_3)
+
+{
+  byte bVar1;
+  byte bVar2;
+  byte bVar3;
+  int iVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  
+  FUN_001062d8();
+  iVar5 = FUN_0010d1e8();
+  bVar1 = *(byte *)(param_2 + 4);
+  bVar2 = *(byte *)(param_2 + 7);
+  bVar3 = *(byte *)(param_2 + 6);
+  iVar4 = 0xff;
+  if ((bVar1 & 1) == 0) {
+    iVar4 = param_3;
+  }
+  while( true ) {
+    uVar6 = FUN_001062d8();
+    iVar7 = FUN_00108328(uVar6,iVar5);
+    if (iVar7 == 1) break;
+    if ((*(char *)(iVar5 + 0x19) == '\x02') &&
+       (((uint)bVar3 | (uint)bVar2 << 8 | iVar4 << 0x18 | (bVar1 & 1) << 0x10) ==
+        *(uint *)(iVar5 + 0x14))) {
+      (**(code **)(*param_1 + 0x18))(param_1,iVar5);
+    }
+    iVar5 = FUN_00108410(iVar5);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80121b40 -> DOL FILE OFFSET 0x0010c020
+QUERY 0x10c020 FUNCTION 0010c020 FUN_0010c020
+ENTRY REFERENCES: 
+
+void FUN_0010c020(int *param_1,int param_2,int param_3)
+
+{
+  byte bVar1;
+  byte bVar2;
+  byte bVar3;
+  int iVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  
+  FUN_001062d8();
+  iVar5 = FUN_0010d1e8();
+  bVar1 = *(byte *)(param_2 + 4);
+  bVar2 = *(byte *)(param_2 + 7);
+  bVar3 = *(byte *)(param_2 + 6);
+  iVar4 = 0xff;
+  if ((bVar1 & 1) == 0) {
+    iVar4 = param_3;
+  }
+  while( true ) {
+    uVar6 = FUN_001062d8();
+    iVar7 = FUN_00108328(uVar6,iVar5);
+    if (iVar7 == 1) break;
+    if ((*(char *)(iVar5 + 0x19) == '\x02') &&
+       (((uint)bVar3 | (uint)bVar2 << 8 | iVar4 << 0x18 | (bVar1 & 1) << 0x10) ==
+        *(uint *)(iVar5 + 0x14))) {
+      (**(code **)(*param_1 + 0x1c))(param_1,iVar5);
+    }
+    iVar5 = FUN_00108410(iVar5);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80121c1c -> DOL FILE OFFSET 0x0010c0fc
+QUERY 0x10c0fc FUNCTION 0010c0fc FUN_0010c0fc
+ENTRY REFERENCES: 
+
+void FUN_0010c0fc(int *param_1,int param_2,int param_3)
+
+{
+  byte bVar1;
+  byte bVar2;
+  byte bVar3;
+  int iVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  
+  FUN_001062d8();
+  iVar5 = FUN_0010d1e8();
+  bVar1 = *(byte *)(param_2 + 4);
+  bVar2 = *(byte *)(param_2 + 7);
+  bVar3 = *(byte *)(param_2 + 6);
+  iVar4 = 0xff;
+  if ((bVar1 & 1) == 0) {
+    iVar4 = param_3;
+  }
+  while( true ) {
+    uVar6 = FUN_001062d8();
+    iVar7 = FUN_00108328(uVar6,iVar5);
+    if (iVar7 == 1) break;
+    if ((*(char *)(iVar5 + 0x19) == '\x02') &&
+       (((uint)bVar3 | (uint)bVar2 << 8 | iVar4 << 0x18 | (bVar1 & 1) << 0x10) ==
+        *(uint *)(iVar5 + 0x14))) {
+      (**(code **)(*param_1 + 0x20))(param_1,iVar5);
+    }
+    iVar5 = FUN_00108410(iVar5);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80121cf8 -> DOL FILE OFFSET 0x0010c1d8
+QUERY 0x10c1d8 FUNCTION 0010c1d8 FUN_0010c1d8
+ENTRY REFERENCES: 
+
+void FUN_0010c1d8(undefined4 param_1,undefined4 param_2,int param_3,undefined4 param_4,
+                 undefined4 param_5)
+
+{
+  int *piVar1;
+  uint uVar2;
+  int *piVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  
+  piVar1 = (int *)FUN_00109b70(param_2,*(undefined1 *)(param_3 + 2));
+  if ((piVar1 != (int *)0x0) && (*piVar1 != 0)) {
+    uVar2 = FUN_001098b4();
+    iVar5 = 0;
+    iVar6 = 0;
+    piVar3 = piVar1;
+    for (iVar4 = *piVar1; iVar4 != 0; iVar4 = iVar4 + -1) {
+      iVar5 = iVar5 + (uint)*(byte *)((int)piVar3 + 5);
+      if ((int)((uVar2 & 0xff) % 100) < iVar5) {
+        FUN_0010b898(param_1,param_4,*(undefined1 *)((int)piVar1 + iVar6 * 2 + 4),param_5);
+        return;
+      }
+      piVar3 = (int *)((int)piVar3 + 2);
+      iVar6 = iVar6 + 1;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80122060 -> DOL FILE OFFSET 0x0010c540
+QUERY 0x10c540 FUNCTION 0010c540 FUN_0010c540
+ENTRY REFERENCES: 
+
+void FUN_0010c540(undefined4 param_1,int param_2,int param_3)
+
+{
+  byte bVar1;
+  byte bVar2;
+  byte bVar3;
+  int iVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  
+  FUN_001062d8();
+  iVar5 = FUN_0010d1e8();
+  bVar1 = *(byte *)(param_2 + 4);
+  bVar2 = *(byte *)(param_2 + 7);
+  bVar3 = *(byte *)(param_2 + 6);
+  iVar4 = 0xff;
+  if ((bVar1 & 1) == 0) {
+    iVar4 = param_3;
+  }
+  while( true ) {
+    uVar6 = FUN_001062d8();
+    iVar7 = FUN_00108328(uVar6,iVar5);
+    if (iVar7 == 1) break;
+    if ((*(char *)(iVar5 + 0x19) == '\x02') &&
+       (((uint)bVar3 | (uint)bVar2 << 8 | iVar4 << 0x18 | (bVar1 & 1) << 0x10) ==
+        *(uint *)(iVar5 + 0x14))) {
+      FUN_0010ca54(param_1,iVar5,*(undefined4 *)(param_2 + 0x1c));
+    }
+    iVar5 = FUN_00108410(iVar5);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80121de4 -> DOL FILE OFFSET 0x0010c2c4
+QUERY 0x10c2c4 FUNCTION 0010c2c4 FUN_0010c2c4
+ENTRY REFERENCES: 
+
+void FUN_0010c2c4(undefined4 param_1,int param_2,int param_3)
+
+{
+  byte bVar1;
+  byte bVar2;
+  byte bVar3;
+  int iVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  
+  FUN_001062d8();
+  iVar5 = FUN_0010d1e8();
+  bVar1 = *(byte *)(param_2 + 4);
+  bVar2 = *(byte *)(param_2 + 7);
+  bVar3 = *(byte *)(param_2 + 6);
+  iVar4 = 0xff;
+  if ((bVar1 & 1) == 0) {
+    iVar4 = param_3;
+  }
+  while( true ) {
+    uVar6 = FUN_001062d8();
+    iVar7 = FUN_00108328(uVar6,iVar5);
+    if (iVar7 == 1) break;
+    if ((*(char *)(iVar5 + 0x19) == '\x02') &&
+       (((uint)bVar3 | (uint)bVar2 << 8 | iVar4 << 0x18 | (bVar1 & 1) << 0x10) ==
+        *(uint *)(iVar5 + 0x14))) {
+      FUN_0010cadc(param_1,iVar5,param_2);
+    }
+    iVar5 = FUN_00108410(iVar5);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80121eb8 -> DOL FILE OFFSET 0x0010c398
+QUERY 0x10c398 FUNCTION 0010c398 FUN_0010c398
+ENTRY REFERENCES: 
+
+void FUN_0010c398(undefined4 param_1,int param_2,int param_3)
+
+{
+  byte bVar1;
+  byte bVar2;
+  byte bVar3;
+  int iVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  
+  FUN_001062d8();
+  iVar5 = FUN_0010d1e8();
+  bVar1 = *(byte *)(param_2 + 4);
+  bVar2 = *(byte *)(param_2 + 7);
+  bVar3 = *(byte *)(param_2 + 6);
+  iVar4 = 0xff;
+  if ((bVar1 & 1) == 0) {
+    iVar4 = param_3;
+  }
+  while( true ) {
+    uVar6 = FUN_001062d8();
+    iVar7 = FUN_00108328(uVar6,iVar5);
+    if (iVar7 == 1) break;
+    if ((*(char *)(iVar5 + 0x19) == '\x02') &&
+       (((uint)bVar3 | (uint)bVar2 << 8 | iVar4 << 0x18 | (bVar1 & 1) << 0x10) ==
+        *(uint *)(iVar5 + 0x14))) {
+      FUN_0010cba0(param_1,iVar5,param_2);
+    }
+    iVar5 = FUN_00108410(iVar5);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80121f8c -> DOL FILE OFFSET 0x0010c46c
+QUERY 0x10c46c FUNCTION 0010c46c FUN_0010c46c
+ENTRY REFERENCES: 
+
+void FUN_0010c46c(undefined4 param_1,int param_2,int param_3)
+
+{
+  byte bVar1;
+  byte bVar2;
+  byte bVar3;
+  int iVar4;
+  int iVar5;
+  undefined4 uVar6;
+  int iVar7;
+  
+  FUN_001062d8();
+  iVar5 = FUN_0010d1e8();
+  bVar1 = *(byte *)(param_2 + 4);
+  bVar2 = *(byte *)(param_2 + 7);
+  bVar3 = *(byte *)(param_2 + 6);
+  iVar4 = 0xff;
+  if ((bVar1 & 1) == 0) {
+    iVar4 = param_3;
+  }
+  while( true ) {
+    uVar6 = FUN_001062d8();
+    iVar7 = FUN_00108328(uVar6,iVar5);
+    if (iVar7 == 1) break;
+    if ((*(char *)(iVar5 + 0x19) == '\x02') &&
+       (((uint)bVar3 | (uint)bVar2 << 8 | iVar4 << 0x18 | (bVar1 & 1) << 0x10) ==
+        *(uint *)(iVar5 + 0x14))) {
+      FUN_0010ccac(param_1,iVar5,param_2);
+    }
+    iVar5 = FUN_00108410(iVar5);
+  }
+  return;
+}
+

@@ -1,0 +1,70 @@
+WII RUNTIME 0x80156a58 -> DOL FILE OFFSET 0x00140f38
+QUERY 0x140f38 FUNCTION 00140f38 FUN_00140f38
+ENTRY REFERENCES: 00141000
+
+undefined4 FUN_00140f38(int *param_1,undefined4 param_2,int param_3)
+
+{
+  int iVar1;
+  int unaff_r13;
+  undefined4 uVar2;
+  
+  uVar2 = 0xffffffff;
+  *(undefined4 *)(unaff_r13 + -0x6748) = 0;
+  do {
+    param_1 = (int *)*param_1;
+    if (param_1[2] == 0) break;
+    iVar1 = FUN_00141020(param_1);
+    if (iVar1 != 0) {
+      FUN_00141090(param_1);
+    }
+    uVar2 = FUN_00140a18(param_1);
+    uVar2 = (*(code *)param_1[2])(uVar2,param_2);
+  } while ((param_3 == 0) || (*(int *)(unaff_r13 + -0x6748) < param_3));
+  FUN_00141004(&DAT_80477120);
+  return uVar2;
+}
+
+
+
+WII RUNTIME 0x801568dc -> DOL FILE OFFSET 0x00140dbc
+QUERY 0x140dbc FUNCTION 00140dbc FUN_00140dbc
+ENTRY REFERENCES: 00002a38, 00002a4c, 000058bc, 000058f8, 000065c0, 000065d4, 00007b50, 00007b64, 00009cc4, 00009cd8, 00009d6c, 0000ca84, 0000ca98, 0000cb2c, 0000e4f8, 0000e50c, 00010428, 0001043c, 000104d0, 00012150, 00012164, 000121d0, 00013188, 0001319c, 00014ab4, 00014ac8, 00015f10, 00015f24, 00015f90, 0001702c, 00017040, 0001831c, 00018330, 000191f4, 00019208, 0001a1c8, 0001a1dc, 0001a230, 0001a24c, 0001b404, 0001b418, 0001b478, 0001cde0, 0001cdf4, 0001ce80, 0001e7d8, 0001e7ec, 0001e828, 0001f500, 0001f514, 0001f574, 00020c98, 00020cac, 00021bec, 00021c00, 00021c60, 0006ca08, 0006ca1c, 00163144, 00163168, 00163224
+
+void FUN_00140dbc(void)
+
+{
+  int unaff_r13;
+  
+  *(int *)(unaff_r13 + -0x6748) = *(int *)(unaff_r13 + -0x6748) + 1;
+  return;
+}
+
+
+
+WII RUNTIME 0x80156538 -> DOL FILE OFFSET 0x00140a18
+QUERY 0x140a18 FUNCTION 00140a18 FUN_00140a18
+ENTRY REFERENCES: 00140a00, 00140d94, 00140f98, 00140d28, 00140e34, 00140ef4
+
+int FUN_00140a18(int param_1)
+
+{
+  return param_1 + 0x30;
+}
+
+
+
+WII RUNTIME 0x80156b24 -> DOL FILE OFFSET 0x00141004
+QUERY 0x141004 FUNCTION 00141004 FUN_00141004
+ENTRY REFERENCES: 001409f8, 00140fcc, 00140e78, 00140a54, 0014095c, 00140f14
+
+void FUN_00141004(undefined4 *param_1)
+
+{
+  *param_1 = 0;
+  param_1[1] = 0;
+  param_1[2] = 0;
+  param_1[3] = 0xffffffff;
+  return;
+}
+

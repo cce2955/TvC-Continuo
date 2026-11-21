@@ -1,0 +1,8 @@
+WII RUNTIME 0x80077958 -> DOL FILE OFFSET 0x00061e38
+No containing function for 0x61e38
+
+WII RUNTIME 0x80077e20 -> DOL FILE OFFSET 0x00062300
+No containing function for 0x62300
+
+WII RUNTIME 0x800781a4 -> DOL FILE OFFSET 0x00062684
+No containing function for 0x62684

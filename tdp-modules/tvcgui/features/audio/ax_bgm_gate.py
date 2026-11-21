@@ -15,8 +15,10 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 
-POOL_START = 0x804A0020
-POOL_COUNT = 51
+# Native initializer 0x801c85ac builds 96 entries at 0x8049c7e0, stride 0x140.
+# The former start 0x804a0020 skipped entries 0..44 of that same pool.
+POOL_START = 0x8049C7E0
+POOL_COUNT = 96
 STRIDE = 0x140
 POOL_SIZE = POOL_COUNT * STRIDE
 

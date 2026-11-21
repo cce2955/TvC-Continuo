@@ -32,6 +32,32 @@ class PoolIO:
 
 
 class AxNativeRestoreTests(unittest.TestCase):
+    def test_full_native_pool_detects_pair_across_old_scan_boundary(self):
+        io = PoolIO()
+        left = bytes(io.pool[:STRIDE])
+        right = bytes(io.pool[STRIDE:2 * STRIDE])
+        io.pool[:] = bytes(POOL_SIZE)
+        for slot, voice in ((3, left), (80, right)):
+            off = slot * STRIDE
+            io.pool[off:off + STRIDE] = voice
+            struct.pack_into('>I', io.pool, off + 4, POOL_START + off)
+            io.pool[off + 0x0f] = ORIGINAL_ROUTE
+        gate = AxBgmGate()
+        self.assertTrue(gate.apply(io, mute=True).muted)
+        self.assertEqual({address for address, _ in io.writes},
+                         {POOL_START + 3 * STRIDE + 0x0f, POOL_START + 80 * STRIDE + 0x0f})
+        self.assertTrue(gate.apply(io, mute=False).ready)
+
+    def test_duplicate_voice_outside_old_range_rejects_pair(self):
+        io = PoolIO()
+        slot = 80
+        off = slot * STRIDE
+        io.pool[off:off + STRIDE] = io.pool[:STRIDE]
+        struct.pack_into('>I', io.pool, off + 4, POOL_START + off)
+        gate = AxBgmGate()
+        self.assertFalse(gate.apply(io, mute=True).muted)
+        self.assertEqual(io.writes, [])
+
     def test_explicit_native_restores_verified_off_pair_without_old_ownership(self):
         io = PoolIO()
         gate = AxBgmGate()

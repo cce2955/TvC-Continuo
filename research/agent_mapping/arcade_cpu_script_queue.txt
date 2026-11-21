@@ -1,0 +1,180 @@
+80063C20 stwu     r1, -272(r1)
+80063C24 mflr    r0
+80063C28 cmpwi   r3, 0
+80063C2C stw     r0, 276(r1)
+80063C30 stw     r31, 268(r1)
+80063C34 or   r31, r4, r4
+80063C38 stw     r30, 264(r1)
+80063C3C or   r30, r3, r3
+80063C40 bc    4, 2, 0x80063C4C
+80063C44 li      r3, 0
+80063C48 b       0x80063CF4
+80063C4C cmpwi   r4, 0
+80063C50 bc    12, 2, 0x80063C5C
+80063C54 li      r3, 0
+80063C58 b       0x80063CF4
+80063C5C lwz     r0, 17156(r3)
+80063C60 cmpwi   r0, 0
+80063C64 bc    12, 2, 0x80063C70
+80063C68 li      r3, 0
+80063C6C b       0x80063CF4
+80063C70 lwz     r0, 0(r3)
+80063C74 rlwinm. r0, r0, 0, 29, 29
+80063C78 bc    4, 2, 0x80063CD8
+80063C7C li      r0, 0
+80063C80 stw     r0, 17156(r3)
+80063C84 lwz     r5, 20(r30)
+80063C88 addi    r3, r1, 8
+80063C8C li      r4, 8
+80063C90 li      r6, 0
+80063C94 li      r7, 10
+80063C98 bl      0x80077908
+80063C9C addi    r3, r1, 8
+80063CA0 li      r4, 21
+80063CA4 li      r5, 0
+80063CA8 bl      0x800DFD18
+80063CAC cmpwi   r3, 0
+80063CB0 bc    4, 2, 0x80063CB8
+80063CB4 b       0x80063CF4
+80063CB8 lwz     r5, 20(r3)
+80063CBC or   r4, r31, r31
+80063CC0 stw     r30, 104(r5)
+80063CC4 lwz     r5, 20(r3)
+80063CC8 or   r3, r30, r30
+80063CCC lwz     r0, 80(r5)
+80063CD0 stw     r0, 17156(r30)
+80063CD4 bl      0x80063D0C
+80063CD8 lwz     r0, 17160(r30)
+80063CDC cmpwi   r0, 0
+80063CE0 bc    12, 2, 0x80063CF0
+80063CE4 lwz     r0, 0(r30)
+80063CE8 ori     r0, r0, 0x0040
+80063CEC stw     r0, 0(r30)
+80063CF0 lwz     r3, 17156(r30)
+80063CF4 lwz     r0, 276(r1)
+80063CF8 lwz     r31, 268(r1)
+80063CFC lwz     r30, 264(r1)
+80063D00 mtlr    r0
+80063D04 addi    r1, r1, 272
+80063D08 blr
+80063D0C stwu     r1, -32(r1)
+800F21F0 bl      0x800643C8
+800F21F4 mullw   r0, r21, r3
+800F21F8 srawi r3, r0, 8
+800F21FC addi    r0, r3, 1
+800F2200 sth     r0, 26(r31)
+800F2204 lha     r3, 26(r31)
+800F2208 addi    r0, r3, -1
+800F220C sth     r0, 26(r31)
+800F2210 extsh. r0, r0
+800F2214 bc    12, 1, 0x800F2228
+800F2218 li      r0, 0
+800F221C sth     r0, 26(r31)
+800F2220 addi    r30, r30, 8
+800F2224 b       0x800F45BC
+800F2228 lwz     r0, 4(r30)
+800F222C li      r30, 0
+800F2230 lwz     r3, 12(r31)
+800F2234 rlwinm r0, r0, 16, 16, 31
+800F2238 extsh r0, r0
+800F223C or   r0, r3, r0
+800F2240 stw     r0, 12(r31)
+800F2244 b       0x800F45BC
+800F2248 or   r3, r28, r28
+800F224C or   r4, r29, r29
+800F2250 or   r7, r30, r30
+800F2254 addi    r5, r1, 20
+800F2258 addi    r6, r1, 16
+800F225C bl      0x800E0534
+800F2260 lwz     r5, 20(r1)
+800F2264 or   r30, r3, r3
+800F2268 or   r3, r31, r31
+800F226C li      r4, 8
+800F2270 lwz     r0, 0(r5)
+800F2274 stw     r0, 16(r31)
+800F2278 lwz     r5, 16(r1)
+800F227C lwz     r0, 0(r5)
+800F2280 sth     r0, 32(r31)
+800F2284 bl      0x800644BC
+800F2288 b       0x800F45BC
+800F228C li      r0, 0
+800F2290 stw     r0, 16(r31)
+800F2294 or   r3, r31, r31
+800F2298 li      r4, -9
+800F229C sth     r0, 32(r31)
+800F22A0 addi    r30, r30, 4
+800F22A4 bl      0x800644E0
+800F22A8 b       0x800F45BC
+800F22AC or   r3, r28, r28
+800F38D0 lwz     r3, 20(r1)
+800F38D4 lwz     r0, 0(r3)
+800F38D8 cmpwi   r0, 0
+800F38DC bc    4, 2, 0x800F38E8
+800F38E0 lfs     f1, -24616(r2)
+800F38E4 b       0x800F392C
+800F38E8 lfs     f1, -24604(r2)
+800F38EC b       0x800F392C
+800F38F0 lwz     r3, 20(r1)
+800F38F4 lwz     r0, 0(r3)
+800F38F8 cmpwi   r0, 0
+800F38FC bc    4, 2, 0x800F3908
+800F3900 lfs     f1, -24612(r2)
+800F3904 b       0x800F392C
+800F3908 lfs     f1, -24608(r2)
+800F390C b       0x800F392C
+800F3910 lwz     r3, 20(r1)
+800F3914 lwz     r0, 0(r3)
+800F3918 cmpwi   r0, 0
+800F391C bc    4, 2, 0x800F3928
+800F3920 lfs     f1, -24652(r2)
+800F3924 b       0x800F392C
+800F3928 lfs     f1, -24608(r2)
+800F392C lfs     f0, 240(r23)
+800F3930 fcmpo   cr0, f0, f1
+800F3934 bc    4, 1, 0x800F3944
+800F3938 li      r0, 1
+800F393C stw     r0, 84(r29)
+800F3940 b       0x800F45BC
+800F3944 bc    4, 0, 0x800F3954
+800F3948 li      r0, -1
+800F394C stw     r0, 84(r29)
+800F3950 b       0x800F45BC
+800F3954 li      r0, 0
+800F3958 stw     r0, 84(r29)
+800F395C b       0x800F45BC
+800F3960 or   r3, r28, r28
+800F3964 or   r4, r29, r29
+800F3968 bl      0x80065C00
+800F396C addi    r30, r30, 4
+800F3970 b       0x800F45BC
+800F3974 or   r3, r28, r28
+800F3978 or   r4, r31, r31
+800F397C bl      0x80064F90
+800F3980 addi    r30, r30, 4
+800F3984 b       0x800F45BC
+800F3988 lwz     r4, 8(r30)
+800F398C or   r3, r28, r28
+800F3990 bl      0x800EAB14
+800F3994 lwz     r4, 4(r30)
+800F3998 or   r21, r3, r3
+800F399C or   r3, r28, r28
+800F39A0 bl      0x800EAB14
+800F39A4 or   r5, r3, r3
+800F39A8 or   r3, r28, r28
+800F39AC or   r4, r31, r31
+800F39B0 or   r6, r21, r21
+800F39B4 bl      0x80064F1C
+800F39B8 addi    r30, r30, 12
+800F39BC b       0x800F45BC
+800F39C0 or   r3, r31, r31
+800F39C4 rlwinm r4, r24, 0, 24, 31
+800F39C8 bl      0x80065FB4
+800F39CC addi    r30, r30, 4
+800F39D0 b       0x800F45BC
+800F39D4 or   r3, r28, r28
+800F39D8 or   r4, r29, r29
+800F39DC bl      0x80064D94
+800F39E0 addi    r30, r30, 4
+800F39E4 b       0x800F45BC
+800F39E8 lhz     r0, 42(r31)
+800F39EC addi    r30, r30, 4

@@ -4093,9 +4093,10 @@ class ProjectileProfileMonitorWindow:
         "ex09c", "ex0d4", "ex0e4",
     }
 
-    def __init__(self, master, slot_label: str, get_snap_fn):
+    def __init__(self, master, slot_label: str, get_snap_fn, get_all_snap_fn=None):
         self.slot_label = str(slot_label)
         self._get_snap = get_snap_fn
+        self._get_all_snap = get_all_snap_fn
         self._closed = False
         self._scan_running = False
         self._live_running = False
@@ -5786,7 +5787,7 @@ class ProjectileProfileMonitorWindow:
 _profile_monitor_instances: dict[str, ProjectileProfileMonitorWindow] = {}
 
 
-def open_projectile_profile_monitor(slot_label: str, get_snap_fn):
+def open_projectile_profile_monitor(slot_label: str, get_snap_fn, get_all_snap_fn=None):
     """Open or focus the projectile monitor for one HUD character slot."""
     slot_label = str(slot_label)
 
@@ -5799,7 +5800,7 @@ def open_projectile_profile_monitor(slot_label: str, get_snap_fn):
                 return
             except Exception:
                 _profile_monitor_instances.pop(slot_label, None)
-        inst = ProjectileProfileMonitorWindow(master, slot_label, get_snap_fn)
+        inst = ProjectileProfileMonitorWindow(master, slot_label, get_snap_fn, get_all_snap_fn)
         _profile_monitor_instances[slot_label] = inst
 
         old_close = inst._on_close

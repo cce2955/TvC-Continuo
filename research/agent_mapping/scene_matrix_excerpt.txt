@@ -1,0 +1,381 @@
+WII RUNTIME 0x8009ba90 -> DOL FILE OFFSET 0x00085f70
+QUERY 0x85f70 FUNCTION 00085f70 FUN_00085f70
+ENTRY REFERENCES: 00086c38, 00085f6c, 00086d08, 0008604c, 00086444, 00086d9c, 00086e08, 00086c0c, 00086dc0, 00086de4, 00086c78, 00086aac, 00086b74, 00086bc8, 00086b20
+
+uint FUN_00085f70(void)
+
+{
+  bool bVar1;
+  int unaff_r13;
+  uint uVar2;
+  
+  bVar1 = false;
+  uVar2 = *(uint *)(unaff_r13 + -0x6a38);
+  if (((((uVar2 & 0xff000000) == 0x80000000) || ((uVar2 & 0xff800000) == 0x81000000)) ||
+      ((uVar2 & 0xf8000000) == 0x90000000)) ||
+     ((((uVar2 & 0xff000000) == 0xc0000000 || ((uVar2 & 0xff800000) == 0xc1000000)) ||
+      (((uVar2 & 0xf8000000) == 0xd0000000 || ((uVar2 & 0xffffc000) == 0xe0000000)))))) {
+    bVar1 = true;
+  }
+  if (!bVar1) {
+    FUN_002bfb8c(0x8036ac48,0x2c,0x8036ac10,uVar2);
+  }
+  return uVar2;
+}
+
+
+
+WII RUNTIME 0x80084dac -> DOL FILE OFFSET 0x0006f28c
+QUERY 0x6f28c FUNCTION 0006f28c FUN_0006f28c
+ENTRY REFERENCES: 000a4b18, 000a4b48, 00086c3c, 00086d0c, 00077c7c, 000864a4, 00077a08, 00077eb8, 00086c7c, 00074ed0, 00074e50, 00074e60, 00077bd8, 00077e18, 0007eb18, 0007ebd4, 00086f60, 000a5434
+
+undefined4 FUN_0006f28c(int param_1)
+
+{
+  return *(undefined4 *)(param_1 + 0x18);
+}
+
+
+
+WII RUNTIME 0x8031a6f8 -> DOL FILE OFFSET 0x00304bd8
+QUERY 0x304bd8 FUNCTION 00304bd8 FUN_00304bd8
+ENTRY REFERENCES: 000a4b4c, 00086c40, 00084c88, 00084ce4, 0007eb2c, 0007ebe8, 00086f74
+
+undefined4 FUN_00304bd8(int param_1)
+
+{
+  undefined4 *puVar1;
+  undefined1 auStack_8 [8];
+  
+  puVar1 = (undefined4 *)
+           FUN_002ffc28(auStack_8,param_1 + (uint)*(byte *)(param_1 + 0xf4) * 0x10c + 0xf8);
+  return *puVar1;
+}
+
+
+
+WII RUNTIME 0x8002a36c -> DOL FILE OFFSET 0x0001484c
+QUERY 0x1484c FUNCTION 0001484c FUN_0001484c
+ENTRY REFERENCES: 00014830
+
+void FUN_0001484c(undefined4 *param_1,undefined4 *param_2)
+
+{
+  *param_1 = *param_2;
+  return;
+}
+
+
+
+WII RUNTIME 0x80316258 -> DOL FILE OFFSET 0x00300738
+QUERY 0x300738 FUNCTION 00300738 FUN_00300738
+ENTRY REFERENCES: 00300358
+
+/* WARNING: Removing unreachable block (ram,0x00300afc) */
+/* WARNING: Removing unreachable block (ram,0x00300ad4) */
+/* WARNING: Removing unreachable block (ram,0x00300abc) */
+/* WARNING: Removing unreachable block (ram,0x00300aa4) */
+/* WARNING: Removing unreachable block (ram,0x00300a88) */
+/* WARNING: Removing unreachable block (ram,0x00300a80) */
+/* WARNING: Removing unreachable block (ram,0x00300998) */
+/* WARNING: Removing unreachable block (ram,0x0030098c) */
+/* WARNING: Removing unreachable block (ram,0x00300958) */
+/* WARNING: Removing unreachable block (ram,0x0030093c) */
+/* WARNING: Removing unreachable block (ram,0x00300920) */
+/* WARNING: Removing unreachable block (ram,0x00300910) */
+/* WARNING: Removing unreachable block (ram,0x0030090c) */
+/* WARNING: Removing unreachable block (ram,0x0030091c) */
+/* WARNING: Removing unreachable block (ram,0x00300930) */
+/* WARNING: Removing unreachable block (ram,0x00300954) */
+/* WARNING: Removing unreachable block (ram,0x00300988) */
+/* WARNING: Removing unreachable block (ram,0x00300990) */
+/* WARNING: Removing unreachable block (ram,0x00300a6c) */
+/* WARNING: Removing unreachable block (ram,0x00300a84) */
+/* WARNING: Removing unreachable block (ram,0x00300a9c) */
+/* WARNING: Removing unreachable block (ram,0x00300ab0) */
+/* WARNING: Removing unreachable block (ram,0x00300ad0) */
+/* WARNING: Removing unreachable block (ram,0x00300af8) */
+/* WARNING: Removing unreachable block (ram,0x00300b20) */
+
+double FUN_00300738(undefined4 *param_1)
+
+{
+  int unaff_r2;
+  float *pfVar1;
+  undefined4 in_GQR0;
+  float fVar2;
+  double dVar3;
+  float fVar4;
+  float fVar5;
+  float fVar6;
+  float fVar7;
+  float fVar8;
+  float fVar9;
+  float fVar10;
+  float fVar11;
+  float fVar12;
+  float fVar13;
+  float fVar14;
+  undefined8 in_f31;
+  float local_98;
+  float local_94;
+  float local_90;
+  float local_8c;
+  float local_88;
+  float local_84;
+  float local_80;
+  float local_7c;
+  undefined1 local_78 [4];
+  undefined1 local_74 [8];
+  undefined1 local_6c [4];
+  undefined1 local_68 [8];
+  undefined1 local_60 [4];
+  undefined1 local_5c [8];
+  undefined1 local_54 [4];
+  undefined1 local_50 [8];
+  undefined1 local_48 [4];
+  undefined1 local_44 [8];
+  float local_3c;
+  float local_38;
+  float local_34;
+  float local_30;
+  undefined4 local_2c;
+  float local_28;
+  float local_24;
+  float local_20;
+  float local_1c;
+  undefined1 auStack_8 [8];
+  
+  __psq_st0(auStack_8,(int)((ulonglong)in_f31 >> 0x20),in_GQR0);
+  __psq_st1(auStack_8,(int)in_f31,in_GQR0);
+  pfVar1 = (float *)*param_1;
+  if (((uint)pfVar1[0x1c] & 1) == 0) {
+    if (((uint)pfVar1[0x1c] & 4) == 0) {
+      FUN_003187c0((double)(*(float *)(unaff_r2 + -0x3d9c) * pfVar1[0x26]),&local_84,&local_90);
+      FUN_003187c0((double)(*(float *)(unaff_r2 + -0x3d9c) * pfVar1[0x27]),&local_88,&local_94);
+      FUN_003187c0((double)(*(float *)(unaff_r2 + -0x3d9c) * pfVar1[0x28]),&local_8c,&local_98);
+      *pfVar1 = local_8c * local_84 * local_88 + local_94 * local_98;
+      pfVar1[1] = local_90 * local_8c;
+      pfVar1[2] = local_8c * local_84 * local_94 - local_88 * local_98;
+      fVar8 = (float)__psq_l0(pfVar1 + 0x1d,in_GQR0);
+      fVar10 = (float)__psq_l0(pfVar1 + 0x1e,in_GQR0);
+      fVar11 = (float)__psq_l1(pfVar1 + 0x1e,in_GQR0);
+      fVar4 = (float)__psq_l0(local_5c,in_GQR0);
+      fVar7 = (float)__psq_l1(local_5c,in_GQR0);
+      fVar2 = (float)__psq_l0(local_60,in_GQR0);
+      fVar12 = (float)__psq_l0(local_6c,in_GQR0);
+      fVar13 = (float)__psq_l0(local_74,in_GQR0);
+      fVar14 = (float)__psq_l1(local_74,in_GQR0);
+      fVar9 = (float)__psq_l0(local_78,in_GQR0);
+      fVar5 = (float)__psq_l0(local_68,in_GQR0);
+      fVar6 = (float)__psq_l1(local_68,in_GQR0);
+      pfVar1[3] = (float)-(double)CONCAT44(fVar8 * fVar2 + fVar10 * fVar4 + fVar11 * fVar7,
+                                           fVar11 * fVar7);
+      pfVar1[4] = local_98 * local_84 * local_88 - local_94 * local_8c;
+      pfVar1[5] = local_90 * local_98;
+      pfVar1[6] = local_98 * local_84 * local_94 + local_88 * local_8c;
+      fVar4 = (float)__psq_l0(pfVar1 + 0x1e,in_GQR0);
+      fVar7 = (float)__psq_l1(pfVar1 + 0x1e,in_GQR0);
+      fVar2 = (float)__psq_l0(pfVar1 + 0x1d,in_GQR0);
+      pfVar1[7] = (float)-(double)CONCAT44(fVar2 * fVar12 + fVar4 * fVar5 + fVar7 * fVar6,
+                                           fVar7 * fVar6);
+      pfVar1[8] = local_90 * local_88;
+      pfVar1[9] = -local_84;
+      pfVar1[10] = local_90 * local_94;
+      fVar4 = (float)__psq_l0(pfVar1 + 0x1e,in_GQR0);
+      fVar7 = (float)__psq_l1(pfVar1 + 0x1e,in_GQR0);
+      fVar2 = (float)__psq_l0(pfVar1 + 0x1d,in_GQR0);
+      fVar7 = fVar7 * fVar14;
+      dVar3 = (double)CONCAT44(fVar4 * fVar13,fVar7);
+      pfVar1[0xb] = (float)-(double)CONCAT44(fVar2 * fVar9 + fVar4 * fVar13 + fVar7,fVar7);
+    }
+    else {
+      local_24 = pfVar1[0x1d] - pfVar1[0x23];
+      fVar2 = *(float *)(unaff_r2 + -0x3dc8);
+      local_30 = pfVar1[0x1f] - pfVar1[0x25];
+      local_20 = pfVar1[0x1e] - pfVar1[0x24];
+      if ((fVar2 == local_24) && (fVar2 == local_30)) {
+        fVar4 = *(float *)(unaff_r2 + -0x3dc0);
+        dVar3 = (double)fVar4;
+        *pfVar1 = fVar4;
+        pfVar1[1] = fVar2;
+        pfVar1[2] = fVar2;
+        pfVar1[3] = -pfVar1[0x1d];
+        pfVar1[4] = fVar2;
+        pfVar1[5] = fVar2;
+        pfVar1[8] = fVar2;
+        pfVar1[10] = fVar2;
+        if (fVar2 < local_20) {
+          pfVar1[6] = *(float *)(unaff_r2 + -0x3da0);
+          pfVar1[7] = pfVar1[0x1f];
+          pfVar1[9] = fVar4;
+          pfVar1[0xb] = -pfVar1[0x1e];
+        }
+        else {
+          pfVar1[6] = fVar4;
+          fVar2 = *(float *)(unaff_r2 + -0x3da0);
+          dVar3 = -(double)pfVar1[0x1f];
+          pfVar1[7] = (float)dVar3;
+          pfVar1[9] = fVar2;
+          pfVar1[0xb] = pfVar1[0x1e];
+        }
+      }
+      else {
+        local_28 = -local_24;
+        local_2c = *(undefined4 *)(unaff_r2 + -0x3dc8);
+        local_1c = local_30;
+        FUN_00225968(&local_24,&local_24);
+        FUN_00225968(&local_30,&local_30);
+        FUN_00225a10(&local_24,&local_30,&local_3c);
+        FUN_003187c0((double)(*(float *)(unaff_r2 + -0x3d9c) * pfVar1[0x29]),&local_7c,&local_80);
+        *pfVar1 = local_7c * local_3c + local_80 * local_30;
+        pfVar1[1] = local_7c * local_38;
+        pfVar1[2] = local_7c * local_34 + local_80 * local_28;
+        fVar9 = (float)__psq_l0(pfVar1 + 0x1e,in_GQR0);
+        fVar10 = (float)__psq_l1(pfVar1 + 0x1e,in_GQR0);
+        fVar7 = (float)__psq_l0(local_44,in_GQR0);
+        fVar8 = (float)__psq_l1(local_44,in_GQR0);
+        fVar2 = (float)__psq_l0(pfVar1 + 0x1d,in_GQR0);
+        fVar4 = (float)__psq_l0(local_48,in_GQR0);
+        fVar11 = (float)__psq_l0(local_54,in_GQR0);
+        fVar5 = (float)__psq_l0(local_50,in_GQR0);
+        fVar6 = (float)__psq_l1(local_50,in_GQR0);
+        pfVar1[3] = (float)-(double)CONCAT44(fVar2 * fVar4 + fVar9 * fVar7 + fVar10 * fVar8,
+                                             fVar10 * fVar8);
+        pfVar1[4] = local_80 * local_3c - local_7c * local_30;
+        pfVar1[5] = local_80 * local_38;
+        pfVar1[6] = local_80 * local_34 - local_7c * local_28;
+        fVar4 = (float)__psq_l0(pfVar1 + 0x1e,in_GQR0);
+        fVar7 = (float)__psq_l1(pfVar1 + 0x1e,in_GQR0);
+        fVar2 = (float)__psq_l0(pfVar1 + 0x1d,in_GQR0);
+        pfVar1[7] = (float)-(double)CONCAT44(fVar2 * fVar11 + fVar4 * fVar5 + fVar7 * fVar6,
+                                             fVar7 * fVar6);
+        pfVar1[8] = local_24;
+        pfVar1[9] = local_20;
+        pfVar1[10] = local_1c;
+        fVar5 = (float)__psq_l0(pfVar1 + 0x1e,in_GQR0);
+        fVar6 = (float)__psq_l1(pfVar1 + 0x1e,in_GQR0);
+        fVar4 = (float)__psq_l0(&local_20,in_GQR0);
+        fVar7 = (float)__psq_l1(&local_20,in_GQR0);
+        fVar2 = (float)__psq_l0(pfVar1 + 0x1d,in_GQR0);
+        fVar6 = fVar6 * fVar7;
+        fVar7 = (float)__psq_l0(&local_24,in_GQR0);
+        fVar2 = fVar2 * fVar7 + fVar5 * fVar4;
+        dVar3 = (double)CONCAT44(fVar2,fVar6 + 1.0);
+        pfVar1[0xb] = (float)-(double)CONCAT44(fVar2 + fVar6,fVar6);
+      }
+    }
+  }
+  else {
+    dVar3 = (double)FUN_00224fbc(pfVar1,pfVar1 + 0x1d,pfVar1 + 0x20,pfVar1 + 0x23);
+  }
+  pfVar1[0x1c] = (float)((uint)pfVar1[0x1c] | 8);
+  __psq_l0(auStack_8,in_GQR0);
+  __psq_l1(auStack_8,in_GQR0);
+  return dVar3;
+}
+
+
+
+WII RUNTIME 0x8023a300 -> DOL FILE OFFSET 0x002247e0
+QUERY 0x2247e0 FUNCTION 002247e0 FUN_002247e0
+ENTRY REFERENCES: 00300364, 0007c95c, 002ede04, 002ede20, 00303608, 002c0b98, 002c1460, 003192e0, 003073d0, 00307408, 002e9778, 002e97e8, 002ee020, 0020d5a4, 002c3490, 002f6dd0, 002f6ef8, 002f727c, 002f8ed4, 002fc63c, 002fca9c, 002fd028, 002fd3bc, 002fd7e4, 00300ce4, 00301974, 00301a18, 00302514, 003025b8, 002fe0e8, 00303180, 003031a4, 00303974, 00303998, 003102b8
+
+/* WARNING: Removing unreachable block (ram,0x002247e0) */
+/* WARNING: Removing unreachable block (ram,0x002247e8) */
+/* WARNING: Removing unreachable block (ram,0x002247f0) */
+/* WARNING: Removing unreachable block (ram,0x002247f8) */
+/* WARNING: Removing unreachable block (ram,0x00224800) */
+/* WARNING: Removing unreachable block (ram,0x00224808) */
+
+undefined8 FUN_002247e0(int param_1,int param_2)
+
+{
+  undefined4 in_GQR0;
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  undefined4 uVar4;
+  
+  uVar1 = __psq_l0(param_1,in_GQR0);
+  uVar2 = __psq_l1(param_1,in_GQR0);
+  __psq_st0(param_2,uVar1,in_GQR0);
+  __psq_st1(param_2,uVar2,in_GQR0);
+  uVar1 = __psq_l0(param_1 + 8,in_GQR0);
+  uVar2 = __psq_l1(param_1 + 8,in_GQR0);
+  __psq_st0(param_2 + 8,uVar1,in_GQR0);
+  __psq_st1(param_2 + 8,uVar2,in_GQR0);
+  uVar3 = __psq_l0(param_1 + 0x10,in_GQR0);
+  uVar4 = __psq_l1(param_1 + 0x10,in_GQR0);
+  __psq_st0(param_2 + 0x10,uVar3,in_GQR0);
+  __psq_st1(param_2 + 0x10,uVar4,in_GQR0);
+  uVar3 = __psq_l0(param_1 + 0x18,in_GQR0);
+  uVar4 = __psq_l1(param_1 + 0x18,in_GQR0);
+  __psq_st0(param_2 + 0x18,uVar3,in_GQR0);
+  __psq_st1(param_2 + 0x18,uVar4,in_GQR0);
+  uVar3 = __psq_l0(param_1 + 0x20,in_GQR0);
+  uVar4 = __psq_l1(param_1 + 0x20,in_GQR0);
+  __psq_st0(param_2 + 0x20,uVar3,in_GQR0);
+  __psq_st1(param_2 + 0x20,uVar4,in_GQR0);
+  uVar3 = __psq_l0(param_1 + 0x28,in_GQR0);
+  uVar4 = __psq_l1(param_1 + 0x28,in_GQR0);
+  __psq_st0(param_2 + 0x28,uVar3,in_GQR0);
+  __psq_st1(param_2 + 0x28,uVar4,in_GQR0);
+  return CONCAT44(uVar1,uVar2);
+}
+
+
+
+WII RUNTIME 0x800886c0 -> DOL FILE OFFSET 0x00072ba0
+QUERY 0x72ba0 FUNCTION 00072b50 FUN_00072b50
+ENTRY REFERENCES: 00070dc0, 00075704
+
+int * FUN_00072b50(int *param_1)
+
+{
+  bool bVar1;
+  int iVar2;
+  undefined4 local_18 [4];
+  
+  bVar1 = false;
+  if (param_1 != (int *)0x0) {
+    local_18[0] = FUN_000732bc();
+    iVar2 = (**(code **)(*param_1 + 8))(param_1,local_18);
+    if (iVar2 != 0) {
+      bVar1 = true;
+    }
+  }
+  if (!bVar1) {
+    param_1 = (int *)0x0;
+  }
+  return param_1;
+}
+
+
+
+WII RUNTIME 0x8009ab20 -> DOL FILE OFFSET 0x00085000
+QUERY 0x85000 FUNCTION 00084fa8 FUN_00084fa8
+ENTRY REFERENCES: 0008632c, 000863cc, 00086570, 00086604, 00086728, 000867a4, 000868f4, 00086970
+
+undefined4 FUN_00084fa8(int param_1,undefined4 param_2)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  undefined4 local_18 [3];
+  
+  local_18[0] = *(undefined4 *)(param_1 + 0x20);
+  uVar1 = FUN_000857c0(param_1,local_18);
+  uVar2 = FUN_0007dde4();
+  iVar3 = FUN_0007dea0(uVar1);
+  if (uVar2 < iVar3 + 1U) {
+    FUN_002bfb8c(0x80350ab8,0x4d0,0x80350bbc);
+    uVar1 = 0;
+  }
+  else {
+    uVar1 = FUN_00085700(uVar1,param_2);
+  }
+  return uVar1;
+}
+

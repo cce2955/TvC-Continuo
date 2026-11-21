@@ -1,0 +1,630 @@
+WII RUNTIME 0x80071118 -> DOL FILE OFFSET 0x0005b5f8
+QUERY 0x5b5f8 FUNCTION 0005b5f8 HitData_InitDefaults
+ENTRY REFERENCES: 000333a8, 000337ac, 000394fc, 00069040, 000691d0, 0005b758, 00066c7c, 0006cc94, 0006cde0, 0006ce88, 0006cee0, 0005b5f4, 0005b5c8
+
+void HitData_InitDefaults(undefined4 *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  int unaff_r2;
+  
+  uVar1 = *(undefined4 *)(unaff_r2 + -0x7114);
+  uVar2 = *(undefined4 *)(unaff_r2 + -0x7110);
+  *param_1 = 0;
+  param_1[1] = uVar1;
+  param_1[2] = uVar1;
+  param_1[3] = 0xffffffff;
+  param_1[4] = 0xffffffff;
+  param_1[5] = uVar1;
+  param_1[6] = 1;
+  param_1[7] = 9;
+  param_1[8] = 0x40;
+  param_1[9] = 0;
+  param_1[10] = 100;
+  param_1[0xb] = uVar2;
+  param_1[0xc] = 0xffffffff;
+  param_1[0xe] = 0xffffffff;
+  param_1[0x10] = 0xffffffff;
+  HitData_InitSubStruct_0x44_candidate(param_1 + 0x11,4,0);
+  uVar1 = *(undefined4 *)(unaff_r2 + -0x710c);
+  param_1[0x14] = 0xffffffff;
+  param_1[0x15] = 0xffffffff;
+  param_1[0x16] = 0;
+  param_1[0x1a] = 0;
+  param_1[0x17] = 0xffffffff;
+  param_1[0x1b] = 0;
+  param_1[0x18] = 10;
+  param_1[0x1c] = 0;
+  param_1[0x19] = 0;
+  param_1[0x1d] = 0;
+  param_1[0x1f] = 0;
+  param_1[0x20] = uVar1;
+  param_1[0x21] = uVar1;
+  param_1[0x24] = 0;
+  param_1[0x25] = 0;
+  param_1[0xb6] = 0;
+  func_0xfffee830(param_1 + 0x26,0xffffffff,0x80);
+  func_0xfffee830(param_1 + 0x46,0xffffffff,0x80);
+  func_0xfffee830(param_1 + 0x66,0,0x80);
+  func_0xfffee830(param_1 + 0x86,0,0x80);
+  HitData_ClearShapes(param_1);
+  return;
+}
+
+
+
+WII RUNTIME 0x8007124c -> DOL FILE OFFSET 0x0005b72c
+QUERY 0x5b72c FUNCTION 0005b72c HitData_InitWithWindow
+ENTRY REFERENCES: 
+
+void HitData_InitWithWindow(int param_1,int param_2,int param_3,int param_4)
+
+{
+  float fVar1;
+  float fVar2;
+  float fVar3;
+  int unaff_r2;
+  double dVar4;
+  
+  HitData_InitDefaults();
+  dVar4 = *(double *)(unaff_r2 + -0x70d0);
+  fVar3 = *(float *)(unaff_r2 + -0x70d8);
+  fVar1 = (float)((double)CONCAT44(0x43300000,(param_3 - param_2) + 1U ^ 0x80000000) - dVar4);
+  *(float *)(param_1 + 4) = fVar1;
+  fVar2 = (float)((double)CONCAT44(0x43300000,(param_4 - param_3) + 2U ^ 0x80000000) - dVar4);
+  *(float *)(param_1 + 8) = fVar2;
+  *(float *)(param_1 + 0x88) = fVar1 + fVar2;
+  fVar3 = fVar3 * **(float **)(param_1 + 0x2a0);
+  if (fVar1 < fVar3) {
+    *(float *)(param_1 + 4) = fVar3;
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80071308 -> DOL FILE OFFSET 0x0005b7e8
+QUERY 0x5b7e8 FUNCTION 0005b7e8 HitData_ActivateType1Shape
+ENTRY REFERENCES: 
+
+void HitData_ActivateType1Shape(undefined8 param_1,int param_2,int param_3,undefined4 param_4)
+
+{
+  int iVar1;
+  uint *puVar2;
+  int iVar3;
+  int iVar4;
+  
+  if (*(int *)(param_2 + 0x2a4) != 1) {
+    uRam00000001 = 0;
+  }
+  if (param_3 != 0) {
+    iVar4 = 0;
+    for (iVar3 = 0; iVar3 < *(int *)(param_2 + 0x2b0); iVar3 = iVar3 + 1) {
+      puVar2 = (uint *)(*(int *)(param_2 + 0x2a8) + iVar4);
+      iVar1 = HitShape_IsActiveOrAllocated_candidate(puVar2);
+      if (iVar1 == 0) {
+        HitShape_ActivateSphereRuntime_candidate(param_1,puVar2,param_3,param_4);
+        *puVar2 = *puVar2 | 8;
+        HitShape_MarkActiveOrCommit_candidate(puVar2);
+        HitShape_HandleSphereType(*(int *)(param_2 + 0x2ac) + iVar3 * 0xc,puVar2);
+        return;
+      }
+      iVar4 = iVar4 + 0x18;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x800713d8 -> DOL FILE OFFSET 0x0005b8b8
+QUERY 0x5b8b8 FUNCTION 0005b8b8 HitData_ActivateType2LineShape
+ENTRY REFERENCES: 
+
+void HitData_ActivateType2LineShape
+               (undefined8 param_1,uint *param_2,int param_3,undefined4 param_4,undefined4 param_5,
+               undefined4 param_6)
+
+{
+  int iVar1;
+  uint *puVar2;
+  int iVar3;
+  int iVar4;
+  
+  if (param_2[0xa9] != 2) {
+    uRam00000001 = 0;
+  }
+  if (param_3 != 0) {
+    iVar4 = 0;
+    for (iVar3 = 0; iVar3 < (int)param_2[0xac]; iVar3 = iVar3 + 1) {
+      puVar2 = (uint *)(param_2[0xaa] + iVar4);
+      iVar1 = FUN_0005d264(puVar2);
+      if (iVar1 == 0) {
+        FUN_0008bfac(param_1,puVar2,param_3,param_4,param_5,param_6);
+        if ((*param_2 & 0x20) != 0) {
+          *puVar2 = *puVar2 | 0x20;
+        }
+        if ((*param_2 & 8) != 0) {
+          *puVar2 = *puVar2 | 0x10;
+        }
+        *puVar2 = *puVar2 | 0x40;
+        FUN_0005d270(puVar2);
+        HitShape_HandleLineType(0,param_2[0xab] + iVar3 * 0xc,puVar2);
+        return;
+      }
+      iVar4 = iVar4 + 0x40;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x800714e0 -> DOL FILE OFFSET 0x0005b9c0
+QUERY 0x5b9c0 FUNCTION 0005b9c0 HitData_ActivateType3BoxShape_candidate
+ENTRY REFERENCES: 
+
+void HitData_ActivateType3BoxShape_candidate(void)
+
+{
+  return;
+}
+
+
+
+WII RUNTIME 0x80071620 -> DOL FILE OFFSET 0x0005bb00
+QUERY 0x5bb00 FUNCTION 0005bb00 HitData_CheckCollisionVariantA
+ENTRY REFERENCES: 
+
+/* WARNING: Removing unreachable block (ram,0x0005bc54) */
+
+void HitData_CheckCollisionVariantA(undefined4 param_1,int param_2)
+
+{
+  int iVar1;
+  int unaff_r2;
+  int iVar2;
+  undefined4 uVar3;
+  int unaff_r13;
+  int iVar4;
+  undefined4 unaff_r29;
+  int unaff_r30;
+  undefined4 unaff_r31;
+  undefined4 in_GQR0;
+  double dVar5;
+  
+  iVar1 = *(int *)(param_2 + 0x2a4);
+  if (iVar1 == 1) {
+    dVar5 = (double)*(float *)(unaff_r2 + -0x710c);
+    iVar4 = 0;
+    for (iVar1 = 0; iVar1 < *(int *)(unaff_r30 + 0x2b0); iVar1 = iVar1 + 1) {
+      iVar2 = *(int *)(unaff_r30 + 0x2a8) + iVar4;
+      if (dVar5 <= (double)*(float *)(iVar2 + 0x14)) {
+        iVar2 = FUN_0008c114(unaff_r29,iVar2,unaff_r31);
+      }
+      else {
+        *(undefined4 *)(unaff_r13 + -0x6b38) = 1;
+        iVar2 = 1;
+      }
+      if (iVar2 != 0) {
+        uVar3 = 1;
+        goto LAB_0005bc50;
+      }
+      iVar4 = iVar4 + 0x18;
+    }
+  }
+  else if (iVar1 == 2) {
+    dVar5 = (double)*(float *)(unaff_r2 + -0x710c);
+    for (iVar1 = 0; iVar1 < *(int *)(unaff_r30 + 0x2b0); iVar1 = iVar1 + 1) {
+      iVar4 = *(int *)(unaff_r30 + 0x2a8) + iVar1 * 0x40;
+      if (dVar5 <= (double)*(float *)(iVar4 + 0x3c)) {
+        iVar4 = FUN_0008c214(unaff_r29,iVar4,unaff_r31);
+        if (iVar4 != 0) {
+          iVar1 = *(int *)(unaff_r30 + 0x2b0) + 1;
+        }
+      }
+      else {
+        *(undefined4 *)(unaff_r13 + -0x6b38) = 1;
+        iVar4 = 1;
+      }
+      if ((iVar4 != 0) || (*(int *)(unaff_r13 + -0x6b38) == 1)) {
+        uVar3 = 1;
+        goto LAB_0005bc50;
+      }
+    }
+  }
+  else if (iVar1 == 3) {
+    iVar4 = 0;
+    for (iVar1 = 0; iVar1 < *(int *)(unaff_r30 + 0x2b0); iVar1 = iVar1 + 1) {
+      iVar2 = FUN_0008c354(unaff_r29,*(int *)(unaff_r30 + 0x2a8) + iVar4,unaff_r31);
+      if (iVar2 != 0) {
+        uVar3 = 1;
+        goto LAB_0005bc50;
+      }
+      iVar4 = iVar4 + 0x20;
+    }
+  }
+  uVar3 = 0;
+LAB_0005bc50:
+  __psq_l0(&stack0x00000028,in_GQR0);
+  __psq_l1(&stack0x00000028,in_GQR0);
+  FUN_001933e0(uVar3);
+  return;
+}
+
+
+
+WII RUNTIME 0x800718c4 -> DOL FILE OFFSET 0x0005bda4
+QUERY 0x5bda4 FUNCTION 0005bda4 HitData_CheckCollisionVariantB
+ENTRY REFERENCES: 
+
+/* WARNING: Removing unreachable block (ram,0x0005bee0) */
+
+void HitData_CheckCollisionVariantB(undefined4 param_1,int param_2)
+
+{
+  int iVar1;
+  int unaff_r2;
+  int iVar2;
+  undefined4 uVar3;
+  int unaff_r13;
+  int iVar4;
+  undefined4 unaff_r29;
+  int unaff_r30;
+  undefined4 unaff_r31;
+  undefined4 in_GQR0;
+  double dVar5;
+  
+  iVar1 = *(int *)(param_2 + 0x2a4);
+  if (iVar1 == 1) {
+    dVar5 = (double)*(float *)(unaff_r2 + -0x710c);
+    iVar4 = 0;
+    for (iVar1 = 0; iVar1 < *(int *)(unaff_r30 + 0x2b0); iVar1 = iVar1 + 1) {
+      iVar2 = *(int *)(unaff_r30 + 0x2a8) + iVar4;
+      if (dVar5 <= (double)*(float *)(iVar2 + 0x14)) {
+        iVar2 = FUN_0008c114(unaff_r29,iVar2,unaff_r31);
+      }
+      else {
+        *(undefined4 *)(unaff_r13 + -0x6b38) = 1;
+        iVar2 = 1;
+      }
+      if (iVar2 != 0) {
+        uVar3 = 1;
+        goto LAB_0005bedc;
+      }
+      iVar4 = iVar4 + 0x18;
+    }
+  }
+  else if (iVar1 == 2) {
+    dVar5 = (double)*(float *)(unaff_r2 + -0x710c);
+    iVar4 = 0;
+    for (iVar1 = 0; iVar1 < *(int *)(unaff_r30 + 0x2b0); iVar1 = iVar1 + 1) {
+      iVar2 = *(int *)(unaff_r30 + 0x2a8) + iVar4;
+      if (dVar5 <= (double)*(float *)(iVar2 + 0x3c)) {
+        iVar2 = FUN_0008c214(unaff_r29,iVar2,unaff_r31);
+      }
+      else {
+        *(undefined4 *)(unaff_r13 + -0x6b38) = 1;
+        iVar2 = 1;
+      }
+      if (iVar2 != 0) {
+        uVar3 = 1;
+        goto LAB_0005bedc;
+      }
+      iVar4 = iVar4 + 0x40;
+    }
+  }
+  else if (iVar1 == 3) {
+    iVar4 = 0;
+    for (iVar1 = 0; iVar1 < *(int *)(unaff_r30 + 0x2b0); iVar1 = iVar1 + 1) {
+      iVar2 = FUN_0008c354(unaff_r29,*(int *)(unaff_r30 + 0x2a8) + iVar4,unaff_r31);
+      if (iVar2 != 0) {
+        uVar3 = 1;
+        goto LAB_0005bedc;
+      }
+      iVar4 = iVar4 + 0x20;
+    }
+  }
+  uVar3 = 0;
+LAB_0005bedc:
+  __psq_l0(&stack0x00000028,in_GQR0);
+  __psq_l1(&stack0x00000028,in_GQR0);
+  FUN_001933e0(uVar3);
+  return;
+}
+
+
+
+WII RUNTIME 0x8007230c -> DOL FILE OFFSET 0x0005c7ec
+QUERY 0x5c7ec FUNCTION 0005c7ec HitData_Tick
+ENTRY REFERENCES: 0003e270, 00066dc4
+
+void HitData_Tick(uint *param_1)
+
+{
+  bool bVar1;
+  float fVar2;
+  float fVar3;
+  int unaff_r2;
+  uint *puVar4;
+  uint uVar5;
+  int iVar6;
+  int iVar7;
+  undefined1 auStack_18 [20];
+  
+  if ((*(float *)(unaff_r2 + -0x7114) < (float)param_1[2]) && ((*param_1 & 2) == 0)) {
+    if (param_1[0x1f] != 0) {
+      param_1[0x23] = (uint)((float)param_1[0x23] + *(float *)param_1[0xa8]);
+    }
+    fVar2 = *(float *)(unaff_r2 + -0x710c);
+    if (fVar2 <= (float)param_1[1]) {
+      fVar3 = (float)param_1[1] - *(float *)param_1[0xa8];
+      param_1[1] = (uint)fVar3;
+      if (fVar2 < fVar3) {
+        return;
+      }
+      FUN_0005cb20(param_1);
+      param_1[1] = *(uint *)(unaff_r2 + -0x7114);
+      HitData_DrawOrDispatchShape(auStack_18,param_1,0);
+      FUN_0006ddac(param_1[0x1e],auStack_18,0);
+    }
+    iVar6 = 0;
+    iVar7 = 8;
+    puVar4 = param_1;
+    do {
+      if (-1 < (int)puVar4[0x46]) {
+        puVar4[0x86] = (uint)((float)puVar4[0x86] + *(float *)param_1[0xa8]);
+      }
+      if (-1 < (int)puVar4[0x47]) {
+        puVar4[0x87] = (uint)((float)puVar4[0x87] + *(float *)param_1[0xa8]);
+      }
+      if (-1 < (int)puVar4[0x48]) {
+        puVar4[0x88] = (uint)((float)puVar4[0x88] + *(float *)param_1[0xa8]);
+      }
+      if (-1 < (int)puVar4[0x49]) {
+        puVar4[0x89] = (uint)((float)puVar4[0x89] + *(float *)param_1[0xa8]);
+      }
+      puVar4 = puVar4 + 4;
+      iVar6 = iVar6 + 3;
+      iVar7 = iVar7 + -1;
+    } while (iVar7 != 0);
+    uVar5 = param_1[0x25];
+    param_1[0x20] = (uint)((float)param_1[0x20] + *(float *)param_1[0xa8]);
+    if ((int)uVar5 < 1) {
+      if (uVar5 == 0xffffffff) {
+        param_1[8] = param_1[8] | 0x200;
+      }
+      else {
+        param_1[0x25] = 0;
+        param_1[8] = param_1[8] & 0xfffffdff;
+      }
+    }
+    else {
+      param_1[0x25] = uVar5 - 1;
+      param_1[8] = param_1[8] | 0x200;
+    }
+    fVar2 = *(float *)(unaff_r2 + -0x710c);
+    if (fVar2 <= (float)param_1[2]) {
+      fVar3 = (float)param_1[2] - *(float *)param_1[0xa8];
+      param_1[2] = (uint)fVar3;
+      bVar1 = fVar2 < fVar3;
+      if ((0 < (int)param_1[4]) && ((int)param_1[4] <= (int)param_1[0x1f])) {
+        bVar1 = false;
+      }
+      if (bVar1) {
+        return;
+      }
+      HitData_ClearShapes(param_1,0,iVar6);
+      param_1[2] = *(uint *)(unaff_r2 + -0x70c8);
+    }
+    param_1[0x21] = (uint)((float)param_1[0x21] + *(float *)param_1[0xa8]);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80072550 -> DOL FILE OFFSET 0x0005ca30
+QUERY 0x5ca30 FUNCTION 0005ca30 HitData_ClearShapes
+ENTRY REFERENCES: 0005b70c, 0005c9fc
+
+void HitData_ClearShapes(uint *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  int iVar3;
+  
+  uVar1 = param_1[0xa9];
+  *param_1 = *param_1 & 0xfffffffe;
+  if (uVar1 == 1) {
+    iVar3 = 0;
+    for (iVar2 = 0; iVar2 < (int)param_1[0xac]; iVar2 = iVar2 + 1) {
+      FUN_0003c07c(param_1[0xaa] + iVar3);
+      iVar3 = iVar3 + 0x18;
+    }
+  }
+  else if (uVar1 == 2) {
+    iVar3 = 0;
+    for (iVar2 = 0; iVar2 < (int)param_1[0xac]; iVar2 = iVar2 + 1) {
+      FUN_0005d480(param_1[0xaa] + iVar3);
+      iVar3 = iVar3 + 0x40;
+    }
+  }
+  else if (uVar1 == 3) {
+    iVar3 = 0;
+    for (iVar2 = 0; iVar2 < (int)param_1[0xac]; iVar2 = iVar2 + 1) {
+      FUN_0005d490(param_1[0xaa] + iVar3);
+      iVar3 = iVar3 + 0x20;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80072744 -> DOL FILE OFFSET 0x0005cc24
+QUERY 0x5cc24 FUNCTION 0005cc24 HitData_DrawOrDispatchShape
+ENTRY REFERENCES: 0003a214, 0005c888
+
+void HitData_DrawOrDispatchShape(undefined4 param_1,int param_2,int param_3)
+
+{
+  int iVar1;
+  
+  iVar1 = *(int *)(param_2 + 0x2a4);
+  if (iVar1 == 1) {
+    HitShape_HandleSphereType(param_1,*(int *)(param_2 + 0x2a8) + param_3 * 0x18);
+    return;
+  }
+  if (iVar1 != 2) {
+    if (iVar1 != 3) {
+      uRam00000001 = 0;
+      return;
+    }
+    HitShape_HandleBoxType(param_1,0,0,*(int *)(param_2 + 0x2a8) + param_3 * 0x20);
+    return;
+  }
+  HitShape_HandleLineType(0,param_1,*(int *)(param_2 + 0x2a8) + param_3 * 0x40);
+  return;
+}
+
+
+
+WII RUNTIME 0x80072ac0 -> DOL FILE OFFSET 0x0005cfa0
+QUERY 0x5cfa0 FUNCTION 0005cfa0 HitData_InitSubStruct_0x44_candidate
+ENTRY REFERENCES: 0005b67c, 00148198
+
+void HitData_InitSubStruct_0x44_candidate(undefined4 param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  HitData_SubStruct_0x44_SetMode_candidate(param_1,param_3);
+  HitData_SubStruct_0x44_SetIndex_candidate(param_1,param_2);
+  thunk_FUN_00004854(param_1,param_1);
+  return;
+}
+
+
+
+WII RUNTIME 0x80072b14 -> DOL FILE OFFSET 0x0005cff4
+QUERY 0x5cff4 FUNCTION 0005cff4 HitData_SubStruct_0x44_SetMode_candidate
+ENTRY REFERENCES: 0005cfc0
+
+void HitData_SubStruct_0x44_SetMode_candidate(int param_1,uint param_2)
+
+{
+  int unaff_r2;
+  
+  if (param_2 < 0x10) {
+                    /* WARNING: Could not emulate address calculation at 0x0005d008 */
+                    /* WARNING: Treating indirect jump as call */
+    (**(code **)(param_2 * 4 + -0x7fc97540))();
+    return;
+  }
+  *(undefined4 *)(param_1 + 8) = *(undefined4 *)(unaff_r2 + -0x710c);
+  return;
+}
+
+
+
+WII RUNTIME 0x80072c78 -> DOL FILE OFFSET 0x0005d158
+QUERY 0x5d158 FUNCTION 0005d158 HitData_SubStruct_0x44_SetIndex_candidate
+ENTRY REFERENCES: 0005cfcc
+
+void HitData_SubStruct_0x44_SetIndex_candidate(int param_1,uint param_2)
+
+{
+  int unaff_r2;
+  
+  if (param_2 < 9) {
+                    /* WARNING: Could not emulate address calculation at 0x0005d16c */
+                    /* WARNING: Treating indirect jump as call */
+    (**(code **)(param_2 * 4 + -0x7fc97500))();
+    return;
+  }
+  *(undefined4 *)(param_1 + 4) = *(undefined4 *)(unaff_r2 + -0x710c);
+  return;
+}
+
+
+
+WII RUNTIME 0x800804a0 -> DOL FILE OFFSET 0x0006a980
+QUERY 0x6a980 FUNCTION 0006a980 HitData_UpdateOrProcessShapes_candidate
+ENTRY REFERENCES: 0002db9c
+
+/* Candidate runtime shape processor.
+   
+   Calls HitData_ForEachShape.
+   Likely updates/collides/draws active hit shape entries after they are bound.
+    */
+
+void HitData_UpdateOrProcessShapes_candidate(int param_1)
+
+{
+  int *piVar1;
+  
+  if (param_1 != 0) {
+    FUN_0008fd78(0xff,0,0,0,0,0x80);
+    for (piVar1 = *(int **)(param_1 + 0x4358); *piVar1 != 1; piVar1 = (int *)piVar1[2]) {
+      HitData_ForEachShape(*piVar1 + 100);
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x8008050c -> DOL FILE OFFSET 0x0006a9ec
+QUERY 0x6a9ec FUNCTION 0006a9ec HitTemplateLookup_load_context_template_bank
+ENTRY REFERENCES: 0006d7d8, 0006d838, 000668b8, 0006a3a4, 0006a3b8, 0006a3d4, 0006d1f4, 0006d310, 0006d400
+
+/* HitTemplateLookup_ByByteOffset
+   
+   Confirmed behavior:
+       bank = *(context + 0x0C)
+       base = *(bank + 0x5C)
+       return base + key
+   
+   Important:
+   The key is a byte offset into a template blob, not a normal array index.
+   
+   This is used to resolve:
+   - group descriptor keys
+   - source packet template keys
+   - copy block template keys
+   - shape setup descriptor keys
+    */
+
+int HitTemplateLookup_load_context_template_bank(int param_1,int param_2)
+
+{
+  return *(int *)(*(int *)(param_1 + 0xc) + 0x5c) + param_2;
+}
+
+
+
+WII RUNTIME 0x800eab14 -> DOL FILE OFFSET 0x000d4ff4
+QUERY 0xd4ff4 FUNCTION 000d4ff4 HitTemplateResolve_AlignedByteOffset_entry
+ENTRY REFERENCES: 000cd79c, 000e86d4, 000dff4c, 000dff5c, 000e00fc, 000e010c, 000e0160, 000e0190
+
+/* HitTemplateResolve_AlignedByteOffset
+   
+   Behavior:
+       bank = *(lookup_context + 0x0C)
+       base = *(bank + 0x5C)
+       aligned_key = (key + 3) & ~3
+       return base + aligned_key
+   
+   Used by HitObject_DispatchBindOrSpawnByOwnerType to resolve:
+   - spawn entry +0x0C source packet template key
+   - spawn entry +0x10 copy block template key
+    */
+
+int HitTemplateResolve_AlignedByteOffset_entry(int param_1,int param_2)
+
+{
+  return *(int *)(*(int *)(param_1 + 0xc) + 0x5c) + (param_2 + 3U & 0xfffffffc);
+}
+

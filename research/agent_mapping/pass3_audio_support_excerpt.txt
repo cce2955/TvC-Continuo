@@ -1,0 +1,134 @@
+WII RUNTIME 0x8011bb74 -> DOL FILE OFFSET 0x00106054
+QUERY 0x106054 FUNCTION 00106054 FUN_00106054
+ENTRY REFERENCES: 0017c3b0, 0017c3fc
+
+void FUN_00106054(undefined4 param_1,int *param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  int iVar1;
+  int iVar2;
+  undefined4 uVar3;
+  int iVar4;
+  
+  iVar4 = param_2[1];
+  iVar2 = param_2[2];
+  iVar1 = param_2[3];
+  uVar3 = FUN_0010628c();
+  uVar3 = FUN_00106298(uVar3,param_1);
+  FUN_001062e4(uVar3,*param_2 + (int)param_2);
+  uVar3 = FUN_0010628c();
+  uVar3 = FUN_00106298(uVar3,param_1);
+  FUN_001062ec(uVar3,iVar4 + (int)param_2);
+  uVar3 = FUN_0010628c();
+  uVar3 = FUN_00106298(uVar3,param_1);
+  FUN_001062f4(uVar3,iVar2 + (int)param_2);
+  uVar3 = FUN_0010628c();
+  uVar3 = FUN_00106298(uVar3,param_1);
+  thunk_FUN_0010630c(uVar3,iVar1 + (int)param_2);
+  uVar3 = FUN_0010628c();
+  uVar3 = FUN_00106298(uVar3,param_1);
+  FUN_00106300(uVar3,param_3,param_4);
+  return;
+}
+
+
+
+WII RUNTIME 0x80149a3c -> DOL FILE OFFSET 0x00133f1c
+QUERY 0x133f1c FUNCTION 00133f1c FUN_00133f1c
+ENTRY REFERENCES: 0013401c, 0017b658, 0017b67c, 0017c398, 0017c3e4
+
+int FUN_00133f1c(undefined4 param_1,undefined4 param_2)
+
+{
+  int iVar1;
+  int unaff_r13;
+  undefined1 auStack_158 [80];
+  undefined1 auStack_108 [256];
+  
+  FUN_00132c88(auStack_108,param_1);
+  iVar1 = FUN_00133ecc(auStack_108,param_2);
+  if (iVar1 == 0) {
+    if (*(uint *)(unaff_r13 + -0x67e8) < 2) {
+      iVar1 = FUN_00133884(auStack_158,auStack_108,param_2);
+    }
+    else {
+      iVar1 = 0;
+    }
+  }
+  return iVar1;
+}
+
+
+
+WII RUNTIME 0x80191040 -> DOL FILE OFFSET 0x0017b520
+QUERY 0x17b520 FUNCTION 0017b520 FUN_0017b520
+ENTRY REFERENCES: 0011e990, 0017c0b0, 0017c0dc, 0017c108, 0017c314, 0017c320, 0017c32c, 0017c1ac, 0017c1d0, 0017c1f4
+
+undefined4 FUN_0017b520(int param_1,undefined4 param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 uVar4;
+  undefined1 auStack_2a8 [128];
+  undefined1 auStack_228 [256];
+  undefined1 auStack_128 [264];
+  
+  FUN_0019a8f8(auStack_128,0x8035662c,param_2,0x80356631);
+  FUN_0019a8f8(auStack_228,0x8035662c,param_2,0x80356636);
+  iVar2 = FUN_00134060(auStack_128);
+  iVar3 = FUN_00134060(auStack_228);
+  if ((iVar2 == 0) || (iVar3 == 0)) {
+    uVar4 = 0;
+  }
+  else {
+    iVar1 = param_1 * 4;
+    uVar4 = FUN_001390e8(1,(iVar2 + 0x3fU & 0xffffffc0) + 0x40,0,4);
+    *(undefined4 *)(&DAT_8048c310 + iVar1) = uVar4;
+    uVar4 = FUN_00139e80(uVar4,iVar2,0);
+    *(undefined4 *)(&DAT_8048c2c0 + iVar1) = uVar4;
+    uVar4 = FUN_001390e8(1,(iVar3 + 0x3fU & 0xffffffc0) + 0x40,0,4);
+    *(undefined4 *)(&DAT_8048c2e8 + iVar1) = uVar4;
+    uVar4 = FUN_00139e80(uVar4,iVar3,0);
+    *(undefined4 *)(&DAT_8048c298 + iVar1) = uVar4;
+    FUN_0019a8f8(auStack_2a8,0x8035662c,param_2,0x80356631);
+    FUN_00133f1c(auStack_2a8,*(undefined4 *)(&DAT_8048c2c0 + iVar1));
+    FUN_0019a8f8(auStack_2a8,0x8035662c,param_2,0x80356636);
+    FUN_00133f1c(auStack_2a8,*(undefined4 *)(&DAT_8048c298 + iVar1));
+    FUN_001085b8(param_1,*(undefined4 *)(&DAT_8048c2c0 + iVar1));
+    FUN_00108510(param_1,*(undefined4 *)(&DAT_8048c298 + iVar1));
+    uVar4 = 1;
+  }
+  return uVar4;
+}
+
+
+
+WII RUNTIME 0x80191f40 -> DOL FILE OFFSET 0x0017c420
+QUERY 0x17c420 FUNCTION 0017c41c FUN_0017c41c
+ENTRY REFERENCES: 0017c5c8, 0005e8f0, 0005e8fc, 0005e908, 0005e914, 0005e97c, 0005e9b0, 0005e9bc, 0005e9c8
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_0017c41c(undefined4 param_1,uint param_2)
+
+{
+  if (_DAT_803eba70 != 0) {
+    if (8 < param_2) {
+      return;
+    }
+                    /* WARNING: Could not emulate address calculation at 0x0017c4ac */
+                    /* WARNING: Treating indirect jump as call */
+    (**(code **)(param_2 * 4 + -0x7fc74df4))();
+    return;
+  }
+  if (8 < param_2) {
+    return;
+  }
+                    /* WARNING: Could not emulate address calculation at 0x0017c444 */
+                    /* WARNING: Treating indirect jump as call */
+  (**(code **)(param_2 * 4 + -0x7fc74dd0))();
+  return;
+}
+

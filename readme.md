@@ -138,7 +138,7 @@ These controls affect the informational layers shown over the game.
 
 | Control | What it does |
 |---|---|
-| **Overlay: ON/OFF** | Shows or hides the core team HUD. This does **not** turn off hitboxes, hurtboxes, rulers, Mission Mode, or trainer prompts. Those layers are independent. |
+| **Core HUD: ON/OFF** | Shows or hides the team HUD. Hitboxes, hurtboxes, rulers, Mission Mode, and trainer prompts have independent controls. |
 | **Hit / Block** | Shows or hides the live interaction ribbon used for hit and block feedback. |
 | **Combo** | Shows or hides the live combo ledger and route information. |
 | **Set: Core / Research / Full** | Cycles through HUD information presets. **Core** enables Meter and Red HP. **Research** adds the damage-scaling display. **Full** additionally enables Hit / Block, Combo, and Tag. Changing an individual HUD toggle changes the preset label to **Custom**. |
@@ -206,6 +206,7 @@ The visual controls are independent from the core HUD.
 | Control | What it does |
 |---|---|
 | **Hitboxes: ON/OFF** | Shows or hides attack and projectile hitbox drawings for all currently enabled hitbox slots. |
+| **TvC Hitbox Legend → Sphere / Box / Ghost** | Sphere shows projected attack radii. Box fills their screen-space bounds with team-colored stripes that leave the fighters visible. Startup and recovery previews are dim. A denser fill and bright inner edge mark each enabled fighter shape. A startup preview can use the move’s saved reach until live geometry appears. Ghost shows recent active positions. |
 | **Hitbox 1 / 2 / 3 / 4** | Enables or disables hitbox drawing for one fighter slot without changing the others. |
 | **Hurtboxes: ON/OFF** | Shows or hides body and defender hurtbox drawings for all currently enabled hurtbox slots. |
 | **Hurtbox 1 / 2 / 3 / 4** | Enables or disables hurtbox drawing for one fighter slot. |
@@ -321,6 +322,10 @@ Clicking the **ADVANTAGE** tab opens the separate **Advantage Matrix** window. T
 
 Open these controls with **Tools**.
 
+In the **Lab / Setup** row, **Research Recorder** opens the standalone read-only fighter and music evidence recorder. Choose **Start experiments** to capture all four slots with advanced fields, stop it with the same button, and export JSONL changes plus CSV snapshots. Samples are sequential and may miss brief events; the recorder does not establish exact frame timing or function execution.
+
+The recorder shows the measured interval between batches. Music, KO, actor lifecycle, and director transitions also have a separate bounded retention buffer; its eviction count and the recent-ring eviction count are displayed separately. CSV snapshots remain bounded independently.
+
 | Tool | What it does |
 |---|---|
 | **Cancel Mapper** | Opens a read-only map of the selected character's known cancel relationships. Choose a source move to see targets marked **Allowed**, **Eligible**, **Blocked**, or **Unknown**. Use this when you want to inspect what should cancel into what without running a live cancel test. |
@@ -329,6 +334,8 @@ Open these controls with **Tools**.
 | **Timing Monitor** | Shows live hitstop, hitstun, blockstun, and observed advantage. You can arm a Whiff, Hit, or Block capture, then copy or save the captured timing data. |
 | **Punish Trainer** | Lets you choose a fighter slot and move, then repeatedly executes that move after a fixed or random countdown. Use it to practice reactions, defense, or punishes against a repeatable setup. |
 | **Megacrash Trainer** | Opens the configurable Megacrash reaction trainer. Choose the watched character, move label, matching hit occurrence, trigger chance, delay, and cooldown, then arm the route. See [Megacrash Trainer](#megacrash-trainer) below for the full control guide. |
+
+The Frame Data workbench also has a **Frame map** inspector tab. Search for and select a move to compare related cached phases and variants, then use **Export map CSV** to save the visible candidate rows. Existing timing, animation lengths, and observed or derived block advantage remain separately labeled; missing values are unknown, and cached candidates need verification before they are treated as confirmed combat timing.
 
 ### Megacrash Trainer
 
@@ -699,7 +706,7 @@ This is the compact control reference. For plain-language descriptions and examp
 
 | Control | Action |
 |---|---|
-| **Overlay: ON/OFF** | Toggle only the core in-game team HUD. |
+| **Core HUD: ON/OFF** | Toggle the core in-game team HUD. |
 | **Hit / Block** | Toggle the live hit/block interaction ribbon. |
 | **Combo** | Toggle the live combo ledger. |
 | **Set: Core / Research / Full** | Cycle HUD information presets. Individual HUD toggles switch the preset label to Custom. |
@@ -1418,13 +1425,13 @@ If the HUD says "waiting for Dolphin":
 
 ## Developer Notes
 
-- Bulk fighter struct reads use rbytes() for performance
-- Character metadata cache refreshes automatically on ID change
-- Safe wrappers prevent pointer churn from crashing the render loop
-- RedScan requires multiple snapshots
-- Frame advantage auto-corrects using active frames
-- CSV output logged under HIT_CSV
-- Compatible with modern Dolphin memory APIs (dolphin_io.py)
+The application entry point is `tdp-modules/main.py`. See
+[the architecture and testing guide](tdp-modules/ARCHITECTURE.md) for the
+package layout, memory-access conventions, and test commands.
+
+Live timing measurements distinguish sampled fields from inferred results.
+In particular, observed block advantage is withheld until attacker
+actionability is validated; scanner-derived frame data remains provisional.
 
 ---
 

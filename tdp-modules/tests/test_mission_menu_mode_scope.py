@@ -1,7 +1,16 @@
+import pytest
+
+from tvcgui.runtime import mission_menu_input
 from tvcgui.runtime.mission_menu_input import (
     MISSION_MENU_OPEN,
     MissionMenuInputInterpreter,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolate_menu_visual_file(monkeypatch, tmp_path):
+    """Keep gesture tests from writing to the application's runtime data."""
+    monkeypatch.setattr(mission_menu_input, "MISSION_MENU_VISUAL_FILE", str(tmp_path / "visual.json"))
 
 
 def _sample(*, held=0, pressed=0, seq=1, ns=1_000_000_000):

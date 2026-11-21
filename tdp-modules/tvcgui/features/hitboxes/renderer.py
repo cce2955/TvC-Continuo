@@ -578,6 +578,8 @@ def _normalize_hurtbox_view_mode(value: Any) -> str:
 
 def _normalize_hitbox_view_mode(value: Any) -> str:
     raw = str(value or "").strip().lower()
+    if raw == "box":
+        return "box"
     if raw in {"ghost", "trail", "history"}:
         return "ghost"
     return "live"
@@ -837,6 +839,7 @@ class HitboxLayout:
     off_y: int
     off_r: int
     off_flag: int
+    slot_flag_offset: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -957,6 +960,23 @@ def _dim_hitbox_color(color: Tuple[int, int, int]) -> Tuple[int, int, int]:
         max(35, int(g * 0.45)),
         max(35, int(b * 0.45)),
     )
+
+
+def _draw_attack_box(screen, bounds, color, active):
+    # The Windows overlay keys out black. Leave gaps in the fill so the
+    # underlying fighters remain visible through a colored box.
+    visible = bounds.clip(screen.get_clip())
+    if not visible:
+        return
+    rgb = color[:3]
+    spacing = 4 if active else 6
+    y0 = visible.top + (bounds.centery - visible.top) % spacing
+    for y in range(y0, visible.bottom, spacing):
+        pygame.draw.line(screen, rgb, (visible.left, y), (visible.right - 1, y), 2 if active else 1)
+    pygame.draw.rect(screen, (18, 20, 30), bounds.inflate(2, 2), 1)
+    pygame.draw.rect(screen, rgb, bounds, 3 if active else 2)
+    if active and min(bounds.size) >= 9:
+        pygame.draw.rect(screen, (250, 245, 235), bounds.inflate(-6, -6), 1)
 
 
 def _soften_hurt_color(color: Tuple[int, int, int], factor: float = 0.58, floor: int = 36) -> Tuple[int, int, int]:
@@ -1385,6 +1405,9 @@ HITBOX = HitboxLayout(
     off_y=0x04,
     off_r=0x18,
     off_flag=0xC3,
+    # Each 0x40-byte line-shape record begins 0x24 bytes before the
+    # displayed center. Read the low byte of that record's flags separately.
+    slot_flag_offset=-0x21,
 )
 
 # Skeletal hurtbox descriptors.  This is separate from the existing normal
@@ -1973,7 +1996,8 @@ def _looks_like_ptr(v: int) -> bool:
 def read_hitboxes(slot_base: int, layout: HitboxLayout):
     base = slot_base + layout.struct_shift
     if layout.blocks:
-        start = min(min(layout.blocks) + min(layout.off_x, layout.off_y, layout.off_r), layout.off_flag)
+        start = min(min(layout.blocks) + min(layout.off_x, layout.off_y, layout.off_r), layout.off_flag,
+                    min(layout.blocks) + layout.slot_flag_offset if layout.slot_flag_offset is not None else layout.off_flag)
         end = max(max(layout.blocks) + max(layout.off_x, layout.off_y, layout.off_r) + 4,
                   layout.off_flag + 1)
         try:
@@ -1988,7 +2012,8 @@ def read_hitboxes(slot_base: int, layout: HitboxLayout):
                 for offset in (layout.off_x, layout.off_y, layout.off_r):
                     value = struct.unpack_from(">f", blob, block + offset - start)[0]
                     values.append(value if math.isfinite(value) else 0.0)
-                boxes.append((*values, flag))
+                slot_flag = blob[block + layout.slot_flag_offset - start] if layout.slot_flag_offset is not None else flag
+                boxes.append((*values, slot_flag))
             return boxes
     # Keep the scalar reader for Dolphin backends that reject a span read.
     out = []
@@ -1997,8 +2022,92 @@ def read_hitboxes(slot_base: int, layout: HitboxLayout):
         x = _rf(base + b + layout.off_x)
         y = _rf(base + b + layout.off_y)
         r = _rf(base + b + layout.off_r)
-        out.append((x, y, r, flag))
+        slot_flag = rb(base + b + layout.slot_flag_offset) if layout.slot_flag_offset is not None else flag
+        out.append((x, y, r, slot_flag))
     return out
+
+
+def _hitbox_slot_allocated(flag: int) -> bool:
+    """Native line-shape bit 0 denotes allocation, not a confirmed hit."""
+    return bool(int(flag) & 1)
+
+
+def _hitbox_slot_enabled(flag: int) -> bool:
+    """Native type-2 shape check at Wii 0x800a6208 requires both low bits."""
+    return (int(flag) & 3) == 3
+
+
+class AttackShapePreview:
+    """Presentation history for one fighter. Only enabled slots establish move membership."""
+
+    def __init__(self):
+        self.known_slots = {}
+        self.end_action()
+
+    def end_action(self):
+        self.action = None
+        self.frame = None
+        self.pose = {}
+        self.profile_preview = None
+
+    def sample(self, action, frame, profiled, boxes, slot=None, profile=None):
+        if action != self.action or (frame is not None and self.frame is not None and frame < self.frame):
+            self.pose.clear()
+            self.profile_preview = None
+        self.action, self.frame = action, frame
+        allocated = {i: (x, y, r) for i, (x, y, r, flag) in enumerate(boxes)
+                     if _hitbox_slot_allocated(flag) and 0.001 < r <= HITBOX_MAX_RENDER_RADIUS
+                     and math.isfinite(x) and math.isfinite(y)}
+        active = {i for i in allocated if _hitbox_slot_enabled(boxes[i][3])}
+        if active:
+            if action not in self.known_slots and len(self.known_slots) >= 256:
+                del self.known_slots[next(iter(self.known_slots))]
+            self.known_slots.setdefault(action, set()).update(active)
+        known = self.known_slots.get(action)
+        if known:
+            self.pose = {i: xyz for i, xyz in self.pose.items() if i in known}
+            for i in known.intersection(allocated):
+                self.pose[i] = allocated[i]
+        elif profiled and allocated and (len(allocated) == 1 or not profile):
+            # Start with one provisional outline. Further allocated records may
+            # belong to an earlier move. Promote slots only on native activation.
+            i = next(iter(allocated))
+            self.pose = {i: allocated[i]}
+        if not self.pose and profile and slot:
+            if self.profile_preview is None:
+                self.profile_preview = self._project_saved_reach(slot, profile)
+            if self.profile_preview is not None:
+                return [(0, *self.profile_preview, False)]
+        return [(i, *xyz, i in active) for i, xyz in sorted(self.pose.items())]
+
+    @staticmethod
+    def _project_saved_reach(slot, profile):
+        """Preview an earlier reach observation from this action's starting root."""
+        geometry = HitboxRenderer._range_profile_core_geometry(profile)
+        if not geometry or geometry["tip_radius"] > HITBOX_MAX_RENDER_RADIUS:
+            return None
+        def root(name):
+            data = rbytes(SLOT_BASES[name] + 0xB0, 12)
+            if not data or len(data) != 12:
+                return None
+            xyz = struct.unpack(">3f", data)
+            return xyz if all(math.isfinite(v) and abs(v) < 70 for v in xyz) else None
+        origin = root(slot)
+        if origin is None:
+            return None
+        # Like the ruler, orient the prediction toward the nearest opponent.
+        # An unavailable opponent or tied side yields no directional prediction.
+        team = HitboxRenderer._team_for_slot(slot)
+        offsets = [target[0] - origin[0] for name in SLOT_BASES
+                   if HitboxRenderer._team_for_slot(name) != team and (target := root(name)) is not None]
+        if not offsets:
+            return None
+        dx = min(offsets, key=abs)
+        if abs(dx) < 0.001 or -dx in offsets:
+            return None
+        sign = 1 if dx > 0 else -1
+        return (origin[0] + sign * geometry["tip_center_from_start"],
+                origin[1] + geometry["tip_y_from_start"], geometry["tip_radius"])
 
 
 def _valid_matrix_ptr(ptr: int) -> bool:
@@ -2552,7 +2661,7 @@ def _legend_window_worker() -> None:
         set_hitbox_view_mode(mode)
         _refresh_hitbox_mode_buttons()
 
-    for _mode, _label in (("live", "Live"), ("ghost", "Ghost")):
+    for _mode, _label in (("live", "Sphere"), ("box", "Box"), ("ghost", "Ghost")):
         btn = tk.Button(
             hitbox_mode_row,
             text=_label,
@@ -2567,7 +2676,7 @@ def _legend_window_worker() -> None:
         hitbox_mode_buttons[_mode] = btn
     _refresh_hitbox_mode_buttons()
 
-    tk.Label(root, text="Ghost = prior hitbox positions only", fg="#b8d8f0", bg="#101820", font=("Consolas", 9)).pack(anchor="w", padx=10, pady=(0, 6))
+    tk.Label(root, text="Dim = move preview   Bright = enabled attack\nGhost shows earlier attack positions.", fg="#b8d8f0", bg="#101820", font=("Consolas", 9)).pack(anchor="w", padx=10, pady=(0, 6))
 
     # Ruler visibility and source-slot filters live in the main command dock.
     # The legend stays read-only for range state so two separate buttons cannot
@@ -2783,6 +2892,7 @@ class Overlay:
         self.cx = self.w // 2
         self.cy = self.h // 2 + cfg.center_y_offset_px
         self.screen: Optional[pygame.Surface] = None
+        self._owns_display = False
         self.font_small: Optional[pygame.font.Font] = None
         self.font_hud: Optional[pygame.font.Font] = None
         self.debug_axes = cfg.show_debug_axes
@@ -2802,6 +2912,7 @@ class Overlay:
         self.font_small = pygame.font.SysFont("consolas", 11)
         self.font_hud = pygame.font.SysFont("consolas", 13, bold=True)
         self.screen = pygame.display.set_mode((self.w, self.h), pygame.SRCALPHA)
+        self._owns_display = True
         pygame.display.set_caption("TvC Hitbox Overlay v3")
 
         icon_path = os.path.join("assets", "portraits", "Placeholder.png")
@@ -2821,7 +2932,9 @@ class Overlay:
         if w == self.w and h == self.h:
             return
         self.w, self.h = w, h
-        self.screen = pygame.display.set_mode((w, h), pygame.SRCALPHA)
+        # In the main compositor, the caller owns the display and draw target.
+        if self._owns_display:
+            self.screen = pygame.display.set_mode((w, h), pygame.SRCALPHA)
         self.viewport_scale = h / 720.0
         self.aspect_ratio = w / float(h)
         self.base_aspect = 4.0 / 3.0
@@ -2985,50 +3098,56 @@ class Overlay:
         if label not in self.hitbox_spawn_start:
             self.hitbox_spawn_start[label] = self.frame_index
 
-        age = self.frame_index - self.hitbox_spawn_start[label]
-        spawn_t = min(1.0, age / float(max(1, HITBOX_SPAWN_FRAMES - 1)))
-        draw_rpx = max(2, int(rpx * (0.82 + 0.18 * spawn_t)))
-        pulse_t = 0.5 + 0.5 * math.sin(self.frame_index * HITBOX_ACTIVE_PULSE_SPEED) if is_active else 0.0
+        if _hitbox_view_mode == "box":
+            bounds = pygame.Rect(sx - rpx, sy - rpx, 2 * rpx + 1, 2 * rpx + 1)
+            _draw_attack_box(self.screen, bounds, color, is_active)
+            if invuln:
+                pygame.draw.rect(self.screen, (105, 255, 170), bounds.inflate(6, 6), 1)
+        else:
+            age = self.frame_index - self.hitbox_spawn_start[label]
+            spawn_t = min(1.0, age / float(max(1, HITBOX_SPAWN_FRAMES - 1)))
+            draw_rpx = max(2, int(rpx * (0.82 + 0.18 * spawn_t)))
+            pulse_t = 0.5 + 0.5 * math.sin(self.frame_index * HITBOX_ACTIVE_PULSE_SPEED) if is_active else 0.0
 
-        pad = 16
-        size = draw_rpx * 2 + pad * 2 + 10
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        cx = cy = size // 2
+            pad = 16
+            size = draw_rpx * 2 + pad * 2 + 10
+            surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            cx = cy = size // 2
 
-        # Low-opacity glass fill keeps the model and hurtboxes readable.
-        fill_alpha = 42 if is_active else 22
-        pygame.draw.circle(surf, (r_c, g_c, b_c, fill_alpha), (cx, cy), draw_rpx)
+            # Low-opacity glass fill keeps the model and hurtboxes readable.
+            fill_alpha = 42 if is_active else 22
+            pygame.draw.circle(surf, (r_c, g_c, b_c, fill_alpha), (cx, cy), draw_rpx)
 
-        # Soft outer bloom, then a dark separator and crisp team-color rim.
-        bloom_alpha = int((34 if is_active else 18) + 24 * pulse_t)
-        pygame.draw.circle(surf, (r_c, g_c, b_c, bloom_alpha), (cx, cy), draw_rpx + 7)
-        pygame.draw.circle(surf, (4, 8, 14, 185), (cx, cy), draw_rpx + 3, 4)
-        pygame.draw.circle(surf, (r_c, g_c, b_c, 235 if is_active else 165), (cx, cy), draw_rpx + 1, 2)
-        pygame.draw.circle(surf, (225, 242, 255, 155 if is_active else 90), (cx, cy), draw_rpx - 1, 1)
+            # Soft outer bloom, then a dark separator and crisp team-color rim.
+            bloom_alpha = int((34 if is_active else 18) + 24 * pulse_t)
+            pygame.draw.circle(surf, (r_c, g_c, b_c, bloom_alpha), (cx, cy), draw_rpx + 7)
+            pygame.draw.circle(surf, (4, 8, 14, 185), (cx, cy), draw_rpx + 3, 4)
+            pygame.draw.circle(surf, (r_c, g_c, b_c, 235 if is_active else 165), (cx, cy), draw_rpx + 1, 2)
+            pygame.draw.circle(surf, (225, 242, 255, 155 if is_active else 90), (cx, cy), draw_rpx - 1, 1)
 
-        # Active boxes get one restrained breathing ring, no yellow/orange blob.
-        if is_active:
-            pulse_px = int(2 + 3 * pulse_t)
-            pygame.draw.circle(
-                surf,
-                (r_c, g_c, b_c, int(55 + 65 * pulse_t)),
-                (cx, cy),
-                draw_rpx + 7 + pulse_px,
-                1,
-            )
+            # Active boxes get one restrained breathing ring, no yellow/orange blob.
+            if is_active:
+                pulse_px = int(2 + 3 * pulse_t)
+                pygame.draw.circle(
+                    surf,
+                    (r_c, g_c, b_c, int(55 + 65 * pulse_t)),
+                    (cx, cy),
+                    draw_rpx + 7 + pulse_px,
+                    1,
+                )
 
-        # Invulnerability remains a separate mint ring rather than recoloring the hitbox.
-        if invuln:
-            pygame.draw.circle(surf, (105, 255, 170, 220), (cx, cy), draw_rpx + 11, 2)
-            pygame.draw.circle(surf, (205, 255, 226, 90), (cx, cy), draw_rpx + 14, 1)
+            # Invulnerability remains a separate mint ring rather than recoloring the hitbox.
+            if invuln:
+                pygame.draw.circle(surf, (105, 255, 170, 220), (cx, cy), draw_rpx + 11, 2)
+                pygame.draw.circle(surf, (205, 255, 226, 90), (cx, cy), draw_rpx + 14, 1)
 
-        self.screen.blit(surf, (sx - cx, sy - cy))
+            self.screen.blit(surf, (sx - cx, sy - cy))
 
-        # Small center reticle, deliberately lighter than the old full crosshair.
-        reticle = max(3, min(7, draw_rpx // 4))
-        reticle_col = (225, 242, 255)
-        pygame.draw.line(self.screen, reticle_col, (sx - reticle, sy), (sx + reticle, sy), 1)
-        pygame.draw.line(self.screen, reticle_col, (sx, sy - reticle), (sx, sy + reticle), 1)
+            # Small center reticle, deliberately lighter than the old full crosshair.
+            reticle = max(3, min(7, draw_rpx // 4))
+            reticle_col = (225, 242, 255)
+            pygame.draw.line(self.screen, reticle_col, (sx - reticle, sy), (sx + reticle, sy), 1)
+            pygame.draw.line(self.screen, reticle_col, (sx, sy - reticle), (sx, sy + reticle), 1)
 
         if show_label and rpx >= 12 and self.font_small is not None:
             txt = self.font_small.render(str(label), True, (232, 244, 255))
@@ -3699,7 +3818,15 @@ class Overlay:
         dark = (4, 9, 16)
         glass = (224, 244, 255)
 
-        if sweep_x is not None and sweep_y is not None:
+        if _hitbox_view_mode == "box":
+            bounds = pygame.Rect(sx - rpx, sy - rpx, 2 * rpx + 1, 2 * rpx + 1)
+            if sweep_x is not None and sweep_y is not None:
+                start = self._project_hitbox(sweep_x, sweep_y, sweep_z or 0, display_r)
+                if start is not None:
+                    bx, by, br = start
+                    bounds.union_ip(pygame.Rect(bx - br, by - br, 2 * br + 1, 2 * br + 1))
+            _draw_attack_box(self.screen, bounds, color, True)
+        elif sweep_x is not None and sweep_y is not None:
             try:
                 ex, ey, _depth_e, _focal_e = self.world_to_screen(x, y, z)
                 bx, by, _depth_b, _focal_b = self.world_to_screen(sweep_x, sweep_y, sweep_z or z)
@@ -3840,7 +3967,8 @@ class HitboxRenderer:
         self.node_tracker = ProjectileNodeTracker(total_nodes)
 
         self.cached_projectiles: List[ProjectileActorState] = []
-        self.cached_hitboxes: Dict[str, List[Tuple[float, float, float, int]]] = {}
+        self.attack_previews = {name: AttackShapePreview() for name in SLOT_BASES}
+        self.sampled_attacks = {}
         self.cached_hurtboxes: Dict[str, List[HurtboxState]] = {}
         self.cached_hit_contacts: List[HitContactState] = []
         self.hurt_counts: Dict[str, int] = {}
@@ -3931,7 +4059,8 @@ class HitboxRenderer:
         except Exception:
             return False
 
-    def _load_range_profiles(self) -> Dict[str, Any]:
+    @staticmethod
+    def _load_range_profiles() -> Dict[str, Any]:
         """Load retained attack/body envelopes without trusting malformed data.
 
         Schema 4 measured attack reach from a pose-dependent hurtbox-envelope
@@ -5054,7 +5183,7 @@ class HitboxRenderer:
             active_boxes: List[Dict[str, Any]] = []
             action_frame = None
             for index, (x, y, radius, flag) in enumerate(boxes):
-                if float(radius) <= 0.001:
+                if not _hitbox_slot_enabled(flag) or float(radius) <= 0.001:
                     continue
                 _draw_now, is_active, action_frame, _fd = self._frame_gate_for_slot(
                     source_slot, base, int(state_id), int(flag)
@@ -6222,7 +6351,7 @@ class HitboxRenderer:
                 x, y, radius = float(x), float(y), max(0.0, float(radius))
             except Exception:
                 continue
-            if not all(math.isfinite(v) for v in (x, y, radius)) or radius <= 0.01:
+            if not _hitbox_slot_enabled(flag) or not all(math.isfinite(v) for v in (x, y, radius)) or radius <= 0.01:
                 continue
             # For an unprofiled special, only use actual active player attack
             # descriptors. Frame-gated normals can retain their complete live
@@ -6645,7 +6774,10 @@ class HitboxRenderer:
 
     def _clear_runtime_hitbox_state(self) -> None:
         self.cached_projectiles.clear()
-        self.cached_hitboxes.clear()
+        self.sampled_attacks.clear()
+        for preview in self.attack_previews.values():
+            preview.end_action()
+            preview.known_slots.clear()
         self.cached_hurtboxes.clear()
         self.cached_hit_contacts.clear()
         self._last_range_rulers.clear()
@@ -6877,7 +7009,7 @@ class HitboxRenderer:
         if char_changed or not self._fd_scan_done:
             self._refresh_frame_data_cache()
 
-        self.cached_hitboxes = {}
+        self.sampled_attacks.clear()
         slot_filter = _read_slot_filter()
         counts: Dict[str, int] = {}
 
@@ -6887,34 +7019,39 @@ class HitboxRenderer:
             self.cached_projectiles = read_projectile_hitboxes()
         else:
             self.cached_projectiles = []
+            self._hitbox_ghost_frames.clear()
+            for preview in self.attack_previews.values():
+                preview.end_action()
             self.motion_filter.cleanup()
 
         now_ms = pygame.time.get_ticks()
 
-        # Cache skeletal hurtboxes in update(), not draw().  The same tiny
-        # geometry pass also tells us whether a partner slot is actually on-stage
-        # so stale standby hitboxes can be culled even when hurtbox display is off.
+        # Only the body display and ruler consume the skeletal rig. Fighter
+        # attack shapes have their own flags and world-space geometry.
         # Sample once per compositor frame. A 16 ms wall-clock gate occasionally
         # skipped a 60 Hz frame when tick jitter was below the threshold.
-        if hitboxes_on or hurtboxes_on or ruler_on:
+        if hurtboxes_on or ruler_on:
             hurt_filter = _read_hurtbox_filter()
             hurt_counts: Dict[str, int] = {}
             sample_bits = []
             cached: Dict[str, List[HurtboxState]] = {}
             renderable: Dict[str, bool] = {}
             for hurt_slot, hurt_base in SLOT_BASES.items():
+                visible = hurtboxes_on and hurt_filter.get(hurt_slot, True)
+                if not (visible or ruler_on):
+                    continue
                 raw_hlist = read_hurtboxes(hurt_slot, hurt_base)
                 live_rig = _slot_has_coherent_hurt_rig(hurt_base, raw_hlist)
                 renderable[hurt_slot] = live_rig
-                if not hurt_filter.get(hurt_slot, True) or not live_rig:
+                if not live_rig:
                     cached[hurt_slot] = []
                     hurt_counts[hurt_slot] = 0
                     sample_bits.append(f"{hurt_slot}[0]={'STANDBY' if raw_hlist and not live_rig else 'OFF'}")
                     continue
                 # The ruler needs body geometry for touch/gap calculations,
                 # but keeping that geometry cached does not make hurtboxes visible.
-                cached[hurt_slot] = raw_hlist if (hurtboxes_on or ruler_on) else []
-                hurt_counts[hurt_slot] = len(raw_hlist) if hurtboxes_on else 0
+                cached[hurt_slot] = raw_hlist
+                hurt_counts[hurt_slot] = len(raw_hlist) if visible else 0
                 # Saved body profiles are deliberately not updated from this
                 # live hurtbox cache.  The cache is display/target geometry only.
                 if raw_hlist:
@@ -6927,8 +7064,9 @@ class HitboxRenderer:
             self.hurt_counts = hurt_counts
             globals()["_last_hurt_debug_text"] = " | ".join(sample_bits)
             self._last_hurt_update_ms = now_ms
-        elif not hurtboxes_on:
+        else:
             self.cached_hurtboxes = {}
+            self.slot_renderable = {}
             self.hurt_counts = {}
             self.cached_hit_contacts = []
             globals()["_last_hurt_debug_text"] = "hurt=off"
@@ -6938,20 +7076,26 @@ class HitboxRenderer:
         if hitboxes_on:
             for name, base in SLOT_BASES.items():
                 try:
+                    preview = self.attack_previews[name]
                     if not slot_filter.get(name, True):
+                        preview.end_action()
                         counts[name] = 0
                         continue
                     state_id = decode_state_id(read_state_raw(base))
-                    if slot_passive_override(name, state_id):
+                    if state_id == 0xffff or slot_passive_override(name, state_id):
+                        preview.end_action()
                         continue
                     boxes = read_hitboxes(base, HITBOX)
-                    self.cached_hitboxes[name] = boxes
-                    active = 0
-                    for i, (x, y, r, _flag) in enumerate(boxes):
-                        visible = self.motion_filter.update(name, i, x, y, r)
-                        if visible and r > 0.001:
-                            active += 1
-                    counts[name] = active
+                    # Keep geometry and phase tied to the same action across update/draw.
+                    frame = read_action_frame(base)
+                    if decode_state_id(read_state_raw(base)) != state_id:
+                        preview.end_action()
+                        continue
+                    fd = lookup_frame_data(self.fd_by_slot, name, state_id)
+                    profile = self._range_profiles["attacks"].get(f"{self.last_char_ids[name]}:{state_id}")
+                    shapes = preview.sample(state_id, frame, bool(fd and fd.active_windows), boxes, name, profile)
+                    self.sampled_attacks[name] = (fd, frame, shapes)
+                    counts[name] = sum(active for _, _, _, _, active in shapes)
                 except Exception as slot_exc:
                     print(f"[SlotError] {name}: {slot_exc!r}")
 
@@ -7194,7 +7338,7 @@ class HitboxRenderer:
                 except Exception:
                     continue
 
-        if hitbox_view_mode == "ghost":
+        if hitboxes_on and hitbox_view_mode == "ghost":
             for age, ghost_frame in enumerate(reversed(self._hitbox_ghost_frames), start=1):
                 alpha = max(24, 142 - age * 32)
                 for gx, gy, gz, gr, gcolor in ghost_frame:
@@ -7401,44 +7545,10 @@ class HitboxRenderer:
             # behavior exactly.  This lane is intentionally independent from
             # projectile/effect discovery, hurt-rig coherence, on-screen root
             # tests, and contact-focus filtering.
-            for name, base in SLOT_BASES.items():
+            for name, (fd, action_frame, drawable_boxes) in self.sampled_attacks.items():
                 if not slot_filter.get(name, True):
                     continue
-
-                raw_state = read_state_raw(base)
-                state_id = decode_state_id(raw_state)
-                if slot_passive_override(name, state_id):
-                    continue
-
-                # Anchor range profiling to the fighter root, not the live
-                # hurtbox-envelope center.  Crouch/pose changes move that AABB
-                # even when the model has not travelled.
-                try:
-                    _action_root = tuple(float(v) for v in read_fighter_root(base))
-                    _action_char_id = int(rd32(base + OFF_CHAR_ID) or 0)
-                    # Locked profile mode does not capture move starts or live
-                    # geometry.  Existing profile data alone defines the ruler.
-                    _action_origin = _action_root
-                except Exception:
-                    _action_root = tuple(float(v) for v in read_fighter_root(base))
-                    _action_char_id = int(rd32(base + OFF_CHAR_ID) or 0)
-                    _action_origin = _action_root
-
-                boxes = self.cached_hitboxes.get(name)
-                if boxes is None:
-                    boxes = read_hitboxes(base, HITBOX)
                 palette = COLORS.get(name, [(255, 255, 255)])
-                fd = lookup_frame_data(self.fd_by_slot, name, state_id)
-                action_frame = read_action_frame(base)
-                drawable_boxes: List[Tuple[int, float, float, float, int]] = []
-
-                for i, (x, y, r, flag) in enumerate(boxes):
-                    if r <= 0.001:
-                        continue
-                    visible = self.motion_filter.update(name, i, x, y, r)
-                    if not visible and fd is None:
-                        continue
-                    drawable_boxes.append((i, x, y, r, flag))
 
                 chip_text, chip_active = self._move_phase_chip(
                     name,
@@ -7448,15 +7558,14 @@ class HitboxRenderer:
                 )
                 group_bounds: Optional[List[int]] = None
 
-                for i, x, y, r, flag in drawable_boxes:
+                for i, x, y, r, is_active in drawable_boxes:
                     base_color = palette[i % len(palette)]
-                    # All radii in one move share one move-level phase.
-                    is_active = bool(chip_active) if fd is not None else (flag == 0x53)
                     draw_color = base_color if is_active else _dim_hitbox_color(base_color)
                     label = f"{name}[{i}]"
                     if debug_labels and fd is not None and action_frame is not None:
                         label = f"{name}[{i}] f={action_frame}/{fd.active_text()}"
-                    current_ghost_frame.append((float(x), float(y), 0.0, float(r), tuple(draw_color[:3])))
+                    if is_active:
+                        current_ghost_frame.append((float(x), float(y), 0.0, float(r), tuple(draw_color[:3])))
                     projected = ov._project_hitbox(x, y, 0, r)
                     if projected is not None:
                         psx, psy, pr = projected
@@ -7628,11 +7737,8 @@ class HitboxRenderer:
             self._tick_range_calibration(now_ms, set(profile_trigger_meta.keys()), hp_drops)
 
         if hitboxes_on:
-            if current_ghost_frame:
-                self._hitbox_ghost_frames.append(current_ghost_frame)
-                self._hitbox_ghost_frames = self._hitbox_ghost_frames[-4:]
-            elif hitbox_view_mode == "ghost":
-                self._hitbox_ghost_frames = self._hitbox_ghost_frames[-3:]
+            self._hitbox_ghost_frames.append(current_ghost_frame)
+            self._hitbox_ghost_frames = self._hitbox_ghost_frames[-4:]
 
         if False and range_ruler_on:
             # Retained center-to-tip profile below is the ruler display.
@@ -8541,6 +8647,8 @@ def main():
     node_tracker = ProjectileNodeTracker(total_nodes)
 
     _last_char_ids: Dict[str, int] = {}
+    attack_previews = {name: AttackShapePreview() for name in SLOT_BASES}
+    attack_profiles = HitboxRenderer._load_range_profiles()["attacks"]
     fd_by_slot: Dict[str, Dict[int, MoveFrameData]] = build_frame_data_cache()
 
     running = True
@@ -8560,6 +8668,7 @@ def main():
                 if _last_char_ids.get(name) != cid:
                     print(f"[CharChange] {name} char_id {_last_char_ids.get(name)} -> {cid}")
                     _last_char_ids[name] = cid
+                    attack_previews[name] = AttackShapePreview()
                     char_changed = True
 
             if char_changed:
@@ -8587,6 +8696,7 @@ def main():
             for name, base in SLOT_BASES.items():
                 try:
                     if not slot_filter.get(name, True):
+                        attack_previews[name].end_action()
                         counts[name] = 0
                         continue
 
@@ -8608,41 +8718,27 @@ def main():
 
                         _last_state_raws[name] = raw_state
                         _last_state_ids[name] = state_id
-                    boxes = read_hitboxes(base, HITBOX)
-                    active = 0
                     palette = COLORS.get(name, [(255, 255, 255)])
 
-                    if slot_passive_override(name, state_id):
+                    preview = attack_previews[name]
+                    if state_id == 0xffff or slot_passive_override(name, state_id):
+                        preview.end_action()
                         counts[name] = 0
                         continue
 
-                    for i, (x, y, r, flag) in enumerate(boxes):
-                        visible = motion_filter.update(name, i, x, y, r)
-
-                        fd = lookup_frame_data(fd_by_slot, name, state_id)
-                        # When frame data is available, keep drawing the dim startup
-                        # hitboxes instead of letting the stillness filter hide them.
-                        if not visible and fd is None:
-                            continue
-
-                        if r > 0.001:
-                            active += 1
-                            base_color = palette[i % len(palette)]
-                            action_frame = read_action_frame(base)
-                            is_active = is_frame_data_active(fd, action_frame) if fd is not None else (flag == 0x53)
-                            draw_color = base_color if is_active else _dim_hitbox_color(base_color)
-                            overlay.draw_hitbox(
-                                x,
-                                y,
-                                0,
-                                r,
-                                draw_color,
-                                f"{name}[{i}]",
-                                is_active=is_active,
-                                show_label=False,
-                            )
-
-                    counts[name] = active
+                    boxes = read_hitboxes(base, HITBOX)
+                    frame = read_action_frame(base)
+                    if read_state_id(base) != state_id:
+                        preview.end_action()
+                        continue
+                    fd = lookup_frame_data(fd_by_slot, name, state_id)
+                    profile = attack_profiles.get(f"{char_id}:{state_id}")
+                    shapes = preview.sample(state_id, frame, bool(fd and fd.active_windows), boxes, name, profile)
+                    for i, x, y, r, is_active in shapes:
+                        color = palette[i % len(palette)]
+                        overlay.draw_hitbox(x, y, 0, r, color if is_active else _dim_hitbox_color(color),
+                                            f"{name}[{i}]", is_active=is_active)
+                    counts[name] = sum(active for _, _, _, _, active in shapes)
 
                 except Exception as slot_exc:
                     print(

@@ -1,0 +1,119 @@
+WII RUNTIME 0x80156b14 -> DOL FILE OFFSET 0x00140ff4
+QUERY 0x140ff4 FUNCTION 00140ff4 FUN_00140ff4
+ENTRY REFERENCES: 00147460, 0014750c, 001475c8, 00147680, 00147748, 00147830, 001479d8, 00147ab8, 00147b84, 00147c74, 00147d5c, 00147e44, 00147f44, 00147fb4, 00148030, 00148088, 001481ec, 001482e8, 00148464, 00148570, 00148608, 0014869c, 00148718, 0003da48
+
+void FUN_00140ff4(int param_1)
+
+{
+  int unaff_r13;
+  
+  FUN_00140f38(*(int *)(unaff_r13 + -0x6740) + param_1 * 0x30);
+  return;
+}
+
+
+
+WII RUNTIME 0x80156b20 -> DOL FILE OFFSET 0x00141000
+QUERY 0x141000 FUNCTION 00140ff4 FUN_00140ff4
+ENTRY REFERENCES: 00147460, 0014750c, 001475c8, 00147680, 00147748, 00147830, 001479d8, 00147ab8, 00147b84, 00147c74, 00147d5c, 00147e44, 00147f44, 00147fb4, 00148030, 00148088, 001481ec, 001482e8, 00148464, 00148570, 00148608, 0014869c, 00148718, 0003da48
+
+void FUN_00140ff4(int param_1)
+
+{
+  int unaff_r13;
+  
+  FUN_00140f38(*(int *)(unaff_r13 + -0x6740) + param_1 * 0x30);
+  return;
+}
+
+
+
+WII RUNTIME 0x80156a4c -> DOL FILE OFFSET 0x00140f2c
+QUERY 0x140f2c FUNCTION 00140ea8 FUN_00140ea8
+ENTRY REFERENCES: 
+
+undefined4 FUN_00140ea8(undefined4 param_1,undefined4 param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  undefined4 uVar3;
+  
+  iVar1 = FUN_00140cbc();
+  uVar3 = 0xffffffff;
+  if (*(int *)(iVar1 + 8) != 0) {
+    iVar2 = FUN_00141020();
+    if (iVar2 != 0) {
+      FUN_00141090(iVar1);
+    }
+    uVar3 = FUN_00140a18(iVar1);
+    uVar3 = (**(code **)(iVar1 + 8))(uVar3,param_2);
+    FUN_00141004(&DAT_80477120);
+  }
+  return uVar3;
+}
+
+
+
+WII RUNTIME 0x80156bd0 -> DOL FILE OFFSET 0x001410b0
+QUERY 0x1410b0 FUNCTION 00141090 FUN_00141090
+ENTRY REFERENCES: 00140f90, 00140e2c, 00140eec
+
+/* WARNING: Control flow encountered bad instruction data */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00141090(int param_1)
+
+{
+  int iVar1;
+  undefined4 *puVar2;
+  uint uVar3;
+  
+  if (_DAT_80477120 == 0) {
+    return;
+  }
+  if (_DAT_80477120 == 1) {
+    puVar2 = *(undefined4 **)(param_1 + 0x20);
+    iVar1 = -0x7fb87e80;
+    for (uVar3 = 0; uVar3 < *(uint *)(param_1 + 0x24); uVar3 = uVar3 + 1) {
+      *puVar2 = *(undefined4 *)(iVar1 + 0x130);
+      iVar1 = iVar1 + 4;
+    }
+    return;
+  }
+                    /* WARNING: Bad instruction - Truncating control flow here */
+  halt_baddata();
+}
+
+
+
+WII RUNTIME 0x80156bfc -> DOL FILE OFFSET 0x001410dc
+QUERY 0x1410dc FUNCTION 00141090 FUN_00141090
+ENTRY REFERENCES: 00140f90, 00140e2c, 00140eec
+
+/* WARNING: Control flow encountered bad instruction data */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_00141090(int param_1)
+
+{
+  int iVar1;
+  undefined4 *puVar2;
+  uint uVar3;
+  
+  if (_DAT_80477120 == 0) {
+    return;
+  }
+  if (_DAT_80477120 == 1) {
+    puVar2 = *(undefined4 **)(param_1 + 0x20);
+    iVar1 = -0x7fb87e80;
+    for (uVar3 = 0; uVar3 < *(uint *)(param_1 + 0x24); uVar3 = uVar3 + 1) {
+      *puVar2 = *(undefined4 *)(iVar1 + 0x130);
+      iVar1 = iVar1 + 4;
+    }
+    return;
+  }
+                    /* WARNING: Bad instruction - Truncating control flow here */
+  halt_baddata();
+}
+

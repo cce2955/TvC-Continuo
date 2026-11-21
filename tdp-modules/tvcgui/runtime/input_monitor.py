@@ -165,7 +165,8 @@ def read_overlay_input_packet(
     # snapshot instead of several separate RPM/DME calls. At 240 Hz across four
     # fighters, removing those extra round trips matters far more than copying
     # ~17 KB of local memory. The scalar path remains as a safety fallback.
-    realtime_span_end = 0x44A4  # includes the native point flag at +0x44A0
+    # Include the raw +0x44A0 field used by the existing point-active heuristic.
+    realtime_span_end = 0x44A4
     realtime_span_size = realtime_span_end - OFF_CHAR_ID
     try:
         realtime_blob = rbytes(base + OFF_CHAR_ID, realtime_span_size)

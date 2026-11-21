@@ -303,6 +303,25 @@
           "slot": "P1-C1",
           "static_addr": 0,
           "static_fmt": ""
+        },
+        "0160:720:908D1590": {
+          "damage": 720,
+          "last_actor": 2444319156,
+          "last_seen_unix": 1793845240,
+          "match_evidence": "unique damage correlation",
+          "moves": {
+            "00000160:shinkuu hadouken": {
+              "action_id": 352,
+              "count": 1,
+              "last_seen_unix": 1793845240,
+              "move_label": "Shinkuu Hadouken"
+            }
+          },
+          "owner_pointer": 2454108608,
+          "projectile_id": 352,
+          "slot": "P1-C1",
+          "static_addr": 2425165200,
+          "static_fmt": "super_beam_card"
         }
       }
     },

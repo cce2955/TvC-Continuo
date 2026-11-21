@@ -1,0 +1,28 @@
+WII RUNTIME 0x80072d84 -> DOL FILE OFFSET 0x0005d264
+QUERY 0x5d264 FUNCTION 0005d264 FUN_0005d264
+ENTRY REFERENCES: 0008fe88, 0005d2b0, 00069cac, 00069e48, 0005b918, 0006d34c, 0006d43c, 001871b0
+
+uint FUN_0005d264(uint *param_1)
+
+{
+  return *param_1 & 1;
+}
+
+
+
+WII RUNTIME 0x800a61e8 -> DOL FILE OFFSET 0x000906c8
+QUERY 0x906c8 FUNCTION 000906c8 FUN_000906c8
+ENTRY REFERENCES: 0008fdbc, 0008c13c, 0008c154, 0008c254, 0008c394, 0008c1bc, 0008c2dc
+
+undefined4 FUN_000906c8(uint *param_1)
+
+{
+  if ((*param_1 & 1) == 0) {
+    return 0;
+  }
+  if ((*param_1 & 2) == 0) {
+    return 0;
+  }
+  return 1;
+}
+

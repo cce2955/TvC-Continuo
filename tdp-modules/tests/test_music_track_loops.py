@@ -48,6 +48,33 @@ class MusicTrackLoopTests(unittest.TestCase):
             controller, '_native_zero_confirmed', True)
         return controller
 
+    def test_character_select_repeats_current_song_after_mixer_stops(self):
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            now = [1.0]
+            music = Music()
+            controller = self.make_controller(root, music, now)
+            song = root / 'select.ogg'
+            controller._current_file = str(song)
+            controller._current_owner = 'character_select'
+            self.assertTrue(controller._service_track_loop('character_select', [song], 2.0, False))
+            self.assertEqual(music.calls, [('play', {'loops': -1, 'fade_ms': 0})])
+
+    def test_director_gap_then_loading_marks_restart_once(self):
+        with TemporaryDirectory() as temp:
+            controller = self.make_controller(Path(temp), Music(), [1.0])
+            controller._match_latched = controller._fight_opened = True
+            for phase in (4, None, 0, 1, 2, 3, 4):
+                controller._observe_native_phase(phase)
+            self.assertTrue(controller._pending_match_boundary)
+            reading = dict(controller._observed, evidence={'native_phase': 4, 'both_points_idle': True})
+            controller._accept_observation(reading)
+            controller._accept_observation(reading)
+            self.assertEqual(controller._match_serial, 1)
+            for phase in (5, None, 0, 1, 2, 3, 4):
+                controller._observe_native_phase(phase)
+            self.assertFalse(controller._pending_match_boundary)
+
     def test_intro_then_loop_section_and_saved_settings(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)

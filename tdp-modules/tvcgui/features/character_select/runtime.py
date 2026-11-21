@@ -6236,11 +6236,12 @@ def toggle_solo_team() -> dict[str, Any]:
     return queue_solo_team_on()
 
 
-def _read_u32_list(addr: int, count: int) -> list[str]:
+def _read_u32_list(addr: int, count: int = 8) -> list[str]:
+    """Read diagnostic words, leaving unreadable entries empty."""
     out: list[str] = []
     for i in range(int(count)):
-        v = _safe_read_u32be(addr + i * 4)
-        out.append("?" if v is None else f"0x{v:08X}")
+        v = _safe_read_u32be(int(addr) + i * 4)
+        out.append(_hex(v) if v is not None else "")
     return out
 
 
@@ -7866,14 +7867,6 @@ def _read_ascii_preview(addr: int, size: int = 96) -> str:
         else:
             out.append(".")
     return "".join(out)
-
-
-def _read_u32_list(addr: int, count: int = 8) -> list[str]:
-    out: list[str] = []
-    for i in range(int(count)):
-        v = _safe_read_u32be(int(addr) + i * 4)
-        out.append(_hex(v) if v is not None else "")
-    return out
 
 
 def _capture_yami_pane_probe_snapshot() -> dict[str, Any]:

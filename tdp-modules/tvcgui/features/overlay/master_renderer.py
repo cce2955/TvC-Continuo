@@ -3765,13 +3765,6 @@ class MasterOverlay:
                     self.hitbox_renderer.on_resize(self.w, self.h)
                 perf_hit_update += time.perf_counter() - stage_start
 
-                # Mission Mode has its own visibility. Overlay OFF only hides
-                # the regular HUD layers and hitbox visuals.
-                if not self.control.show_hud:
-                    self.draw_mission_overlay()
-                    self.present()
-                    continue
-
                 stage_start = time.perf_counter()
                 try:
                     self.hitbox_renderer.draw(self.screen, self.control)
@@ -3781,6 +3774,11 @@ class MasterOverlay:
                     self.hitbox_renderer = NullHitboxRenderer()
                     self.hitbox_renderer.on_resize(self.w, self.h)
                 perf_hit_draw += time.perf_counter() - stage_start
+
+                if not self.control.show_hud:
+                    self.draw_mission_overlay()
+                    self.present()
+                    continue
 
                 stage_start = time.perf_counter()
                 try:

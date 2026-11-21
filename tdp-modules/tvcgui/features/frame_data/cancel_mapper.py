@@ -1,9 +1,16 @@
+"""Classify candidate cancel routes using scanned evidence and a limited model.
+
+The modeled normal ladder is a diagnostic aid. Character-specific state,
+timing, and command requirements still need independent verification.
+"""
+
 from __future__ import annotations
 
 import re
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
 
+# This ordering is the current mapper model, not a decoded universal game rule.
 GROUND_NORMAL_LADDER: Tuple[str, ...] = (
     "5A",
     "2A",

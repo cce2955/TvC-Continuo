@@ -1,0 +1,83 @@
+WII RUNTIME 0x801504a4 -> DOL FILE OFFSET 0x0013a984
+QUERY 0x13a984 FUNCTION 0013a984 FUN_0013a984
+ENTRY REFERENCES: 000c701c, 000c7150, 000c7164, 000c7178, 000c718c, 000c71a0, 000c7894, 000c79ac, 000c7ae0, 000c7da0, 000c7e20, 000c7ea0, 000c7f4c, 0011e51c, 0011e54c
+
+void FUN_0013a984(void)
+
+{
+  FUN_0013a8b0();
+  return;
+}
+
+
+
+WII RUNTIME 0x80133e70 -> DOL FILE OFFSET 0x0011e350
+QUERY 0x11e350 FUNCTION 0011e350 FUN_0011e350
+ENTRY REFERENCES: 
+
+/* WARNING: Removing unreachable block (ram,0x0011e438) */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined4 FUN_0011e350(int param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  if (param_2 != 0) {
+    if ((param_2 & 1) == 0) {
+      return 0;
+    }
+    *(undefined4 *)(param_1 + 0x1c) = 0xf1;
+    return 1;
+  }
+  iVar1 = *(int *)(param_1 + 0x1c);
+  if (iVar1 == 0) {
+    FUN_0013a5c8(param_1,0x80133fe0,2);
+    _DAT_803ecc20 = 1;
+    if ((_DAT_80478198 == 0) || (_DAT_80478198 == 10)) {
+      *(undefined4 *)(param_1 + 0x20) = 1;
+      *(undefined4 *)(param_1 + 0x24) = 0;
+      *(undefined4 *)(param_1 + 0x1c) = 0xf0;
+    }
+    else {
+      *(undefined4 *)(param_1 + 0x20) = _DAT_803ecbfc;
+      *(undefined4 *)(param_1 + 0x24) = 0;
+      *(undefined4 *)(param_1 + 0x1c) = 0xf0;
+    }
+  }
+  else if (iVar1 == 1) {
+    iVar1 = FUN_00062e10();
+    if ((iVar1 == 0) && (FUN_0013a604(param_1), (_DAT_80473870 & 0x10) != 0)) {
+      *(undefined4 *)(param_1 + 0x1c) = 0xf0;
+    }
+  }
+  else {
+    if (iVar1 == 0xf0) {
+      _DAT_803ecbfc = *(undefined4 *)(param_1 + 0x20);
+    }
+    else if (iVar1 != 0xf1) {
+      return 0;
+    }
+    if (*(int *)(param_1 + 0x1c) == 0xf0) {
+      FUN_0011e0e8(_DAT_803efbf4);
+    }
+    FUN_00141104(param_1);
+  }
+  return 0;
+}
+
+
+
+WII RUNTIME 0x8013419c -> DOL FILE OFFSET 0x0011e67c
+QUERY 0x11e67c FUNCTION 0011e67c FUN_0011e67c
+ENTRY REFERENCES: 0011ead8
+
+void FUN_0011e67c(undefined4 param_1)
+
+{
+  FUN_00062704();
+  FUN_00062fbc(1);
+  FUN_00062718(param_1);
+  return;
+}
+

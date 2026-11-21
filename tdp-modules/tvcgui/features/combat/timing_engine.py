@@ -1,8 +1,8 @@
-"""Shared live timing engine for hitstop, stun, and observed block advantage.
+"""Share read-only hitstop and stun observations across Continuo views.
 
-The engine is read-only. It samples the decoded fighter timing fields once per
-main-loop frame, tracks clean hit and block interactions, and publishes one
-consistent result to the HUD, Timing Monitor, and frame-data observation cache.
+Sampling follows the application loop, whose counter is not a validated game
+frame. Block advantage remains unavailable until attacker actionability can be
+established; an animation transition alone does not prove control is restored.
 """
 from __future__ import annotations
 

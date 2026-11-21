@@ -1,0 +1,13 @@
+003494c1 | camera | 
+003494c8 | W_camera | 
+003494d1 | W2_camera | 
+0034c7f6 | NW4R:Pointer Error
+pCamera(=%p) is not valid pointer. | 
+0034c82c | NW4R:Pointer Error
+m_pCamera(=%p) is not valid pointer. | 
+0034d30b | NW4R:Pointer Error
+pCamera(=%p) is not valid pointer. | 
+0034d341 | NW4R:Pointer Error
+m_pCamera(=%p) is not valid pointer. | 
+00360d20 | g3d_resanmcamera_ac.h | 
+003b6b03 | Cameras(NW4R) | 

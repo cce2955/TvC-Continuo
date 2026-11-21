@@ -6,6 +6,8 @@ has a focused home.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+from functools import lru_cache
 import math
 from collections import OrderedDict
 
@@ -500,7 +502,7 @@ def _layout_command_section(
 
 
 # Visuals has its own LAB slot. The hit-test bridge keeps the existing
-# character-select window dispatch without adding another dock return value.
+# character-select window callback working outside the main click handler.
 _CHAR_SELECT_VISUALS_RECT = pygame.Rect(-10000, -10000, 0, 0)
 
 
@@ -552,6 +554,7 @@ def _command_dock_layout(width: int, tools_open: bool) -> tuple[dict[str, tuple[
 
     if tools_open:
         training_specs = [
+            ("analysis", 116),
             ("cancel_mapper", 114),
             ("cancel_lab", 106),
             ("action_recorder", 132),
@@ -564,6 +567,7 @@ def _command_dock_layout(width: int, tools_open: bool) -> tuple[dict[str, tuple[
         y = section.bottom + section_gap
 
         lab_specs = [
+            ("research_recorder", 148),
             ("assist", 106),
             ("win", 124),
             ("ko", 122),
@@ -604,6 +608,51 @@ def get_top_dock_height(
     return int(round(closed_height + (open_height - closed_height) * eased))
 
 
+@dataclass(frozen=True)
+class DockRegions:
+    """Hit regions from the current draw."""
+    hb_btn_rect: pygame.Rect
+    hurt_btn_rect: pygame.Rect
+    ps_btn_rect: pygame.Rect
+    as_btn_rect: pygame.Rect
+    hud_btn_rect: pygame.Rect
+    megacrash_btn_rect: pygame.Rect
+    memdump_btn_rect: pygame.Rect
+    win_counter_btn_rect: pygame.Rect
+    overseer_btn_rect: pygame.Rect
+    select_probe_btn_rect: pygame.Rect
+    yami_stage_btn_rect: pygame.Rect
+    ko_control_btn_rect: pygame.Rect
+    action_spoof_btn_rect: pygame.Rect
+    cancel_mapper_btn_rect: pygame.Rect
+    cancel_lab_btn_rect: pygame.Rect
+    action_recorder_btn_rect: pygame.Rect
+    timing_probe_btn_rect: pygame.Rect
+    analysis_btn_rect: pygame.Rect
+    interaction_card_btn_rect: pygame.Rect
+    combo_card_btn_rect: pygame.Rect
+    info_set_btn_rect: pygame.Rect
+    damage_badge_btn_rect: pygame.Rect
+    untech_panel_btn_rect: pygame.Rect
+    meter_panel_btn_rect: pygame.Rect
+    red_health_panel_btn_rect: pygame.Rect
+    attack_property_panel_btn_rect: pygame.Rect
+    tag_card_btn_rect: pygame.Rect
+    clear_card_btn_rect: pygame.Rect
+    tools_btn_rect: pygame.Rect
+    help_btn_rect: pygame.Rect
+    hb_filter_rects: dict[str, pygame.Rect]
+    hurt_filter_rects: dict[str, pygame.Rect]
+    ruler_btn_rect: pygame.Rect
+    ruler_axis_h_rect: pygame.Rect
+    ruler_axis_v_rect: pygame.Rect
+    ruler_envelope_rect: pygame.Rect
+    ruler_lock_rect: pygame.Rect
+    ruler_filter_rects: dict[str, pygame.Rect]
+    character_select_visuals: pygame.Rect
+    research_recorder: pygame.Rect
+
+
 def draw_top_command_dock(
     screen: pygame.Surface,
     smallfont: pygame.font.Font,
@@ -626,6 +675,7 @@ def draw_top_command_dock(
     show_red_health_panel: bool,
     show_attack_property_panel: bool,
     show_tag_card: bool,
+    analysis_active: bool = False,
     megacrash_trainer_enabled: bool = False,
     megacrash_trainer_chance: int = MEGACRASH_TRAINER_DEFAULT_CHANCE,
     megacrash_trainer_mode: str = MEGACRASH_TRAINER_DEFAULT_MODE,
@@ -645,7 +695,7 @@ def draw_top_command_dock(
     tools_progress: float | None = None,
     mouse_pos: tuple[int, int],
     t_ms: int = 0,
-) -> tuple:
+) -> DockRegions:
     """Draw a responsive command dock using the same glass-card language as the HUD."""
     global _CHAR_SELECT_VISUALS_RECT
     del megacrash_trainer_chance, megacrash_trainer_mode, megacrash_trainer_delay_frames
@@ -689,7 +739,7 @@ def draw_top_command_dock(
 
     off = pygame.Rect(-10000, -10000, 0, 0)
     ps_btn_rect = off.copy()
-    solo_team_btn_rect = off.copy()
+    action_recorder_btn_rect = off.copy()
     as_btn_rect = off.copy()
     megacrash_btn_rect = off.copy()
     memdump_btn_rect = off.copy()
@@ -702,6 +752,7 @@ def draw_top_command_dock(
     cancel_mapper_btn_rect = off.copy()
     cancel_lab_btn_rect = off.copy()
     timing_probe_btn_rect = off.copy()
+    analysis_btn_rect = off.copy()
 
     section_accents = {
         "hud": GUI_APP_ACCENT,
@@ -776,7 +827,7 @@ def draw_top_command_dock(
         pass  # Optional feature must never prevent Continuo from drawing.
 
     draw_glass_button(
-        screen, hud_btn_rect, "Overlay: ON" if overlay_enabled else "Overlay: OFF", dockfont,
+        screen, hud_btn_rect, "Core HUD: ON" if overlay_enabled else "Core HUD: OFF", dockfont,
         active=bool(overlay_enabled), hover=hud_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT,
         fill=(43, 58, 86) if overlay_enabled else (27, 33, 45), align="center",
     )
@@ -892,12 +943,20 @@ def draw_top_command_dock(
 
     if tools_progress > 0.001:
         training = draw_section("training")
+        analysis_btn_rect = training["analysis"]
         cancel_mapper_btn_rect = training["cancel_mapper"]
         cancel_lab_btn_rect = training["cancel_lab"]
-        solo_team_btn_rect = training["action_recorder"]
+        action_recorder_btn_rect = training["action_recorder"]
         timing_probe_btn_rect = training["timing_probe"]
         action_spoof_btn_rect = training["punish"]
         megacrash_btn_rect = training["megacrash"]
+
+        draw_glass_button(
+            screen, analysis_btn_rect, "Analysis: REC" if analysis_active else "Analysis", dockfont,
+            active=analysis_active,
+            hover=analysis_btn_rect.collidepoint(mx, my), accent=GUI_CONFIRM,
+            fill=(27, 65, 48) if analysis_active else (31, 48, 53), align="center",
+        )
 
         draw_glass_button(
             screen, cancel_mapper_btn_rect, "Cancel Mapper", dockfont, active=False,
@@ -910,8 +969,8 @@ def draw_top_command_dock(
             fill=(43, 38, 68), align="center",
         )
         draw_glass_button(
-            screen, solo_team_btn_rect, "Action Recorder", dockfont, active=False,
-            hover=solo_team_btn_rect.collidepoint(mx, my), accent=GUI_CONFIRM,
+            screen, action_recorder_btn_rect, "Action Recorder", dockfont, active=False,
+            hover=action_recorder_btn_rect.collidepoint(mx, my), accent=GUI_CONFIRM,
             fill=(27, 33, 45), align="center",
         )
         draw_glass_button(
@@ -931,6 +990,7 @@ def draw_top_command_dock(
         )
 
         lab = draw_section("lab")
+        research_recorder_rect = lab["research_recorder"].copy()
         as_btn_rect = lab["assist"]
         yami_stage_btn_rect = lab["stage"]
         select_probe_btn_rect = lab["extra"]
@@ -940,6 +1000,7 @@ def draw_top_command_dock(
         win_counter_btn_rect = lab["win"]
         overseer_btn_rect = lab["status"]
 
+        draw_glass_button(screen, research_recorder_rect, "Research Recorder", dockfont, hover=research_recorder_rect.collidepoint(mx, my), accent=GUI_ACCENT_PURPLE, align="center")
         draw_glass_button(screen, as_btn_rect, "Assist Setup", dockfont, hover=as_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT, align="center")
         draw_glass_button(screen, yami_stage_btn_rect, "Extra Stages", dockfont, hover=yami_stage_btn_rect.collidepoint(mx, my), accent=GUI_APP_ACCENT, align="center")
         draw_glass_button(
@@ -980,7 +1041,7 @@ def draw_top_command_dock(
         help_tip = "Research buttons add one compact data row inside both team HUD panels. Select a view, or click the active view again to close it."
         help_accent = GUI_APP_ACCENT
         if hud_btn_rect.collidepoint(mx, my):
-            help_tip = "Overlay controls only the core team HUD. Every other in-game layer can remain on or off independently."
+            help_tip = "Show the team HUD. Hitboxes, hurtboxes, and the range ruler have their own switches."
         elif interaction_card_btn_rect.collidepoint(mx, my):
             help_tip = "Hit and Block controls only the live interaction ribbon."
         elif combo_card_btn_rect.collidepoint(mx, my):
@@ -1048,6 +1109,7 @@ def draw_top_command_dock(
     screen.set_clip(previous_clip)
     if tools_progress < 0.88:
         _CHAR_SELECT_VISUALS_RECT = off.copy()
+        research_recorder_rect = off.copy()
         as_btn_rect = off.copy()
         megacrash_btn_rect = off.copy()
         memdump_btn_rect = off.copy()
@@ -1059,19 +1121,51 @@ def draw_top_command_dock(
         action_spoof_btn_rect = off.copy()
         cancel_mapper_btn_rect = off.copy()
         cancel_lab_btn_rect = off.copy()
-        solo_team_btn_rect = off.copy()
+        action_recorder_btn_rect = off.copy()
         timing_probe_btn_rect = off.copy()
+        analysis_btn_rect = off.copy()
 
-    return (
-        hb_btn_rect, hurt_btn_rect, ps_btn_rect, as_btn_rect, hud_btn_rect,
-        megacrash_btn_rect, memdump_btn_rect, win_counter_btn_rect,
-        overseer_btn_rect, select_probe_btn_rect, yami_stage_btn_rect, ko_control_btn_rect,
-        action_spoof_btn_rect, cancel_mapper_btn_rect, cancel_lab_btn_rect, solo_team_btn_rect, timing_probe_btn_rect,
-        interaction_card_btn_rect, combo_card_btn_rect, info_set_btn_rect, damage_badge_btn_rect, untech_panel_btn_rect,
-        meter_panel_btn_rect, red_health_panel_btn_rect, attack_property_panel_btn_rect,
-        tag_card_btn_rect, clear_card_btn_rect,
-        tools_btn_rect, help_btn_rect, hb_filter_rects, hurt_filter_rects, ruler_btn_rect,
-        ruler_axis_h_rect, ruler_axis_v_rect, ruler_envelope_rect, ruler_lock_rect, ruler_filter_rects,
+    return DockRegions(
+        hb_btn_rect=hb_btn_rect,
+        hurt_btn_rect=hurt_btn_rect,
+        ps_btn_rect=ps_btn_rect,
+        as_btn_rect=as_btn_rect,
+        hud_btn_rect=hud_btn_rect,
+        megacrash_btn_rect=megacrash_btn_rect,
+        memdump_btn_rect=memdump_btn_rect,
+        win_counter_btn_rect=win_counter_btn_rect,
+        overseer_btn_rect=overseer_btn_rect,
+        select_probe_btn_rect=select_probe_btn_rect,
+        yami_stage_btn_rect=yami_stage_btn_rect,
+        ko_control_btn_rect=ko_control_btn_rect,
+        action_spoof_btn_rect=action_spoof_btn_rect,
+        cancel_mapper_btn_rect=cancel_mapper_btn_rect,
+        cancel_lab_btn_rect=cancel_lab_btn_rect,
+        action_recorder_btn_rect=action_recorder_btn_rect,
+        timing_probe_btn_rect=timing_probe_btn_rect,
+        analysis_btn_rect=analysis_btn_rect,
+        interaction_card_btn_rect=interaction_card_btn_rect,
+        combo_card_btn_rect=combo_card_btn_rect,
+        info_set_btn_rect=info_set_btn_rect,
+        damage_badge_btn_rect=damage_badge_btn_rect,
+        untech_panel_btn_rect=untech_panel_btn_rect,
+        meter_panel_btn_rect=meter_panel_btn_rect,
+        red_health_panel_btn_rect=red_health_panel_btn_rect,
+        attack_property_panel_btn_rect=attack_property_panel_btn_rect,
+        tag_card_btn_rect=tag_card_btn_rect,
+        clear_card_btn_rect=clear_card_btn_rect,
+        tools_btn_rect=tools_btn_rect,
+        help_btn_rect=help_btn_rect,
+        hb_filter_rects=hb_filter_rects,
+        hurt_filter_rects=hurt_filter_rects,
+        ruler_btn_rect=ruler_btn_rect,
+        ruler_axis_h_rect=ruler_axis_h_rect,
+        ruler_axis_v_rect=ruler_axis_v_rect,
+        ruler_envelope_rect=ruler_envelope_rect,
+        ruler_lock_rect=ruler_lock_rect,
+        ruler_filter_rects=ruler_filter_rects,
+        character_select_visuals=_CHAR_SELECT_VISUALS_RECT,
+        research_recorder=research_recorder_rect,
     )
 
 
@@ -1103,6 +1197,14 @@ def draw_status_rail(
 
 
 
+@lru_cache(maxsize=1)
+def _workspace_background(size: tuple[int, int]) -> pygame.Surface:
+    panel = pygame.Surface(size, pygame.SRCALPHA)
+    _draw_horizontal_gradient(panel, panel.get_rect(), (10, 20, 32), (5, 10, 18), 250)
+    pygame.draw.rect(panel, (37, 53, 70), panel.get_rect(), 1, border_radius=5)
+    return panel
+
+
 def draw_bottom_workspace_tabs(
     screen: pygame.Surface,
     rect: pygame.Rect,
@@ -1118,10 +1220,7 @@ def draw_bottom_workspace_tabs(
     if rect.width <= 0 or rect.height <= tab_h + 8:
         return rect, {}
 
-    panel = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-    _draw_horizontal_gradient(panel, panel.get_rect(), (10, 20, 32), (5, 10, 18), 250)
-    pygame.draw.rect(panel, (37, 53, 70), panel.get_rect(), 1, border_radius=5)
-    screen.blit(panel, rect.topleft)
+    screen.blit(_workspace_background(rect.size), rect.topleft)
 
     tabs = [
         ("scan", "NORMALS", GUI_APP_ACCENT),

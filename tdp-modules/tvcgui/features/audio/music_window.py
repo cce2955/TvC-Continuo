@@ -808,6 +808,7 @@ def _show_window(root):
             menu_asset = s.get('menu_asset_id')
             menu_cue = (f'page {menu_asset:03d}' if menu_asset is not None else
                         'root only' if ev.get('menu_object') else 'none')
+            meters = ev.get('meters') or {}
             follow_id = s.get('music_owner_fighter')
             follow_name = CHAR_NAMES.get(follow_id, 'not verified') if follow_id else 'not verified'
             scope_label = 'both sides' if s.get('tag_scope') == 'both' else s.get('slot')
@@ -820,6 +821,12 @@ def _show_window(root):
                          f"Menu cue: {menu_cue}    "
                          f"KO/end phase seen: {int(bool(s.get('match_end_seen')))}    "
                          f"Next match pending: {int(bool(s.get('boundary_pending')))}\n"
+                         f"Match/played: {s.get('match_serial', 0)}/{s.get('played_match_serial', 0)}    "
+                         f"Zero HP: {int(bool(s.get('match_zero_hp_seen')))}    "
+                         f"Advance pending: {int(bool(s.get('playlist_advance_pending')))}    "
+                         f"Reset cue: {int(bool(ev.get('rematch_reset_signature')))} "
+                         f"(meter {meters.get('P1', '—')}/{meters.get('P2', '—')})    "
+                         f"Boundary: {s.get('last_match_boundary_reason') or 'none'}\n"
                          f"{clues}" + ('    [AMBIGUOUS]' if ev.get('ambiguous') else ''))
             win.after(400, refresh)
         except tk.TclError:

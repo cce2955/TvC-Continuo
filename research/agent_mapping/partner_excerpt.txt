@@ -1,0 +1,50 @@
+WII RUNTIME 0x80057d18 -> DOL FILE OFFSET 0x000421f8
+QUERY 0x421f8 FUNCTION 000421f8 FUN_000421f8
+ENTRY REFERENCES: 001450b0, 000054c4, 00042358, 000239f4, 0002466c, 00024aac, 00024c74, 00042138, 00042590, 00141c40, 00141cf0, 00141e4c, 0002e100, 0002e10c, 0002e118, 0002e124, 0006a5a0, 00042480, 000424ac, 000424e8, 0002ff7c, 000312a0, 0003131c, 00126a50, 00126aa8, 00126bac, 00126bb8, 00126cd8, 000324dc, 000324e8, 000328fc, 00032924, 00130518, 00129514, 00129520, 0003f14c, 0003f164, 00042048, 000437f4, 000418c0, 00041914, 00041cb0, 000572e8, 00057400, 00057af0, 00057afc, 00057b14, 00057fac, 00057fb8, 00057fc4, 00057fd0, 00058460, 0005846c, 0005851c, 00058528, 00058888, 00058de4, 00058dfc, 00058e18, 00058e30, 000591a0, 000591ac, 000591bc, 000591c8, 000633f4, 000a0a10, 00129374, 00146c04, 0016301c, 00178018, 00178068, 0003cc5c
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+int FUN_000421f8(uint param_1)
+
+{
+  int iVar1;
+  int *piVar2;
+  
+  if (3 < param_1) {
+    return 0;
+  }
+  if (_DAT_803c9fb8 != 0) {
+    for (piVar2 = *(int **)(_DAT_803c9fb8 + 0xc); piVar2 != (int *)0x0; piVar2 = (int *)piVar2[3]) {
+      iVar1 = *piVar2;
+      if ((iVar1 != 0) && (*(uint *)(iVar1 + 4) == param_1)) {
+        return iVar1;
+      }
+    }
+  }
+  if (_DAT_803c9fbc != 0) {
+    for (piVar2 = *(int **)(_DAT_803c9fbc + 0xc); piVar2 != (int *)0x0; piVar2 = (int *)piVar2[3]) {
+      iVar1 = *piVar2;
+      if ((iVar1 != 0) && (*(uint *)(iVar1 + 4) == param_1)) {
+        return iVar1;
+      }
+    }
+  }
+  if (_DAT_803c9fc0 != 0) {
+    for (piVar2 = *(int **)(_DAT_803c9fc0 + 0xc); piVar2 != (int *)0x0; piVar2 = (int *)piVar2[3]) {
+      iVar1 = *piVar2;
+      if ((iVar1 != 0) && (*(uint *)(iVar1 + 4) == param_1)) {
+        return iVar1;
+      }
+    }
+  }
+  if (_DAT_803c9fc4 != 0) {
+    for (piVar2 = *(int **)(_DAT_803c9fc4 + 0xc); piVar2 != (int *)0x0; piVar2 = (int *)piVar2[3]) {
+      iVar1 = *piVar2;
+      if ((iVar1 != 0) && (*(uint *)(iVar1 + 4) == param_1)) {
+        return iVar1;
+      }
+    }
+  }
+  return 0;
+}
+

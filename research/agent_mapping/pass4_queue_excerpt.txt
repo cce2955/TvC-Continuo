@@ -1,0 +1,105 @@
+WII RUNTIME 0x8014b924 -> DOL FILE OFFSET 0x00135e04
+QUERY 0x135e04 FUNCTION 00135d9c FUN_00135d9c
+ENTRY REFERENCES: 00135598
+
+/* WARNING: Removing unreachable block (ram,0x00135df8) */
+
+void FUN_00135d9c(undefined4 *param_1)
+
+{
+  int unaff_r2;
+  undefined4 uVar1;
+  int iVar2;
+  undefined4 in_GQR0;
+  undefined8 in_f31;
+  double dVar3;
+  undefined1 auStack_8 [8];
+  
+  __psq_st0(auStack_8,(int)((ulonglong)in_f31 >> 0x20),in_GQR0);
+  __psq_st1(auStack_8,(int)in_f31,in_GQR0);
+  dVar3 = (double)*(float *)(unaff_r2 + -0x587c);
+  iVar2 = 0;
+  do {
+    uVar1 = FUN_0013faf0(iVar2);
+    *param_1 = uVar1;
+    iVar2 = iVar2 + 1;
+    param_1[1] = (float)dVar3;
+    param_1[2] = (float)dVar3;
+    param_1[3] = 0;
+    param_1 = param_1 + 4;
+  } while (iVar2 < 4);
+  __psq_l0(auStack_8,in_GQR0);
+  __psq_l1(auStack_8,in_GQR0);
+  return;
+}
+
+
+
+WII RUNTIME 0x801562b8 -> DOL FILE OFFSET 0x00140798
+QUERY 0x140798 FUNCTION 00140798 FUN_00140798
+ENTRY REFERENCES: 0013caf4, 0014081c, 0014085c, 00134c70
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+int FUN_00140798(undefined4 param_1)
+
+{
+  int iVar1;
+  int *piVar2;
+  int iVar3;
+  
+  piVar2 = _DAT_80476b78;
+  while( true ) {
+    iVar3 = *piVar2;
+    if (iVar3 == 1) {
+      return 0;
+    }
+    iVar1 = FUN_00140518(iVar3 + 0x24,param_1);
+    if (iVar1 == 0) break;
+    piVar2 = (int *)piVar2[2];
+  }
+  return iVar3;
+}
+
+
+
+WII RUNTIME 0x8014ac94 -> DOL FILE OFFSET 0x00135174
+QUERY 0x135174 FUNCTION 00135174 FUN_00135174
+ENTRY REFERENCES: 00134c94, 00134bb8
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+int FUN_00135174(undefined4 param_1)
+
+{
+  int iVar1;
+  
+  if (_DAT_80463228 < _DAT_8046322a) {
+    _DAT_80463228 = _DAT_80463228 + 1;
+    iVar1 = FUN_0001007c(_DAT_80463230);
+    FUN_0001e4c8(iVar1,iVar1 + 4,0x80463234);
+    FUN_001350c4(iVar1 + 0x34,param_1);
+    *(undefined4 *)(iVar1 + 0x10) = 0;
+  }
+  else {
+    iVar1 = 0;
+  }
+  return iVar1;
+}
+
+
+
+WII RUNTIME 0x801563e0 -> DOL FILE OFFSET 0x001408c0
+QUERY 0x1408c0 FUNCTION 001408a0 FUN_001408a0
+ENTRY REFERENCES: 0005f7c0, 0005f7f4, 0005f828, 00116e00, 0011ecf4, 0011ed30, 0011ed50, 001355f0, 0016dc2c
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_001408a0(void)
+
+{
+  FUN_00139f60(_DAT_80478998);
+  FUN_001408d4(1);
+  return;
+}
+

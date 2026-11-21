@@ -1,0 +1,193 @@
+80077908 stwu     r1, -32(r1)
+8007790C mflr    r0
+80077910 lis     r8, -32713
+80077914 cmplwi  r4, 0x0016
+80077918 stw     r0, 36(r1)
+8007791C addi    r8, r8, -28464
+80077920 stmw     r27, 12(r1)
+80077924 or   r27, r3, r3
+80077928 or   r28, r4, r4
+8007792C or   r31, r5, r5
+80077930 or   r29, r6, r6
+80077934 or   r30, r7, r7
+80077938 bc    12, 1, 0x80077CF8
+8007793C lis     r9, -32713
+80077940 rlwinm r0, r4, 2, 0, 29
+80077944 addi    r9, r9, -27740
+80077948 lwzx    r9, r9, r0
+8007794C mtctr    r9
+80077950 bctr
+80077954 lis     r5, 20972
+80077958 lis     r4, -32715
+8007795C addi    r8, r5, -31457
+80077960 mulhw   r10, r8, r7
+80077964 addi    r4, r4, -2132
+80077968 srawi r0, r10, 5
+8007796C rlwinm r5, r0, 1, 31, 31
+80077970 add   r0, r0, r5
+80077974 add   r9, r6, r0
+80077978 mulhw   r0, r8, r9
+8007797C srawi r6, r0, 5
+80077980 srawi r0, r10, 5
+80077984 rlwinm r8, r6, 1, 31, 31
+80077988 rlwinm r5, r0, 1, 31, 31
+8007798C add   r0, r0, r5
+80077990 add   r6, r6, r8
+80077994 mulli   r5, r6, 100
+80077998 mulli   r0, r0, 100
+8007799C subf   r5, r5, r9
+800779A0 subf   r6, r0, r7
+800779A4 crxor   6, 6, 6
+800779A8 bl      0x801B0418
+800779AC b       0x80077CF8
+800779B0 cmpwi   r5, 33
+800779B4 bc    4, 0, 0x800779DC
+800779B8 lis     r6, -32715
+800779BC rlwinm r0, r5, 2, 0, 29
+800779C0 addi    r4, r8, 0
+800779C4 addi    r6, r6, -2132
+800779C8 lwzx    r5, r4, r0
+800779CC addi    r4, r6, 13
+800779D0 crxor   6, 6, 6
+800779D4 bl      0x801B0418
+800779D8 b       0x80077CF8
+800779DC lis     r4, -32715
+800779E0 addi    r4, r4, -2132
+800779E4 addi    r4, r4, 20
+800779E8 crxor   6, 6, 6
+800779EC bl      0x801B0418
+800779F0 b       0x80077CF8
+800779F4 cmpwi   r5, 0
+800779F8 bc    4, 2, 0x80077A14
+800779FC lis     r4, -32715
+80077A00 addi    r4, r4, -2132
+80077A04 addi    r4, r4, 29
+80077A08 crxor   6, 6, 6
+80077A0C bl      0x801B0418
+80077A10 b       0x80077CF8
+80077A14 lis     r4, -32715
+80077A18 addi    r4, r4, -2132
+80077A1C addi    r4, r4, 37
+80077A20 crxor   6, 6, 6
+80077A24 bl      0x801B0418
+80077A28 b       0x80077CF8
+80077A2C lis     r6, -32715
+80077A30 rlwinm r0, r5, 2, 0, 29
+80077A34 addi    r4, r8, 0
+80077A38 addi    r6, r6, -2132
+80077A3C lwzx    r5, r4, r0
+80077A40 addi    r4, r6, 46
+80077A44 crxor   6, 6, 6
+80077A48 bl      0x801B0418
+80077A4C b       0x80077CF8
+80077A50 lis     r6, -32715
+80077A54 rlwinm r0, r5, 2, 0, 29
+80077A58 addi    r4, r8, 0
+80077A5C addi    r6, r6, -2132
+80077A60 lwzx    r5, r4, r0
+80077A64 addi    r4, r6, 53
+80077A68 crxor   6, 6, 6
+80077A6C bl      0x801B0418
+80077A70 b       0x80077CF8
+80077A74 lis     r6, -32715
+80077A78 rlwinm r0, r5, 2, 0, 29
+80077A7C addi    r4, r8, 136
+80077A80 addi    r6, r6, -2132
+80077A84 lwzx    r5, r4, r0
+80077A88 addi    r4, r6, 64
+80077A8C crxor   6, 6, 6
+80077A90 bl      0x801B0418
+80077A94 b       0x80077CF8
+80077A98 lis     r6, -32715
+80077A9C rlwinm r0, r5, 2, 0, 29
+80077AA0 addi    r4, r8, 340
+80077AA4 addi    r6, r6, -2132
+80077AA8 lwzx    r5, r4, r0
+80077AAC addi    r4, r6, 75
+80077AB0 crxor   6, 6, 6
+80077AB4 bl      0x801B0418
+80077AB8 b       0x80077CF8
+80077ABC lis     r4, -32715
+80077AC0 addi    r4, r4, -2132
+80077AC4 addi    r4, r4, 86
+80077AC8 crxor   6, 6, 6
+80077ACC bl      0x801B0418
+80077AD0 b       0x80077CF8
+80077AD4 lis     r6, -32715
+80077AD8 rlwinm r0, r5, 2, 0, 29
+80077ADC addi    r4, r8, 0
+80077AE0 addi    r6, r6, -2132
+80077AE4 lwzx    r5, r4, r0
+80077AE8 addi    r4, r6, 105
+80077AEC crxor   6, 6, 6
+80077AF0 bl      0x801B0418
+80077AF4 b       0x80077CF8
+80077AF8 lis     r6, -32715
+80077AFC rlwinm r0, r5, 2, 0, 29
+800F1DF0 srawi r4, r3, 4
+800F1DF4 b       0x800F1E30
+800F1DF8 or   r3, r31, r31
+800F1DFC bl      0x80063BEC
+800F1E00 srawi r0, r3, 6
+800F1E04 subfic  r4, r0, 3
+800F1E08 b       0x800F1E30
+800F1E0C or   r3, r31, r31
+800F1E10 bl      0x80063BEC
+800F1E14 srawi r0, r3, 5
+800F1E18 subfic  r4, r0, 7
+800F1E1C b       0x800F1E30
+800F1E20 or   r3, r31, r31
+800F1E24 bl      0x80063BEC
+800F1E28 srawi r0, r3, 4
+800F1E2C subfic  r4, r0, 15
+800F1E30 stw     r4, 76(r29)
+800F1E34 addi    r30, r30, 4
+800F1E38 b       0x800F45BC
+800F1E3C rlwinm. r0, r24, 0, 24, 31
+800F1E40 lwz     r4, 4(r30)
+800F1E44 bc    12, 2, 0x800F1EFC
+800F1E48 rlwinm. r0, r24, 24, 24, 31
+800F1E4C rlwinm r0, r24, 24, 8, 31
+800F1E50 bc    12, 2, 0x800F1E84
+800F1E54 rlwinm r0, r0, 0, 24, 31
+800F1E58 cmpwi   r0, 1
+800F1E5C bc    12, 2, 0x800F1E98
+800F1E60 cmpwi   r0, 2
+800F1E64 bc    12, 2, 0x800F1EAC
+800F1E68 cmpwi   r0, 3
+800F1E6C bc    12, 2, 0x800F1EC0
+800F1E70 cmpwi   r0, 4
+800F1E74 bc    12, 2, 0x800F1ED8
+800F1E78 cmpwi   r0, 5
+800F1E7C bc    12, 2, 0x800F1EE8
+800F1E80 b       0x800F1F80
+800F1E84 or   r3, r31, r31
+800F1E88 bl      0x800644A0
+800F1E8C stw     r3, 76(r29)
+800F1E90 stw     r3, 84(r29)
+800F1E94 b       0x800F1F80
+800F1E98 or   r3, r31, r31
+800F1E9C bl      0x800644BC
+800F1EA0 stw     r3, 76(r29)
+800F1EA4 stw     r3, 84(r29)
+800F1EA8 b       0x800F1F80
+800F1EAC or   r3, r31, r31
+800F1EB0 bl      0x800644E0
+800F1EB4 stw     r3, 76(r29)
+800F1EB8 stw     r3, 84(r29)
+800F1EBC b       0x800F1F80
+800F1EC0 or   r3, r31, r31
+800F1EC4 nor   r4, r4, r4
+800F1EC8 bl      0x800644E0
+800F1ECC stw     r3, 76(r29)
+800F1ED0 stw     r3, 84(r29)
+800F1ED4 b       0x800F1F80
+800F1ED8 or   r3, r31, r31
+800F1EDC bl      0x80064504
+800F1EE0 stw     r3, 84(r29)
+800F1EE4 b       0x800F1F80
+800F1EE8 or   r3, r31, r31
+800F1EEC bl      0x80064520
+800F1EF0 stw     r3, 76(r29)
+800F1EF4 stw     r3, 84(r29)
+800F1EF8 b       0x800F1F80

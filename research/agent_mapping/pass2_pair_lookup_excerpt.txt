@@ -1,0 +1,24 @@
+WII RUNTIME 0x80057e34 -> DOL FILE OFFSET 0x00042314
+QUERY 0x42314 FUNCTION 00042314 FUN_00042314
+ENTRY REFERENCES: 00014be8, 00014bf8, 00014c34, 00014c48, 00014cf8, 00014d18, 00014fec, 00014ffc, 00015040, 00015058, 00015154, 0001517c, 000423b8, 0012fe48, 00038594, 0003f0bc, 0003f0d4, 0003f0ec, 0003f104, 00050160, 0005016c, 00050178, 00050184, 00062cd8, 0005af84, 0005b360, 0005b36c, 0005b410, 0005b41c, 0005b538, 00062d8c, 000daad8, 000daaf0, 000dab08, 000dab20, 00128ed0, 00129014, 0017a490, 0017d484
+
+int FUN_00042314(int param_1)
+
+{
+  int iVar1;
+  int unaff_r13;
+  int iVar2;
+  
+  if ((-1 < param_1) && (*(char *)(unaff_r13 + -0x6bf8) != '\0')) {
+    iVar2 = 0;
+    do {
+      iVar1 = FUN_000421f8(iVar2);
+      if ((iVar1 != 0) && (*(int *)(iVar1 + 8) == param_1)) {
+        return iVar1;
+      }
+      iVar2 = iVar2 + 1;
+    } while (iVar2 < 4);
+  }
+  return 0;
+}
+

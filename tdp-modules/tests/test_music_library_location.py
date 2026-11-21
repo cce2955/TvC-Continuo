@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from types import SimpleNamespace
 
 from tvcgui.features.audio import music_player
@@ -47,6 +47,53 @@ class MusicLibraryLocationTests(unittest.TestCase):
                              ('stage_select', [stage_song]))
             self.assertEqual(controller._context({'scene': 'character_select'}),
                              ('character_select', [character_song]))
+
+    def test_empty_select_playlist_borrows_without_restarting_on_navigation(self):
+        for populated, other, legacy in (
+                ('character_select', 'stage_select', False),
+                ('stage_select', 'character_select', True)):
+            with self.subTest(populated=populated), TemporaryDirectory() as temp:
+                root = Path(temp)
+                now = [1.0]
+                music = Mock()
+                music.get_busy.return_value = True
+                controller = music_player.MusicController(
+                    root=root, mixer=SimpleNamespace(music=music),
+                    clock=lambda: now[0], start_sampler=False)
+                controller.enabled = True
+                controller._maintain_bgm = Mock()
+                controller._native_zero_confirmed = True
+                folder = (populated if legacy else
+                          BY_KEY[music_player.AUTO_SCENES[populated]].folder)
+                path = root / folder / 'select.ogg'
+                path.parent.mkdir(parents=True)
+                path.touch()
+                for scene in (other, populated, other):
+                    reading = dict(scene=scene, stage=None, fighters={}, points={}, evidence={
+                        'stage_cursor': scene == 'stage_select',
+                        'stage_ui_live': scene == 'stage_select',
+                        'character_ui_live': scene == 'character_select'})
+                    controller._accept_observation(reading)
+                    now[0] += music_player.STAGE_RETURN_CONFIRM_SECONDS + 1
+                    controller._accept_observation(reading)
+                    controller.tick()
+                    self.assertEqual(controller._observed['scene'], scene)
+                    self.assertEqual(controller._current_owner, populated)
+                    self.assertEqual(controller._expected_ssd(reading), music_player.AUTO_SCENES[scene])
+                music.load.assert_called_once_with(str(path))
+                self.assertEqual(controller._context({'scene': 'menu'}), ('menu', []))
+                # A newly populated playlist takes precedence at the next library scan.
+                own = root / BY_KEY[music_player.AUTO_SCENES[other]].folder / 'own.wav'
+                own.parent.mkdir(parents=True)
+                own.touch()
+                now[0] += music_player.PLAYLIST_CACHE_SECONDS + 1
+                self.assertEqual(controller._context({'scene': other}), (other, [own]))
+
+    def test_empty_select_playlists_allow_native_music_on_both_screens(self):
+        with TemporaryDirectory() as temp:
+            controller = music_player.MusicController(root=Path(temp), start_sampler=False)
+            for scene in ('character_select', 'stage_select'):
+                self.assertEqual(controller._context({'scene': scene}), (scene, []))
 
     def test_native_selection_retries_restore_after_ax_pair_returns(self):
         restored = threading.Event()
@@ -282,9 +329,12 @@ class MusicLibraryLocationTests(unittest.TestCase):
 
             controller._maintain_bgm(force=True)
             self.assertTrue(music.stopped)
-            self.assertTrue(controller._ax_rebuild_match_candidate)
             self.assertEqual(controller._match_serial, 0)
             controller._maintain_bgm(force=True)
+            self.assertEqual(controller._match_serial, 0)
+            self.assertTrue(controller._pending_match_boundary)
+            controller._accept_observation({'scene': 'battle', 'stage': 17, 'fighters': {},
+                                            'evidence': {'native_phase': 4}})
             self.assertEqual(controller._match_serial, 1)
             self.assertIsNone(controller._interrupted_track)
 
@@ -446,6 +496,8 @@ class MusicLibraryLocationTests(unittest.TestCase):
             controller.tick()
             self.assertFalse(music.busy)
             self.assertEqual(music.loaded, ['first.ogg'])
+            self.assertTrue(controller._native_fallback)
+            self.assertFalse(controller._requested_mute)
 
             # If the cue was transient, resume the same stage track.
             controller._accept_observation(battle)
@@ -498,6 +550,13 @@ class MusicLibraryLocationTests(unittest.TestCase):
                     return bytes(data[offset:offset + size])
                 return b''
 
+        class MenuWithCachedSelect(MenuIO):
+            def rbytes(self, addr, size):
+                if addr == self.seq + 0x40:
+                    return music_player.CHRSEL_SIGNATURE
+                return super().rbytes(addr, size)
+
+        self.assertEqual(music_player._read_environment(MenuWithCachedSelect())['scene'], 'menu')
         reading = music_player._read_environment(MenuIO())
         self.assertEqual(reading['scene'], 'menu')
         self.assertEqual(reading['evidence']['menu_asset_id'], 11)
@@ -1421,7 +1480,7 @@ class MusicLibraryLocationTests(unittest.TestCase):
             now[0] += 0.2
             controller._accept_observation(reading('loading', 2))
             controller.tick()
-            self.assertEqual(music.loaded, ['first.ogg'])
+            self.assertEqual(music.loaded, ['first.ogg', 'second.ogg'])
             now[0] += 0.2
             controller._accept_observation(reading('battle', 4, idle=True))
             controller.tick()
@@ -1567,7 +1626,8 @@ class MusicLibraryLocationTests(unittest.TestCase):
             def step(scene, phase, stage, fighters=None):
                 reading = {'scene': scene, 'stage': stage,
                            'fighters': fighters or {}, 'points': {},
-                           'evidence': {'native_phase': phase, 'both_points_idle': phase == 4}}
+                           'evidence': {'native_phase': phase, 'both_points_idle': phase == 4,
+                                                 'director_pointer': 0 if phase is None else 0x90001000}}
                 controller._accept_observation(reading)
                 now[0] += 0.4
                 controller.tick()
@@ -1604,7 +1664,8 @@ class MusicLibraryLocationTests(unittest.TestCase):
             def frame(scene, phase):
                 return {'scene': scene, 'stage': 1, 'fighters': roster,
                         'points': {}, 'evidence': {'native_phase': phase,
-                                                 'both_points_idle': phase == 4}}
+                                                 'both_points_idle': phase == 4,
+                                                 'director_pointer': 0 if phase is None else 0x90001000}}
 
             controller._accept_observation(frame('battle', 4))
             controller._accept_observation(frame('winner', 9))

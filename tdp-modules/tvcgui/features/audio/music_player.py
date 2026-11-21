@@ -6,6 +6,8 @@ safe modification. We never alter AX linked-list pointers or the menu BGM float.
 from __future__ import annotations
 
 import atexit
+from collections import deque
+from datetime import datetime, timezone
 import json
 import math
 import os
@@ -19,6 +21,7 @@ from typing import Any
 
 from tvcgui.core.paths import user_data_path
 from tvcgui.core.constants import SLOTS, OFF_MAX_HP, OFF_CUR_HP, OFF_CHAR_ID, CHAR_NAMES
+from tvcgui.features.combat.meter import METER_ADDR_P1, METER_ADDR_P2
 from tvcgui.features.audio.ax_bgm_gate import AxBgmGate
 from tvcgui.features.audio.music_catalog import (
     RESOURCES, BY_KEY, AUTO_SCENES, STAGE_ID_RESOURCE, resource_label,
@@ -133,21 +136,21 @@ def _valid_float(raw: bytes | None) -> float | None:
 
 
 
-def _read_native_phase(io: Any) -> int | None:
-    """Poll Kuro's native match phase without requiring loaded fighter structs.
-
-    The loader briefly retires fighter structs during some restarts; the
-    battle object itself is the boundary signal when valid.
-    """
+def _read_director(io: Any) -> tuple[int | None, int | None]:
+    """Return a consistent director pointer and phase. Zero records a real unload."""
     try:
         ptr = io.rd32(NATIVE_BATTLE_PTR)
-        if ptr is None or not (0x80000000 <= ptr < 0x81800000 or
-                               0x90000000 <= ptr < 0x94000000):
-            return None
+        if ptr == 0:
+            return 0, None
+        if ptr is None or ptr & 3 or not (0x80000000 <= ptr <= 0x817ffff0 or
+                                          0x90000000 <= ptr <= 0x93fffff0):
+            return None, None
         phase = io.rd32(ptr + 12)
-        return int(phase) if phase is not None and 0 <= phase <= 12 else None
+        if io.rd32(NATIVE_BATTLE_PTR) != ptr:
+            return None, None
+        return ptr, phase if phase is not None and 0 <= phase <= 12 else None
     except Exception:
-        return None
+        return None, None
 
 
 def _read_environment(io: Any) -> dict:
@@ -171,13 +174,7 @@ def _read_environment(io: Any) -> dict:
 
     # Kuro's native music boundary uses *(0x803EFB4C) and object+0x0c,
     # not the presence of stale fighter allocations. Phase 4 = live battle.
-    battle_ptr = u32(NATIVE_BATTLE_PTR)
-    battle_phase = None
-    if battle_ptr is not None and (0x80000000 <= battle_ptr < 0x81800000 or
-                                   0x90000000 <= battle_ptr < 0x94000000):
-        candidate = u32(battle_ptr + 12)
-        if candidate is not None and 0 <= candidate <= 12:
-            battle_phase = candidate
+    battle_ptr, battle_phase = _read_director(io)
 
     root = u32(STAGE_MENU_PTR)
     stage_menu = False
@@ -263,6 +260,7 @@ def _read_environment(io: Any) -> dict:
             point_flag = u32(base + POINT_FLAG_OFFSET)
             if point_flag:  # Kuro treats every nonzero point flag as active
                 point_candidates[label[:2]].append(label)
+    meters = {'P1': u32(METER_ADDR_P1), 'P2': u32(METER_ADDR_P2)}
     # Presence of cached fighters isn't proof that battle is active. Use the
     # verified native phase when available; retain fighter fallback only if the
     # game's battle object isn't readable (older Continuo versions, early boot).
@@ -273,6 +271,11 @@ def _read_environment(io: Any) -> dict:
     main_menu_object = menu_root_live and battle_phase is None and not fighters_loaded
     stage_raw = u32(STAGE_RESULT)
     stage = stage_raw if stage_raw is not None and 0 <= stage_raw <= 255 else None
+    rematch_reset = (
+        stage != 17 and len(chars) == 4 and len(health) == 4
+        and all(health[slot]['cur'] == health[slot]['max'] for slot in health)
+        and all(value == 10_000 for value in meters.values())
+    )
     # Both select screens can retain the same menu object and chrsel asset.
     # These paired state words change with the visible screen: 0/0 on stage
     # select, 1/1 on character select. Require the live cursor as well because
@@ -281,6 +284,9 @@ def _read_environment(io: Any) -> dict:
                      select_scene_state == 0 and character_ui_state == 0)
     character_ui_live = (stage_menu and select_scene_state == 1 and
                          character_ui_state == 1)
+    if (stage_ui_live or character_ui_live) and (u32(STAGE_MENU_PTR) != root or
+                                                  u32(SELECT_SCENE_GLOBAL) != select_scene_state):
+        stage_ui_live = character_ui_live = False
     # Phase 4 is Kuro's only confirmed live-battle phase. The prematch
     # entrance animation can briefly mark multiple point fighters active;
     # phases 5-12 aren't proof that the FIGHT opening has happened.
@@ -297,7 +303,7 @@ def _read_environment(io: Any) -> dict:
         scene = 'character_select'
     elif stage_ui_live:
         scene = 'stage_select'
-    elif char_select and not stage_menu:
+    elif char_select and not stage_menu and not (main_menu_object and menu_asset_id is not None):
         # Compatibility cue while a menu object is being rebuilt. A cached
         # chrsel sequence alone cannot beat a verified stage-select object.
         scene = 'character_select'
@@ -325,6 +331,8 @@ def _read_environment(io: Any) -> dict:
         'both_points_idle': both_points_idle,
         'both_points_live': both_points_live,
         'native_phase': battle_phase,
+        'director_pointer': battle_ptr,
+        'menu_root_pointer': root,
         'stage_object': bool(stage_menu),
         'stage_cursor': bool(stage_cursor_live),
         'stage_local_cursor_id': local_cursor,
@@ -345,6 +353,8 @@ def _read_environment(io: Any) -> dict:
         'stage_verified': stage is not None,
         'mem2_ready': mem2_ready,
         'fighter_count': len(chars),
+        'meters': meters,
+        'rematch_reset_signature': rematch_reset,
     }
     return {'scene': scene, 'stage': stage, 'fighters': chars, 'points': points,
             'actions': actions, 'health': health, 'evidence': evidence}
@@ -380,6 +390,9 @@ class MusicController:
         self.root = Path(root) if self._explicit_root else (requested or self._default_root)
         self.clock = clock or time.monotonic
         self._lock = threading.RLock()
+        self._research_operations = deque(maxlen=2048)
+        self._research_operation_sequence = 0
+        self._research_mixer_busy = None
         self._stop = threading.Event()
         self._sampler: threading.Thread | None = None
         self._audio_service: threading.Thread | None = None
@@ -410,6 +423,8 @@ class MusicController:
         self._fight_opened = False  # both point fighters reached live idle
         self._fight_point_reads = 0
         self._match_end_seen = False  # native post-battle phase 5-12 was observed
+        self._match_zero_hp_seen = False
+        self._last_match_boundary_reason = None
         self._winner_unload_reads = 0
         self._winner_music_ready = False
         self._end_phase_reads = 0
@@ -417,6 +432,7 @@ class MusicController:
         self._restart_loading_reads = 0
         self._round_transition_seen = False
         self._select_since_live = False
+        self._loader_progress = 0
         self._match_serial = 0        # advance when select or KO precedes another battle
         self._played_match_serial = 0
         self._has_initial_observation = False
@@ -467,6 +483,7 @@ class MusicController:
         self._verified_live_stage: int | None = None
         self._verified_live_roster: dict[str, int] = {}
         self._pending_match_boundary = False
+        self._match_playlist_advance_pending = False
         self._menu_return_reads = 0
         self._menu_exit_pending = False
         self._menu_root_reads = 0
@@ -1135,6 +1152,16 @@ class MusicController:
             return f'stages/{form}', tracks
         return f'stages/{sid if sid is not None else "default"}', self._stage_songs(sid)
 
+    def _wait_for_yami_match_boundary(self) -> bool:
+        """Avoid choosing a stale Yami form while the next match is loading."""
+        return bool(
+            self._mode == 'auto' and self._output == 'custom'
+            and self._source == 'stage' and self._stage_override is None
+            and self._resource_override is None and self._pending_match_boundary
+            and self._observed.get('scene') == 'loading'
+            and self._observed.get('stage') == 15
+        )
+
     def _track_identity(self, song: Path) -> str:
         try:
             return song.relative_to(self.root).as_posix()
@@ -1300,6 +1327,7 @@ class MusicController:
     def _begin_fade(self) -> None:
         """Start a nonblocking local fade; no mutation to emulated TvC state."""
         if self._current_file and self._fade_started is None:
+            self._research_operation('fade_start', track=self._current_file)
             self._fade_started = self.clock()
             self._fade_level = self._volume
 
@@ -1419,15 +1447,17 @@ class MusicController:
                 if tracks:
                     return self._low_health_context(observed, f'characters/{fighter}', tracks)
             return self._low_health_context(observed, stage_owner, stage_tracks)
-        if mode not in ('menu', 'character_select', 'stage_select', 'winner'):
+        if mode not in AUTO_SCENES:
             return 'unknown', []
-        key = mode
-        resource = AUTO_SCENES.get(key)
-        if resource:
-            # Preserve the menu/character_select/stage_select playlists which
-            # have been used since the first Continuo music integration.
-            return key, self._songs(self._ssd_candidate_dirs(resource, key))
-        return key, self._songs([self._dir_for(key)])
+        tracks = self._songs(self._ssd_candidate_dirs(AUTO_SCENES[mode], mode))
+        if not tracks and mode in ('character_select', 'stage_select'):
+            other = 'stage_select' if mode == 'character_select' else 'character_select'
+            borrowed = self._songs(self._ssd_candidate_dirs(AUTO_SCENES[other], other))
+            if borrowed:
+                # Keep the populated playlist's identity across the screen change
+                # so its current song and position in the playlist carry over.
+                return other, borrowed
+        return mode, tracks
 
     def _match_has_custom_music(self, observed: dict) -> bool:
         """Only music for *this lineup or stage*, not every installed theme.
@@ -1536,8 +1566,10 @@ class MusicController:
         self._pending_scene_fade = False
         try:
             self._audio().music.stop()
-        except Exception:
-            pass
+            self._research_operation('stop', track=self._current_file, reason=reason, result='ok')
+        except Exception as exc:
+            self._research_operation('stop', track=self._current_file, reason=reason, result='error', error=str(exc))
+        self._research_mixer_busy = None
         self._current_file = None
         self._loop_segment_start = 0.0
         self._loop_started_at = 0.0
@@ -1547,7 +1579,13 @@ class MusicController:
         options = {'loops': loops, 'fade_ms': fade_ms}
         if start:
             options['start'] = start
-        self._audio().music.play(**options)
+        try:
+            self._audio().music.play(**options)
+        except Exception as exc:
+            self._research_operation('play', track=str(song), result='error', error=str(exc), options=options)
+            raise
+        self._research_operation('play', track=str(song), result='ok', options=options)
+        self._research_mixer_busy = None
         self._loop_segment_start = start
         self._loop_started_at = self.clock()
 
@@ -1564,7 +1602,7 @@ class MusicController:
             return False
         setting = self._loop_points.get(self._track_identity(song))
         if setting is None:
-            if busy or end_mode != 'match':
+            if busy or (end_mode != 'match' and owner != 'character_select'):
                 return False
             try:
                 self._play_music_segment(song, start=0, loops=-1)
@@ -1630,6 +1668,8 @@ class MusicController:
         interval = (AX_PENDING_RETRY_INTERVAL if self._requested_mute and
                     now < self._mute_urgent_until else
                     AX_MATCH_VERIFY_INTERVAL if self._requested_mute and self._match_latched
+                    else BOUNDARY_INTERVAL if self._requested_mute and
+                    self._observed.get('scene') in ('menu', 'character_select', 'stage_select', 'loading')
                     else 0.15)
         if not force and now - self._last_mute_check < interval:
             return
@@ -1645,6 +1685,11 @@ class MusicController:
         result = self._ax_gate.apply(self._backend(), mute=mute,
                                      write_protected=protected)
         if result.muted != self._native_zero_confirmed or result.text != self._mute_status:
+            self._research_operation('gate_transition', muted=result.muted,
+                                     found=getattr(result, 'found', None),
+                                     rerouted=getattr(result, 'rerouted', False),
+                                     write_protected=protected, detail=result.text,
+                                     track=self._current_file)
             session_recorder.capture_event(now, 'music_gate', {
                 'muted': result.muted, 'found': getattr(result, 'found', None),
                 'rerouted': getattr(result, 'rerouted', False),
@@ -1657,10 +1702,9 @@ class MusicController:
             if (getattr(result, 'rerouted', False) and live_rebuild
                     and self._ax_rebuild_match_candidate
                     and self._pending_match_boundary):
-                # A restart may remove the old AX pair altogether. Once the
-                # replacement pair is verified, advance exactly once when a
-                # native restart boundary was also observed. A voice rebuild
-                # at READY/FIGHT alone belongs to the current match.
+                # A direct restart can rebuild the native AX voices before
+                # the scene sampler observes a loader. Advance only when both
+                # the native route rebuild and a match-boundary cue occurred.
                 self._match_serial += 1
                 self._pending_match_boundary = False
                 self._interrupted_track = None
@@ -1716,6 +1760,58 @@ class MusicController:
                 'music_owner': self._current_owner,
             }
 
+    def research_snapshot(self) -> dict:
+        """Copy cached music decisions without probing memory or changing playback."""
+        with self._lock:
+            evidence = self._observed.get('evidence') or {}
+            return {
+                'enabled': self.enabled,
+                'desired_enabled': self._desired_enabled,
+                'scene': self._observed.get('scene'),
+                'stage': self._observed.get('stage'),
+                'raw_stage': evidence.get('raw_stage'),
+                'native_phase': evidence.get('native_phase'),
+                'last_fast_phase': self._last_native_phase,
+                'boundary_pending': self._pending_match_boundary,
+                'match_serial_internal': self._match_serial,
+                'match_live': self._fight_opened,
+                'match_latched': self._match_latched,
+                'match_end_seen': self._match_end_seen,
+                'round_transition_seen': self._round_transition_seen,
+                'restart_loading_reads': self._restart_loading_reads,
+                'end_phase_reads': self._end_phase_reads,
+                'tag_tracking_armed': self._tag_armed,
+                'tag_event_internal': self._tag_event_serial,
+                'both_points_live': evidence.get('both_points_live'),
+                'both_points_idle': evidence.get('both_points_idle'),
+                'track': self._current_file,
+                'owner': self._current_owner,
+                'output': self._output,
+                'bgm_status': self._mute_status,
+                'bgm_verified': self._native_zero_confirmed,
+                'ax_pair_verified': self._ax_gate.result.found == 2,
+                'native_fallback': self._native_fallback,
+                'message': self._message,
+                'mixer_busy_last_observed': self._research_mixer_busy,
+            }
+
+    def _research_operation(self, operation: str, **details) -> None:
+        """Keep a bounded record of host mixer operations, not audible sound."""
+        with self._lock:
+            self._research_operation_sequence += 1
+            self._research_operations.append({
+                'sequence': self._research_operation_sequence,
+                'timestamp_utc': datetime.now(timezone.utc).isoformat(),
+                'operation': operation, **details,
+            })
+
+    def research_operations_since(self, sequence: int) -> dict:
+        with self._lock:
+            oldest = self._research_operations[0]['sequence'] if self._research_operations else self._research_operation_sequence + 1
+            return {'events': [dict(event) for event in self._research_operations if event['sequence'] > sequence],
+                    'latest_sequence': self._research_operation_sequence,
+                    'lost': max(0, oldest - sequence - 1)}
+
     def _accept_observation(self, reading: dict) -> None:
         """Apply the current match ID at phase 4 and the winner SSD at result.
 
@@ -1726,6 +1822,8 @@ class MusicController:
         ev = reading.get('evidence') or {}
         phase = ev.get('native_phase')
         stage = reading.get('stage')
+        battle_entry = False
+        match_boundary_reason = None
         accepted = dict(reading)
         accepted['evidence'] = dict(ev)
         if (scene == 'menu' and not ev.get('menu_asset_verified') and
@@ -1761,7 +1859,26 @@ class MusicController:
                 scene in ('loading', 'battle')):
             # P2 lock-in can expose the old stage result and battle pointer.
             # Those values do not prove that the next match has loaded.
-            if (scene == 'loading' and phase == 0 and
+            previous_ev = self._observed.get('evidence') or {}
+            ptr = ev.get('director_pointer')
+            previous_phase = previous_ev.get('native_phase')
+            director_started = (previous_ev.get('director_pointer') == 0 and
+                                previous_ev.get('character_ui_live'))
+            director_advanced = (ptr == previous_ev.get('director_pointer') and
+                                 previous_phase in (0, 1, 2) and phase in (1, 2, 3)
+                                 and previous_phase < phase and
+                                 previous_ev.get('raw_stage') == stage)
+            select_root_gone = (ev.get('menu_root_pointer') == 0 or
+                                ev.get('stage_root_type') == MENU_OBJECT_TYPE)
+            if ev.get('character_ui_live') or ev.get('stage_ui_live'):
+                self._loading_candidate_since = None
+                confirmed = False
+            elif (scene == 'loading' and phase in (0, 1, 2, 3) and ptr and stage is not None
+                  and select_root_gone and (director_started or director_advanced)):
+                # The character menu object has gone and the director started or
+                # progressed. The old FPK path can remain cached through the intro.
+                confirmed = True
+            elif (scene == 'loading' and phase == 0 and
                     not ev.get('select_asset') and stage is not None):
                 confirmed = True
             elif scene == 'loading' and not ev.get('select_asset') and stage is not None:
@@ -1779,12 +1896,27 @@ class MusicController:
         if self._match_latched and phase in WINNER_PHASES:
             self._match_end_seen = True
             self._opening_character = None
+        if self._match_latched and any(
+                isinstance(row, dict) and row.get('cur') == 0
+                for row in (reading.get('health') or {}).values()):
+            self._match_zero_hp_seen = True
+        reset_after_finished_match = (
+            self._match_zero_hp_seen
+            and bool(ev.get('rematch_reset_signature'))
+        )
+        if self._match_latched and reset_after_finished_match:
+            # Arm the playlist as soon as the full reset is observed. The
+            # menu/result scene can remain cached while the phase-4 read and
+            # stable scene classification catch up.
+            self._pending_match_boundary = True
+            self._winner_music_ready = False
+            self._winner_unload_reads = 0
         if (self._match_latched and self._match_end_seen and
                 not self._winner_music_ready and not self._pending_match_boundary):
             # Phase 9 also covers the winner's KO pose. Keep the match theme
             # until fighter slots vanish or the native battle object unloads.
             # Cached fighter allocations can outlive that object.
-            if phase is None or (phase in WINNER_PHASES and not reading.get('fighters')):
+            if ev.get('director_pointer') == 0 or (phase in WINNER_PHASES and not reading.get('fighters')):
                 self._winner_unload_reads += 1
                 self._winner_music_ready = self._winner_unload_reads >= WINNER_UNLOAD_SAMPLES
             else:
@@ -1811,14 +1943,27 @@ class MusicController:
         elif scene == 'battle' and phase == 4:
             # Select or KO followed by battle starts a fresh playlist cycle.
             # A new stage ID changes the owner directly, even without this cue.
-            new_match = bool(self._pending_match_boundary or self._match_end_seen)
+            new_match = bool(self._pending_match_boundary or self._match_end_seen
+                             or reset_after_finished_match)
             if not self._match_latched or new_match:
+                battle_entry = True
                 if new_match:
+                    match_boundary_reason = (
+                        'four_full_health_and_two_10000_meters_after_ko'
+                        if reset_after_finished_match else
+                        'native_result_phase' if self._match_end_seen else
+                        'pending_transition' if self._pending_match_boundary else
+                        'unknown'
+                    )
+                    self._last_match_boundary_reason = match_boundary_reason
                     self._match_serial += 1
+                    if self._played_match_serial < self._match_serial:
+                        self._interrupted_track = None
                 self._match_latched = True
                 self._fight_opened = False
                 self._fight_point_reads = 0
                 self._match_end_seen = False
+                self._match_zero_hp_seen = False
                 self._winner_unload_reads = 0
                 self._winner_music_ready = False
                 self._end_phase_reads = 0
@@ -1830,9 +1975,11 @@ class MusicController:
             # select screen. Loader writes during win/results may not.
             self._verified_live_stage = stage
             self._verified_live_roster = dict(reading.get('fighters') or {})
+            # A verified battle scene closes the preceding individual KO even
+            # if point flags are ambiguous or neither fighter returns to idle.
+            self._round_transition_seen = False
             if ev.get('both_points_idle'):
                 self._fight_opened = True
-                self._round_transition_seen = False
             elif not self._fight_opened:
                 # The opening neutral pose can be missed if either player is
                 # already moving. Two stable, unique native point flags still
@@ -1841,12 +1988,15 @@ class MusicController:
                                            if ev.get('both_points_live') else 0)
                 if self._fight_point_reads >= 2:
                     self._fight_opened = True
-                    self._round_transition_seen = False
             self._menu_return_reads = 0
             self._menu_exit_pending = False
             self._unknown_match_reads = 0
         elif self._match_latched:
-            if self._match_end_seen and phase is not None and phase <= 3:
+            restart_loading = (scene == 'loading' and stage is not None and phase in (1, 2, 3)
+                               and self._loader_progress == 2 and not self._round_transition_seen)
+            if (restart_loading or
+                    ((self._match_end_seen or self._match_zero_hp_seen)
+                     and phase is not None and phase <= 3)):
                 # Don't require fighter structs or a `loading` scene label:
                 # native loading can temporarily deallocate both teams.
                 self._pending_match_boundary = True
@@ -1954,14 +2104,30 @@ class MusicController:
                 self._select_return_track = self._interrupted_track[1]
         elif accepted['scene'] in ('menu', 'loading', 'battle', 'winner'):
             self._select_return_track = None
-        if (accepted['scene'] in ('loading', 'battle') and
-                (accepted['scene'], accepted['stage']) !=
-                (previous.get('scene'), previous.get('stage'))):
+        scene_changed = ((accepted['scene'], accepted['stage']) !=
+                         (previous.get('scene'), previous.get('stage')))
+        if scene_changed:
             self._prioritize_mute()
+            self._last_audio = float('-inf')
+            self._research_operation(
+                'scene_boundary', previous_scene=previous.get('scene'), scene=accepted['scene'],
+                stage=accepted['stage'], phase=phase, director_pointer=ev.get('director_pointer'),
+                menu_root_type=ev.get('stage_root_type'), select_state=ev.get('select_scene_state'),
+                character_ui_state=ev.get('character_ui_state'), stage_cursor=ev.get('stage_cursor'))
         self._observed = accepted
+        if accepted.get('scene') == 'loading' and self._pending_match_boundary:
+            upcoming_serial = self._match_serial + 1
+            if self._played_match_serial < upcoming_serial:
+                self._match_playlist_advance_pending = True
+        if battle_entry or (accepted['scene'] == 'winner' and previous.get('scene') != 'winner'):
+            self._research_operation(
+                'match_boundary', detail='live battle' if battle_entry else 'results',
+                phase=phase, director_pointer=ev.get('director_pointer'),
+                stage=accepted.get('stage'), match_serial=self._match_serial,
+                boundary_reason=match_boundary_reason)
         self._has_initial_observation = True
         self._audio_wakeup.set()
-        if (accepted.get('scene'), accepted.get('stage')) != (previous.get('scene'), previous.get('stage')):
+        if scene_changed:
             session_recorder.capture_event(self.clock(), 'music_scene', {
                 'from': previous.get('scene'), 'to': accepted.get('scene'),
                 'stage': accepted.get('stage'), 'match_serial': self._match_serial,
@@ -2033,19 +2199,40 @@ class MusicController:
                 'from': previous, 'to': phase, 'match_serial': self._match_serial,
                 'scene': self._observed.get('scene'),
             })
+        # A latched fight can restart before the neutral pose or unique point
+        # fighters are sampled. Follow a full loader sequence in that case.
+        if not self._match_latched or self._match_end_seen or self._round_transition_seen:
+            self._loader_progress = 0
+        elif phase == 0:
+            self._loader_progress = 1
+        elif phase in (1, 2, 3) and self._loader_progress:
+            self._loader_progress = 2
+        elif phase is not None and phase != 4:
+            self._loader_progress = 0
         if phase == 4 and previous != 4:
             # The game can rebuild AX voices exactly as FIGHT opens. Prompt
             # the GUI thread to recheck the gate before the full scene scan.
             self._prioritize_mute()
-            if (self._match_latched and self._fight_opened and
-                    not self._match_end_seen and
-                    self._restart_loading_reads >= RESTART_LOADING_SAMPLES):
+            if self._match_latched and self._match_end_seen:
+                # Versus can return from the result sequence straight to
+                # phase 4 without a sampled loader/select screen. Arm the next
+                # match playlist on this fast native edge so it does not keep
+                # looping the prior match's song while scene identity catches
+                # up on the slower sampler.
+                self._pending_match_boundary = True
+            if (self._match_latched and not self._match_end_seen and not self._round_transition_seen
+                    and (self._loader_progress == 2 or
+                         (self._fight_opened and self._restart_loading_reads >= RESTART_LOADING_SAMPLES))):
                 # Training Restart can go straight from live phase 4 back to
                 # loading, skipping KO. The next phase-4 fight is a new song.
                 self._pending_match_boundary = True
+        if phase == 4:
+            self._loader_progress = 0
+        # The director pointer can clear between live battle and a new phase 0.
         if (self._match_latched and self._fight_opened and
                 not self._match_end_seen and phase is not None and phase <= 3 and
-                (previous == 4 or self._restart_loading_reads)):
+                (previous == 4 or self._restart_loading_reads or
+                 (previous is None and phase == 0 and not self._round_transition_seen))):
             self._restart_loading_reads += 1
         elif phase is None or phase >= 4:
             self._restart_loading_reads = 0
@@ -2062,7 +2249,8 @@ class MusicController:
         if phase is not None and 5 <= phase <= 8:
             self._round_transition_seen = True
         self._end_phase_reads = 0
-        if self._match_end_seen and phase is not None and phase <= 3:
+        if ((self._match_end_seen or self._match_zero_hp_seen)
+                and phase is not None and phase <= 3):
             self._pending_match_boundary = True
 
     def _sample_loop(self, stop_event):
@@ -2071,16 +2259,25 @@ class MusicController:
         # because fighters or point flags changed between snapshots.
         next_identity_scan = float('-inf')
         next_mem2_prime = float('-inf')
+        previous_director = (None, None)
+        cleared_reads = 0
         while not stop_event.wait(BOUNDARY_INTERVAL):
             try:
                 io = self._backend()
-                phase = _read_native_phase(io)
+                ptr, phase = _read_director(io)
             except Exception:
                 continue
             with self._lock:
                 if not self.enabled:
                     continue
-                self._observe_native_phase(phase)
+                if ptr == 0 or phase is not None:
+                    self._observe_native_phase(phase)
+                cleared_reads = cleared_reads + 1 if ptr == 0 and self._match_end_seen else 0
+                confirmed_unload = cleared_reads >= WINNER_UNLOAD_SAMPLES
+                director_changed = (ptr, phase) != previous_director and (phase is not None or ptr == 0)
+                if director_changed or cleared_reads == WINNER_UNLOAD_SAMPLES:
+                    next_identity_scan = float('-inf')
+                previous_director = (ptr, phase)
             now = self.clock()
             if now < next_identity_scan:
                 continue
@@ -2093,9 +2290,10 @@ class MusicController:
                         prime()
                 except Exception:
                     pass  # the scene scan can still use MEM1 evidence
-            interval = (TRANSITION_SAMPLE_INTERVAL
-                        if self._observed.get('scene') in
-                        ('character_select', 'stage_select', 'loading') else SAMPLE_INTERVAL)
+            transitioning = (self._pending_match_boundary
+                             or (self._match_end_seen and not self._winner_music_ready)
+                             or self._observed.get('scene') in ('character_select', 'stage_select', 'loading'))
+            interval = TRANSITION_SAMPLE_INTERVAL if transitioning else SAMPLE_INTERVAL
             next_identity_scan = now + interval
             try:
                 reading = _read_environment(io)
@@ -2104,6 +2302,7 @@ class MusicController:
             evidence = reading.get('evidence') or {}
             session_recorder.capture_event(self.clock(), 'music_raw', {
                 'scene': reading.get('scene'), 'phase': evidence.get('native_phase'),
+                'director_pointer': evidence.get('director_pointer'),
                 'stage': reading.get('stage'), 'raw_stage': evidence.get('raw_stage'),
                 'stage_object': evidence.get('stage_object'),
                 'stage_cursor': evidence.get('stage_cursor'),
@@ -2118,6 +2317,8 @@ class MusicController:
                 'select_id_b': evidence.get('select_id_b'),
                 'menu_asset_id': evidence.get('menu_asset_id'),
                 'fighter_count': evidence.get('fighter_count'),
+                'meters': dict(evidence.get('meters') or {}),
+                'rematch_reset_signature': evidence.get('rematch_reset_signature'),
                 'both_points_live': evidence.get('both_points_live'),
                 'points': dict(reading.get('points') or {}),
             })
@@ -2131,7 +2332,16 @@ class MusicController:
                     self._stable_count += 1
                 else:
                     self._seen_raw, self._stable_count = raw, 1
-                if self._stable_count >= STABLE_SCENE_SAMPLES:
+                if (confirmed_unload and evidence.get('director_pointer') == 0
+                        and self._match_latched and self._match_end_seen
+                        and not self._pending_match_boundary and not self._winner_music_ready
+                        and reading['scene'] in ('unknown', 'battle_unverified')):
+                    self._winner_music_ready = True
+                    self._accept_observation(reading)
+                elif (self._stable_count >= STABLE_SCENE_SAMPLES
+                      or (ptr == 0 and evidence.get('director_pointer') == 0 and
+                          ((reading['scene'] == 'character_select' and evidence.get('character_ui_live'))
+                           or (reading['scene'] == 'stage_select' and evidence.get('stage_ui_live'))))):
                     self._accept_observation(reading)
 
     def start(self) -> bool:
@@ -2178,6 +2388,8 @@ class MusicController:
             self._fight_opened = False
             self._fight_point_reads = 0
             self._match_end_seen = False
+            self._match_zero_hp_seen = False
+            self._last_match_boundary_reason = None
             self._winner_unload_reads = 0
             self._winner_music_ready = False
             self._end_phase_reads = 0
@@ -2185,12 +2397,15 @@ class MusicController:
             self._restart_loading_reads = 0
             self._round_transition_seen = False
             self._select_since_live = False
+            self._loader_progress = 0
             self._match_serial = 0
             self._played_match_serial = 0
             self._tick_match_serial = 0
             self._verified_live_stage = None
             self._verified_live_roster = {}
             self._pending_match_boundary = False
+            self._match_playlist_advance_pending = False
+            self._ax_rebuild_match_candidate = False
             self._menu_return_reads = 0
             self._menu_exit_pending = False
             self._menu_root_reads = 0
@@ -2247,6 +2462,8 @@ class MusicController:
             self._fight_opened = False
             self._fight_point_reads = 0
             self._match_end_seen = False
+            self._match_zero_hp_seen = False
+            self._last_match_boundary_reason = None
             self._winner_unload_reads = 0
             self._winner_music_ready = False
             self._end_phase_reads = 0
@@ -2257,6 +2474,7 @@ class MusicController:
             self._verified_live_stage = None
             self._verified_live_roster = {}
             self._pending_match_boundary = False
+            self._match_playlist_advance_pending = False
             self._menu_return_reads = 0
             self._menu_exit_pending = False
             self._menu_root_reads = 0
@@ -2315,13 +2533,17 @@ class MusicController:
                 # A menu return is visible, but the old match ID stays latched
                 # until enough menu reads confirm it. Do not let that stale
                 # stage or fighter owner keep playing during the gap.
-                self._requested_mute = True
-                self._maintain_bgm()
                 if self._current_file and self._current_owner and (
-                        self._current_owner.startswith(('stages/', 'characters/'))):
+                        self._current_owner.startswith(('stages/', 'characters/', 'low_health/'))):
                     self._interrupted_track = (self._current_owner, self._current_file)
                     self._stop_audio(reason='menu_return_pending')
                     self._current_owner = None
+                if self._output == 'custom' and self._current_file is None:
+                    self._requested_mute = False
+                    self._choose_native_fallback(True)
+                elif self._output == 'no_bgm':
+                    self._requested_mute = True
+                self._maintain_bgm()
                 self._message = 'Waiting for menu music boundary'
                 return
 
@@ -2348,6 +2570,20 @@ class MusicController:
                 self._in_battle = battle
             if battle:
                 self._update_tag_owner(self._observed, entered_battle=new_battle)
+            if self._wait_for_yami_match_boundary():
+                # The next boss's fighter can be absent or the previous form
+                # during loading. Wait for the phase-4 observation instead of
+                # starting an incorrect playlist and immediately changing it.
+                if self._current_file:
+                    self._stop_audio(reason='yami_form_pending')
+                    self._current_owner = None
+                    self._interrupted_track = None
+                # Let the game play its transition cue while the next form loads.
+                self._requested_mute = False
+                self._choose_native_fallback(True)
+                self._maintain_bgm()
+                self._message = 'Waiting for the next Yami battle before choosing its music.'
+                return
             owner, tracks = self._context(self._observed)
             failed_playlist = False
             if tracks and self._failed_playlist is not None:
@@ -2371,7 +2607,7 @@ class MusicController:
                                   (self._observed.get('evidence') or {}).get('character_ui_live'))
             select_to_match = (self._observed.get('scene') == 'loading' and
                                self._observed.get('stage') is not None and
-                               self._current_owner == 'character_select')
+                               self._current_owner in ('character_select', 'stage_select'))
             if want_custom and (stage_to_character or select_to_match):
                 # Both cues identify a new music context. Cut the old select
                 # song before loading it instead of adding a 300 ms fade.
@@ -2405,8 +2641,14 @@ class MusicController:
                 self._source == 'fighter' and self._fighter_switch == 'tag' and
                 self._played_event_serial != self._tag_event_serial and
                 (owner != self._current_owner or event_changed))
-            match_changed = (self._played_match_serial < self._match_serial
-                             and self._current_file is not None)
+            prematch = (self._mode in ('auto', 'battle') and self._observed.get('scene') == 'loading'
+                        and self._pending_match_boundary)
+            playlist_serial = self._match_serial + int(prematch)
+            match_changed = (
+                self._match_playlist_advance_pending
+                or (self._played_match_serial < playlist_serial
+                    and self._current_file is not None)
+            )
             if match_changed:
                 # Restart/Retry has already crossed the new-match boundary.
                 # The normal 300 ms fade would carry the old song into the
@@ -2427,7 +2669,12 @@ class MusicController:
                 return
             try:
                 busy = bool(self._audio().music.get_busy())
-            except Exception:
+                if busy != self._research_mixer_busy:
+                    self._research_operation('mixer_busy', value=busy, track=self._current_file, result='ok')
+                self._research_mixer_busy = busy
+            except Exception as exc:
+                self._research_operation('mixer_busy', result='error', error=str(exc))
+                self._research_mixer_busy = None
                 busy = False
             if not changed and self._service_track_loop(owner, tracks, now, busy):
                 return
@@ -2454,7 +2701,9 @@ class MusicController:
                     attempted.append(song)
                     try:
                         self._audio().music.stop()
+                        self._research_operation('stop', track=self._current_file, reason='load_next', result='ok')
                         self._audio().music.load(str(song))
+                        self._research_operation('load', track=str(song), result='ok')
                         self._audio().music.set_volume(self._live_music_volume())
                         # Character select keeps its chosen song until a real
                         # scene boundary; menu albums still advance on end.
@@ -2468,6 +2717,7 @@ class MusicController:
                                                  loops=0 if loop_setting else -1 if loop_track else 0,
                                                  fade_ms=160)
                     except Exception as ex:
+                        self._research_operation('track_attempt_failed', track=str(song), result='error', error=str(ex))
                         failures.append(f'{song.name}: {ex!s}')
                         continue
                     self._current_file = str(song)
@@ -2476,6 +2726,7 @@ class MusicController:
                         'scene': self._observed.get('scene'),
                         'stage': self._observed.get('stage'),
                         'match_serial': self._match_serial,
+                        'played_match_serial': self._played_match_serial,
                     })
                     self._consume_random_attempts(owner, attempted)
                     self._failed_playlist = None
@@ -2486,9 +2737,8 @@ class MusicController:
                         self._last_fighter_music_change_at = self.clock()
                     # A track started in the next prematch already belongs
                     # to that match. Do not advance it again at FIGHT.
-                    self._played_match_serial = (self._match_serial + 1
-                        if self._observed.get('scene') == 'loading' and
-                           self._pending_match_boundary else self._match_serial)
+                    self._played_match_serial = playlist_serial
+                    self._match_playlist_advance_pending = False
                     self._last_by_owner[owner] = self._track_identity(song)
                     try:
                         self._save_json(self._history_file, {
@@ -2592,6 +2842,10 @@ class MusicController:
                 "tag_event": self._tag_event_serial,
                 "fading": self._fade_started is not None,
                 "match_serial": self._match_serial,
+                "played_match_serial": self._played_match_serial,
+                "match_zero_hp_seen": self._match_zero_hp_seen,
+                "last_match_boundary_reason": self._last_match_boundary_reason,
+                "playlist_advance_pending": self._match_playlist_advance_pending,
                 "match_live": self._fight_opened,
                 "match_identity_latched": self._match_latched,
                 "match_end_seen": self._match_end_seen,

@@ -1,0 +1,26 @@
+FUNCTION FUN_000384b4
+00039838 lwz r0,0x14(r16)
+0003983c cmplwi r0,0x15
+
+FUNCTION FUN_0003d9e8
+0003d9fc lwz r0,0x14(r3)
+0003da00 cmplwi r0,0x15
+
+FUNCTION FUN_000447f4
+00044820 lwz r0,0x14(r3)
+00044824 cmplwi r0,0x15
+
+FUNCTION FUN_0011e6b8
+0011eea4 lwz r0,0x14(r3)
+0011eea8 cmpwi r0,0x3
+0011eeac bne 0x0011eee4
+0011eeb0 lwz r0,0x18(r3)
+0011eeb4 cmpwi r0,0x15
+
+FUNCTION FUN_00126c88
+00126c90 lwz r0,0x14(r3)
+00126c94 cmplwi r0,0x15
+
+FUNCTION FUN_0012fa80
+0012fc14 lwz r0,0x14(r30)
+0012fc18 cmplwi r0,0x15

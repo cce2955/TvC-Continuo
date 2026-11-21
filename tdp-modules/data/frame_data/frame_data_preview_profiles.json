@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-16T16:49:17",
+  "generated_at": "2026-11-20T19:03:19",
   "profiles": {
     "id_01_ken_the_eagle": {
       "char_id": 1,
@@ -6444,25 +6444,25 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 17,
-          "cancel_probe": "Special window @ 0x90915FD4 / Normal route @ 0x90915FE4: held [+0x13CC] & 0x00000008 -> 2B [0x0104] (branch 0x90915FF4)",
+          "cancel_probe": "Special window @ 0x908BAD54 / Normal route @ 0x908BAD64: held [+0x13CC] & 0x00000008 -> 2B [0x0104] (branch 0x908BAD74)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425446356,
+              "addr": 2425072980,
               "kind": "special",
               "label": "Special window",
               "offset": 612
             },
             {
-              "addr": 2425446372,
-              "branch_addr": 2425446388,
+              "addr": 2425072996,
+              "branch_addr": 2425073012,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 628,
-              "target_abs": 2425452288,
+              "target_abs": 2425078912,
               "target_id": 260,
               "target_label": "2B [0x0104]",
               "target_rel": 105024
@@ -6514,25 +6514,25 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 21,
-          "cancel_probe": "Special window @ 0x90916778 / Normal route @ 0x90916788: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x90916798)",
+          "cancel_probe": "Special window @ 0x908BB4F8 / Normal route @ 0x908BB508: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908BB518)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425448312,
+              "addr": 2425074936,
               "kind": "special",
               "label": "Special window",
               "offset": 1748
             },
             {
-              "addr": 2425448328,
-              "branch_addr": 2425448344,
+              "addr": 2425074952,
+              "branch_addr": 2425074968,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1764,
-              "target_abs": 2425454628,
+              "target_abs": 2425081252,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 107364
@@ -6584,11 +6584,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90916EC4",
+          "cancel_probe": "Special window @ 0x908BBC44",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425450180,
+              "addr": 2425076804,
               "kind": "special",
               "label": "Special window",
               "offset": 1660
@@ -6641,11 +6641,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 17,
-          "cancel_probe": "Special window @ 0x90917630",
+          "cancel_probe": "Special window @ 0x908BC3B0",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425452080,
+              "addr": 2425078704,
               "kind": "special",
               "label": "Special window",
               "offset": 1692
@@ -6697,25 +6697,25 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 21,
-          "cancel_probe": "Special window @ 0x90917F54 / Normal route @ 0x90917F64: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x90917F74)",
+          "cancel_probe": "Special window @ 0x908BCCD4 / Normal route @ 0x908BCCE4: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908BCCF4)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425454420,
+              "addr": 2425081044,
               "kind": "special",
               "label": "Special window",
               "offset": 2132
             },
             {
-              "addr": 2425454436,
-              "branch_addr": 2425454452,
+              "addr": 2425081060,
+              "branch_addr": 2425081076,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 2148,
-              "target_abs": 2425459868,
+              "target_abs": 2425086492,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 112604
@@ -6767,11 +6767,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90918858",
+          "cancel_probe": "Special window @ 0x908BD5D8",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425456728,
+              "addr": 2425083352,
               "kind": "special",
               "label": "Special window",
               "offset": 2100
@@ -6824,11 +6824,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 25,
-          "cancel_probe": "Special window @ 0x909193A0",
+          "cancel_probe": "Special window @ 0x908BE120",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425459616,
+              "addr": 2425086240,
               "kind": "special",
               "label": "Special window",
               "offset": 2680
@@ -6880,11 +6880,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90919798",
+          "cancel_probe": "Special window @ 0x908BE518",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425460632,
+              "addr": 2425087256,
               "kind": "special",
               "label": "Special window",
               "offset": 764
@@ -15431,25 +15431,25 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908AF438 / Normal route @ 0x908AF448: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x908AF458)",
+          "cancel_probe": "Special window @ 0x9090FCF8 / Normal route @ 0x9090FD08: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x9090FD18)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425025592,
+              "addr": 2425421048,
               "kind": "special",
               "label": "Special window",
               "offset": 996
             },
             {
-              "addr": 2425025608,
-              "branch_addr": 2425025624,
+              "addr": 2425421064,
+              "branch_addr": 2425421080,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1012,
-              "target_abs": 2425038816,
+              "target_abs": 2425434272,
               "target_id": 270,
               "target_label": "6B [0x010E]",
               "target_rel": 115104
@@ -15500,39 +15500,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908AFD94 / Normal route @ 0x908AFDA4: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908AFDB4) / Normal route @ 0x908AFDBC: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x908AFDCC)",
+          "cancel_probe": "Special window @ 0x90910654 / Normal route @ 0x90910664: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x90910674) / Normal route @ 0x9091067C: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x9091068C)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425027988,
+              "addr": 2425423444,
               "kind": "special",
               "label": "Special window",
               "offset": 2188
             },
             {
-              "addr": 2425028004,
-              "branch_addr": 2425028020,
+              "addr": 2425423460,
+              "branch_addr": 2425423476,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 2204,
-              "target_abs": 2425031444,
+              "target_abs": 2425426900,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 107732
             },
             {
-              "addr": 2425028028,
-              "branch_addr": 2425028044,
+              "addr": 2425423484,
+              "branch_addr": 2425423500,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 2228,
-              "target_abs": 2425032752,
+              "target_abs": 2425428208,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 109040
@@ -15583,11 +15583,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 0,
-          "cancel_probe": "Special window @ 0x908B01BC",
+          "cancel_probe": "Special window @ 0x90910A7C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425029052,
+              "addr": 2425424508,
               "kind": "special",
               "label": "Special window",
               "offset": 856
@@ -15638,11 +15638,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B06CC",
+          "cancel_probe": "Special window @ 0x90910F8C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425030348,
+              "addr": 2425425804,
               "kind": "special",
               "label": "Special window",
               "offset": 1088
@@ -15693,25 +15693,25 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B0A44 / Normal route @ 0x908B0A54: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908B0A64)",
+          "cancel_probe": "Special window @ 0x90911304 / Normal route @ 0x90911314: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x90911324)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425031236,
+              "addr": 2425426692,
               "kind": "special",
               "label": "Special window",
               "offset": 680
             },
             {
-              "addr": 2425031252,
-              "branch_addr": 2425031268,
+              "addr": 2425426708,
+              "branch_addr": 2425426724,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 696,
-              "target_abs": 2425034304,
+              "target_abs": 2425429760,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 110592
@@ -15762,11 +15762,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B0F60",
+          "cancel_probe": "Special window @ 0x90911820",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425032544,
+              "addr": 2425428000,
               "kind": "special",
               "label": "Special window",
               "offset": 1100
@@ -15817,11 +15817,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B155C",
+          "cancel_probe": "Special window @ 0x90911E1C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425034076,
+              "addr": 2425429532,
               "kind": "special",
               "label": "Special window",
               "offset": 1324
@@ -15872,11 +15872,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B19AC",
+          "cancel_probe": "Special window @ 0x9091226C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425035180,
+              "addr": 2425430636,
               "kind": "special",
               "label": "Special window",
               "offset": 876
@@ -16071,11 +16071,11 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B2AE8",
+          "cancel_probe": "Special window @ 0x909133A8",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425039592,
+              "addr": 2425435048,
               "kind": "special",
               "label": "Special window",
               "offset": 776
@@ -36454,25 +36454,25 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908AF284 / Normal route @ 0x908AF294: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x908AF2A4)",
+          "cancel_probe": "Special window @ 0x90926E24 / Normal route @ 0x90926E34: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x90926E44)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425025156,
+              "addr": 2425515556,
               "kind": "special",
               "label": "Special window",
               "offset": 956
             },
             {
-              "addr": 2425025172,
-              "branch_addr": 2425025188,
+              "addr": 2425515572,
+              "branch_addr": 2425515588,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 972,
-              "target_abs": 2425039020,
+              "target_abs": 2425529420,
               "target_id": 270,
               "target_label": "6B [0x010E]",
               "target_rel": 115308
@@ -36523,39 +36523,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908AF664 / Normal route @ 0x908AF674: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908AF684) / Normal route @ 0x908AF68C: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x908AF69C)",
+          "cancel_probe": "Special window @ 0x90927204 / Normal route @ 0x90927214: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x90927224) / Normal route @ 0x9092722C: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x9092723C)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425026148,
+              "addr": 2425516548,
               "kind": "special",
               "label": "Special window",
               "offset": 784
             },
             {
-              "addr": 2425026164,
-              "branch_addr": 2425026180,
+              "addr": 2425516564,
+              "branch_addr": 2425516580,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 800,
-              "target_abs": 2425030552,
+              "target_abs": 2425520952,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 106840
             },
             {
-              "addr": 2425026188,
-              "branch_addr": 2425026204,
+              "addr": 2425516588,
+              "branch_addr": 2425516604,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 824,
-              "target_abs": 2425032560,
+              "target_abs": 2425522960,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 108848
@@ -36606,11 +36606,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908AFB90",
+          "cancel_probe": "Special window @ 0x90927730",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425027472,
+              "addr": 2425517872,
               "kind": "special",
               "label": "Special window",
               "offset": 1116
@@ -36661,11 +36661,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B0160",
+          "cancel_probe": "Special window @ 0x90927D00",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425028960,
+              "addr": 2425519360,
               "kind": "special",
               "label": "Special window",
               "offset": 1280
@@ -36716,25 +36716,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B06C8 / Normal route @ 0x908B06D8: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908B06E8)",
+          "cancel_probe": "Special window @ 0x90928268 / Normal route @ 0x90928278: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x90928288)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425030344,
+              "addr": 2425520744,
               "kind": "special",
               "label": "Special window",
               "offset": 1176
             },
             {
-              "addr": 2425030360,
-              "branch_addr": 2425030376,
+              "addr": 2425520760,
+              "branch_addr": 2425520776,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1192,
-              "target_abs": 2425033916,
+              "target_abs": 2425524316,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 110204
@@ -36785,11 +36785,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B0EA0",
+          "cancel_probe": "Special window @ 0x90928A40",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425032352,
+              "addr": 2425522752,
               "kind": "special",
               "label": "Special window",
               "offset": 1800
@@ -36840,11 +36840,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B13D8",
+          "cancel_probe": "Special window @ 0x90928F78",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425033688,
+              "addr": 2425524088,
               "kind": "special",
               "label": "Special window",
               "offset": 1128
@@ -36895,11 +36895,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B1818",
+          "cancel_probe": "Special window @ 0x909293B8",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425034776,
+              "addr": 2425525176,
               "kind": "special",
               "label": "Special window",
               "offset": 860
@@ -37094,11 +37094,11 @@
           "attack_property": 18,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B2D7C",
+          "cancel_probe": "Special window @ 0x9092A91C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425040252,
+              "addr": 2425530652,
               "kind": "special",
               "label": "Special window",
               "offset": 1232
@@ -40375,11 +40375,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B2648",
+          "cancel_probe": "Special window @ 0x909D3268",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425038408,
+              "addr": 2426221160,
               "kind": "special",
               "label": "Special window",
               "offset": 1080
@@ -40430,39 +40430,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B2A84 / Normal route @ 0x908B2A94: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908B2AA4) / Normal route @ 0x908B2AAC: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x908B2ABC)",
+          "cancel_probe": "Special window @ 0x909D36A4 / Normal route @ 0x909D36B4: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x909D36C4) / Normal route @ 0x909D36CC: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x909D36DC)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425039492,
+              "addr": 2426222244,
               "kind": "special",
               "label": "Special window",
               "offset": 876
             },
             {
-              "addr": 2425039508,
-              "branch_addr": 2425039524,
+              "addr": 2426222260,
+              "branch_addr": 2426222276,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 892,
-              "target_abs": 2425043180,
+              "target_abs": 2426225932,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 107148
             },
             {
-              "addr": 2425039532,
-              "branch_addr": 2425039548,
+              "addr": 2426222284,
+              "branch_addr": 2426222300,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 916,
-              "target_abs": 2425044316,
+              "target_abs": 2426227068,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 108284
@@ -40513,11 +40513,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B2F10",
+          "cancel_probe": "Special window @ 0x909D3B30",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425040656,
+              "addr": 2426223408,
               "kind": "special",
               "label": "Special window",
               "offset": 956
@@ -40568,11 +40568,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B339C",
+          "cancel_probe": "Special window @ 0x909D3FBC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425041820,
+              "addr": 2426224572,
               "kind": "special",
               "label": "Special window",
               "offset": 956
@@ -40623,25 +40623,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B381C / Normal route @ 0x908B382C: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908B383C)",
+          "cancel_probe": "Special window @ 0x909D443C / Normal route @ 0x909D444C: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x909D445C)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425042972,
+              "addr": 2426225724,
               "kind": "special",
               "label": "Special window",
               "offset": 944
             },
             {
-              "addr": 2425042988,
-              "branch_addr": 2425043004,
+              "addr": 2426225740,
+              "branch_addr": 2426225756,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 960,
-              "target_abs": 2425045488,
+              "target_abs": 2426228240,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 109456
@@ -40692,11 +40692,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B3C8C",
+          "cancel_probe": "Special window @ 0x909D48AC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425044108,
+              "addr": 2426226860,
               "kind": "special",
               "label": "Special window",
               "offset": 928
@@ -40747,11 +40747,11 @@
           "attack_property": 20,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B410C",
+          "cancel_probe": "Special window @ 0x909D4D2C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425045260,
+              "addr": 2426228012,
               "kind": "special",
               "label": "Special window",
               "offset": 944
@@ -40802,11 +40802,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B45AC",
+          "cancel_probe": "Special window @ 0x909D51CC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425046444,
+              "addr": 2426229196,
               "kind": "special",
               "label": "Special window",
               "offset": 956
@@ -48967,25 +48967,25 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x9091C3C4 / Normal route @ 0x9091C3D4: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x9091C3E4)",
+          "cancel_probe": "Special window @ 0x9096FEE4 / Normal route @ 0x9096FEF4: held [+0x13CC] & 0x00000001 -> 6B [0x010E] (branch 0x9096FF04)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425471940,
+              "addr": 2425814756,
               "kind": "special",
               "label": "Special window",
               "offset": 948
             },
             {
-              "addr": 2425471956,
-              "branch_addr": 2425471972,
+              "addr": 2425814772,
+              "branch_addr": 2425814788,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 964,
-              "target_abs": 2425484292,
+              "target_abs": 2425827108,
               "target_id": 270,
               "target_label": "6B [0x010E]",
               "target_rel": 116420
@@ -49038,39 +49038,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x9091C76C / Normal route @ 0x9091C77C: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x9091C78C) / Normal route @ 0x9091C794: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x9091C7A4)",
+          "cancel_probe": "Special window @ 0x9097028C / Normal route @ 0x9097029C: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x909702AC) / Normal route @ 0x909702B4: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x909702C4)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425472876,
+              "addr": 2425815692,
               "kind": "special",
               "label": "Special window",
               "offset": 728
             },
             {
-              "addr": 2425472892,
-              "branch_addr": 2425472908,
+              "addr": 2425815708,
+              "branch_addr": 2425815724,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 744,
-              "target_abs": 2425477772,
+              "target_abs": 2425820588,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 109900
             },
             {
-              "addr": 2425472916,
-              "branch_addr": 2425472932,
+              "addr": 2425815732,
+              "branch_addr": 2425815748,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 768,
-              "target_abs": 2425478616,
+              "target_abs": 2425821432,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 110744
@@ -49123,11 +49123,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x9091D07C",
+          "cancel_probe": "Special window @ 0x90970B9C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425475196,
+              "addr": 2425818012,
               "kind": "special",
               "label": "Special window",
               "offset": 2112
@@ -49180,11 +49180,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x9091D668",
+          "cancel_probe": "Special window @ 0x90971188",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425476712,
+              "addr": 2425819528,
               "kind": "special",
               "label": "Special window",
               "offset": 1308
@@ -49237,25 +49237,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x9091D9BC / Normal route @ 0x9091D9CC: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x9091D9DC)",
+          "cancel_probe": "Special window @ 0x909714DC / Normal route @ 0x909714EC: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x909714FC)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425477564,
+              "addr": 2425820380,
               "kind": "special",
               "label": "Special window",
               "offset": 644
             },
             {
-              "addr": 2425477580,
-              "branch_addr": 2425477596,
+              "addr": 2425820396,
+              "branch_addr": 2425820412,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 660,
-              "target_abs": 2425479660,
+              "target_abs": 2425822476,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 111788
@@ -49308,11 +49308,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x9091DD08",
+          "cancel_probe": "Special window @ 0x90971828",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425478408,
+              "addr": 2425821224,
               "kind": "special",
               "label": "Special window",
               "offset": 636
@@ -49365,11 +49365,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x9091E108",
+          "cancel_probe": "Special window @ 0x90971C28",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425479432,
+              "addr": 2425822248,
               "kind": "special",
               "label": "Special window",
               "offset": 816
@@ -49422,11 +49422,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x9091E468",
+          "cancel_probe": "Special window @ 0x90971F88",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425480296,
+              "addr": 2425823112,
               "kind": "special",
               "label": "Special window",
               "offset": 636
@@ -49627,11 +49627,11 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x9091F638",
+          "cancel_probe": "Special window @ 0x90973158",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425484856,
+              "addr": 2425827672,
               "kind": "special",
               "label": "Special window",
               "offset": 564
@@ -68039,11 +68039,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B1D7C",
+          "cancel_probe": "Special window @ 0x909CA7DC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425036156,
+              "addr": 2426185692,
               "kind": "special",
               "label": "Special window",
               "offset": 1140
@@ -68094,25 +68094,25 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B2230 / Normal route @ 0x908B2240: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908B2250)",
+          "cancel_probe": "Special window @ 0x909CAC90 / Normal route @ 0x909CACA0: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x909CACB0)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425037360,
+              "addr": 2426186896,
               "kind": "special",
               "label": "Special window",
               "offset": 996
             },
             {
-              "addr": 2425037376,
-              "branch_addr": 2425037392,
+              "addr": 2426186912,
+              "branch_addr": 2426186928,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1012,
-              "target_abs": 2425042664,
+              "target_abs": 2426192200,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 108872
@@ -68163,11 +68163,11 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B2DF0",
+          "cancel_probe": "Special window @ 0x909CB850",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425040368,
+              "addr": 2426189904,
               "kind": "special",
               "label": "Special window",
               "offset": 2800
@@ -68218,11 +68218,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B3224",
+          "cancel_probe": "Special window @ 0x909CBC84",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425041444,
+              "addr": 2426190980,
               "kind": "special",
               "label": "Special window",
               "offset": 868
@@ -68273,25 +68273,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B3618 / Normal route @ 0x908B3628: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908B3638)",
+          "cancel_probe": "Special window @ 0x909CC078 / Normal route @ 0x909CC088: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x909CC098)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425042456,
+              "addr": 2426191992,
               "kind": "special",
               "label": "Special window",
               "offset": 804
             },
             {
-              "addr": 2425042472,
-              "branch_addr": 2425042488,
+              "addr": 2426192008,
+              "branch_addr": 2426192024,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 820,
-              "target_abs": 2425047120,
+              "target_abs": 2426196656,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 113328
@@ -68342,11 +68342,11 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B4248",
+          "cancel_probe": "Special window @ 0x909CCCA8",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425045576,
+              "addr": 2426195112,
               "kind": "special",
               "label": "Special window",
               "offset": 2912
@@ -68397,11 +68397,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B476C",
+          "cancel_probe": "Special window @ 0x909CD1CC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425046892,
+              "addr": 2426196428,
               "kind": "special",
               "label": "Special window",
               "offset": 1108
@@ -68429,7 +68429,7 @@
           "meter": 150,
           "move_name": "6C",
           "move_name_source": "lookup",
-          "multi_hit_count": 0,
+          "multi_hit_count": 1,
           "normal_confirmed": true,
           "property_probe_count": 8,
           "recovery": 3,
@@ -68452,11 +68452,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B4D28",
+          "cancel_probe": "Special window @ 0x909CD788",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425048360,
+              "addr": 2426197896,
               "kind": "special",
               "label": "Special window",
               "offset": 1240
@@ -83529,25 +83529,25 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x90962BC8 / Normal route @ 0x90962BD8: held [+0x13CC] & 0x00000008 -> 2B [0x0104] (branch 0x90962BE8)",
+          "cancel_probe": "Special window @ 0x909681C8 / Normal route @ 0x909681D8: held [+0x13CC] & 0x00000008 -> 2B [0x0104] (branch 0x909681E8)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425760712,
+              "addr": 2425782728,
               "kind": "special",
               "label": "Special window",
               "offset": 1008
             },
             {
-              "addr": 2425760728,
-              "branch_addr": 2425760744,
+              "addr": 2425782744,
+              "branch_addr": 2425782760,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1024,
-              "target_abs": 2425765196,
+              "target_abs": 2425787212,
               "target_id": 260,
               "target_label": "2B [0x0104]",
               "target_rel": 105804
@@ -83599,39 +83599,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x90963284 / Normal route @ 0x90963294: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x909632A4) / Normal route @ 0x909632AC: held [+0x13CC] & 0x00000002 -> 4C [0x0107] (branch 0x909632BC)",
+          "cancel_probe": "Special window @ 0x90968884 / Normal route @ 0x90968894: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x909688A4) / Normal route @ 0x909688AC: held [+0x13CC] & 0x00000002 -> 4C [0x0107] (branch 0x909688BC)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425762436,
+              "addr": 2425784452,
               "kind": "special",
               "label": "Special window",
               "offset": 1516
             },
             {
-              "addr": 2425762452,
-              "branch_addr": 2425762468,
+              "addr": 2425784468,
+              "branch_addr": 2425784484,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1532,
-              "target_abs": 2425766172,
+              "target_abs": 2425788188,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 106780
             },
             {
-              "addr": 2425762476,
-              "branch_addr": 2425762492,
+              "addr": 2425784492,
+              "branch_addr": 2425784508,
               "input_field": 5068,
               "input_mask": 2,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1556,
-              "target_abs": 2425767396,
+              "target_abs": 2425789412,
               "target_id": 263,
               "target_label": "4C [0x0107]",
               "target_rel": 108004
@@ -83683,11 +83683,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x909637F0",
+          "cancel_probe": "Special window @ 0x90968DF0",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425763824,
+              "addr": 2425785840,
               "kind": "special",
               "label": "Special window",
               "offset": 1180
@@ -83739,11 +83739,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x90963C7C",
+          "cancel_probe": "Special window @ 0x9096927C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425764988,
+              "addr": 2425787004,
               "kind": "special",
               "label": "Special window",
               "offset": 956
@@ -83794,25 +83794,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x9096404C / Normal route @ 0x9096405C: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x9096406C)",
+          "cancel_probe": "Special window @ 0x9096964C / Normal route @ 0x9096965C: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x9096966C)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425765964,
+              "addr": 2425787980,
               "kind": "special",
               "label": "Special window",
               "offset": 768
             },
             {
-              "addr": 2425765980,
-              "branch_addr": 2425765996,
+              "addr": 2425787996,
+              "branch_addr": 2425788012,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 784,
-              "target_abs": 2425768616,
+              "target_abs": 2425790632,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 109224
@@ -83863,11 +83863,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x90964500",
+          "cancel_probe": "Special window @ 0x90969B00",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425767168,
+              "addr": 2425789184,
               "kind": "special",
               "label": "Special window",
               "offset": 996
@@ -83895,7 +83895,7 @@
           "meter": 150,
           "move_name": "2C",
           "move_name_source": "lookup",
-          "multi_hit_count": 0,
+          "multi_hit_count": 1,
           "normal_confirmed": true,
           "property_probe_count": 4,
           "recovery": 31,
@@ -83966,11 +83966,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90964DA4",
+          "cancel_probe": "Special window @ 0x9096A3A4",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425769380,
+              "addr": 2425791396,
               "kind": "special",
               "label": "Special window",
               "offset": 764
@@ -85082,7 +85082,7 @@
           "family_role": "",
           "family_strength": "",
           "id": 270,
-          "kind": "normal",
+          "kind": "special",
           "move_name": "anim_010E",
           "move_name_source": "anim",
           "source": "table"
@@ -86876,11 +86876,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908AF33C",
+          "cancel_probe": "Special window @ 0x9097CE9C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425025340,
+              "addr": 2425867932,
               "kind": "special",
               "label": "Special window",
               "offset": 1036
@@ -86931,25 +86931,25 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908AF770 / Normal route @ 0x908AF780: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908AF790)",
+          "cancel_probe": "Special window @ 0x9097D2D0 / Normal route @ 0x9097D2E0: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x9097D2F0)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425026416,
+              "addr": 2425869008,
               "kind": "special",
               "label": "Special window",
               "offset": 868
             },
             {
-              "addr": 2425026432,
-              "branch_addr": 2425026448,
+              "addr": 2425869024,
+              "branch_addr": 2425869040,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 884,
-              "target_abs": 2425031316,
+              "target_abs": 2425873908,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 107604
@@ -87000,11 +87000,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908AFD7C",
+          "cancel_probe": "Special window @ 0x9097D8DC",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425027964,
+              "addr": 2425870556,
               "kind": "special",
               "label": "Special window",
               "offset": 1340
@@ -87055,11 +87055,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B02F8",
+          "cancel_probe": "Special window @ 0x9097DE58",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425029368,
+              "addr": 2425871960,
               "kind": "special",
               "label": "Special window",
               "offset": 1196
@@ -87158,11 +87158,11 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B0DE8",
+          "cancel_probe": "Special window @ 0x9097E948",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425032168,
+              "addr": 2425874760,
               "kind": "special",
               "label": "Special window",
               "offset": 852
@@ -87255,11 +87255,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B14CC",
+          "cancel_probe": "Special window @ 0x9097F02C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425033932,
+              "addr": 2425876524,
               "kind": "special",
               "label": "Special window",
               "offset": 1516
@@ -88297,7 +88297,7 @@
           "family_role": "",
           "family_strength": "",
           "id": 270,
-          "kind": "normal",
+          "kind": "special",
           "move_name": "anim_010E",
           "move_name_source": "anim",
           "source": "table"
@@ -94204,11 +94204,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x909740F8",
+          "cancel_probe": "Special window @ 0x908B2838",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425831672,
+              "addr": 2425038904,
               "kind": "special",
               "label": "Special window",
               "offset": 508
@@ -94259,39 +94259,39 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x909744E8 / Normal route @ 0x909744F8: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x90974508) / Normal route @ 0x90974510: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x90974520)",
+          "cancel_probe": "Special window @ 0x908B2C28 / Normal route @ 0x908B2C38: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908B2C48) / Normal route @ 0x908B2C50: held [+0x13CC] & 0x00000001 -> 6C [0x0106] (branch 0x908B2C60)",
           "cancel_window_count": 3,
           "cancel_windows": [
             {
-              "addr": 2425832680,
+              "addr": 2425039912,
               "kind": "special",
               "label": "Special window",
               "offset": 800
             },
             {
-              "addr": 2425832696,
-              "branch_addr": 2425832712,
+              "addr": 2425039928,
+              "branch_addr": 2425039944,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 816,
-              "target_abs": 2425836972,
+              "target_abs": 2425044204,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 108524
             },
             {
-              "addr": 2425832720,
-              "branch_addr": 2425832736,
+              "addr": 2425039952,
+              "branch_addr": 2425039968,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 840,
-              "target_abs": 2425838076,
+              "target_abs": 2425045308,
               "target_id": 262,
               "target_label": "6C [0x0106]",
               "target_rel": 109628
@@ -94342,11 +94342,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90974C68",
+          "cancel_probe": "Special window @ 0x908B33A8",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425834600,
+              "addr": 2425041832,
               "kind": "special",
               "label": "Special window",
               "offset": 1712
@@ -94397,11 +94397,11 @@
           "attack_property": 33,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x90975058",
+          "cancel_probe": "Special window @ 0x908B3798",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425835608,
+              "addr": 2425042840,
               "kind": "special",
               "label": "Special window",
               "offset": 800
@@ -94452,25 +94452,25 @@
           "attack_property": 34,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x909754DC / Normal route @ 0x909754EC: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x909754FC)",
+          "cancel_probe": "Special window @ 0x908B3C1C / Normal route @ 0x908B3C2C: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908B3C3C)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425836764,
+              "addr": 2425043996,
               "kind": "special",
               "label": "Special window",
               "offset": 948
             },
             {
-              "addr": 2425836780,
-              "branch_addr": 2425836796,
+              "addr": 2425044012,
+              "branch_addr": 2425044028,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 964,
-              "target_abs": 2425839280,
+              "target_abs": 2425046512,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 110832
@@ -94521,11 +94521,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x9097592C",
+          "cancel_probe": "Special window @ 0x908B406C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425837868,
+              "addr": 2425045100,
               "kind": "special",
               "label": "Special window",
               "offset": 896
@@ -94553,7 +94553,7 @@
           "meter": 150,
           "move_name": "2C",
           "move_name_source": "lookup",
-          "multi_hit_count": 0,
+          "multi_hit_count": 1,
           "normal_confirmed": true,
           "property_probe_count": 5,
           "recovery": 24,
@@ -94576,11 +94576,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x90975DCC",
+          "cancel_probe": "Special window @ 0x908B450C",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425839052,
+              "addr": 2425046284,
               "kind": "special",
               "label": "Special window",
               "offset": 976
@@ -94608,7 +94608,7 @@
           "meter": 150,
           "move_name": "6C",
           "move_name_source": "lookup",
-          "multi_hit_count": 0,
+          "multi_hit_count": 1,
           "normal_confirmed": true,
           "property_probe_count": 5,
           "recovery": 21,
@@ -94631,11 +94631,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x909761E8",
+          "cancel_probe": "Special window @ 0x908B4928",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425840104,
+              "addr": 2425047336,
               "kind": "special",
               "label": "Special window",
               "offset": 824
@@ -95713,7 +95713,7 @@
           "family_role": "",
           "family_strength": "",
           "id": 270,
-          "kind": "normal",
+          "kind": "special",
           "move_name": "anim_010E",
           "move_name_source": "anim",
           "recovery": 19,
@@ -97720,11 +97720,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B2E94",
+          "cancel_probe": "Special window @ 0x908BC274",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425040532,
+              "addr": 2425078388,
               "kind": "special",
               "label": "Special window",
               "offset": 964
@@ -97775,25 +97775,25 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B323C / Normal route @ 0x908B324C: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908B325C)",
+          "cancel_probe": "Special window @ 0x908BC61C / Normal route @ 0x908BC62C: held [+0x13CC] & 0x00000008 -> 2C [0x0105] (branch 0x908BC63C)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425041468,
+              "addr": 2425079324,
               "kind": "special",
               "label": "Special window",
               "offset": 728
             },
             {
-              "addr": 2425041484,
-              "branch_addr": 2425041500,
+              "addr": 2425079340,
+              "branch_addr": 2425079356,
               "input_field": 5068,
               "input_mask": 8,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 744,
-              "target_abs": 2425045712,
+              "target_abs": 2425083568,
               "target_id": 261,
               "target_label": "2C [0x0105]",
               "target_rel": 109680
@@ -97844,11 +97844,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B3758",
+          "cancel_probe": "Special window @ 0x908BCB38",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425042776,
+              "addr": 2425080632,
               "kind": "special",
               "label": "Special window",
               "offset": 1100
@@ -97899,11 +97899,11 @@
           "attack_property": 9,
           "baroque_probe": "",
           "blockstun": 9,
-          "cancel_probe": "Special window @ 0x908B3D08",
+          "cancel_probe": "Special window @ 0x908BD0E8",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425044232,
+              "addr": 2425082088,
               "kind": "special",
               "label": "Special window",
               "offset": 1248
@@ -97954,25 +97954,25 @@
           "attack_property": 10,
           "baroque_probe": "",
           "blockstun": 12,
-          "cancel_probe": "Special window @ 0x908B4200 / Normal route @ 0x908B4210: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908B4220)",
+          "cancel_probe": "Special window @ 0x908BD5E0 / Normal route @ 0x908BD5F0: held [+0x13CC] & 0x00000001 -> 3C [0x0108] (branch 0x908BD600)",
           "cancel_window_count": 2,
           "cancel_windows": [
             {
-              "addr": 2425045504,
+              "addr": 2425083360,
               "kind": "special",
               "label": "Special window",
               "offset": 1064
             },
             {
-              "addr": 2425045520,
-              "branch_addr": 2425045536,
+              "addr": 2425083376,
+              "branch_addr": 2425083392,
               "input_field": 5068,
               "input_mask": 1,
               "input_source": "held",
               "kind": "normal",
               "label": "Normal route",
               "offset": 1080,
-              "target_abs": 2425047704,
+              "target_abs": 2425085560,
               "target_id": 264,
               "target_label": "3C [0x0108]",
               "target_rel": 111672
@@ -98023,11 +98023,11 @@
           "attack_property": 36,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B49A0",
+          "cancel_probe": "Special window @ 0x908BDD80",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425047456,
+              "addr": 2425085312,
               "kind": "special",
               "label": "Special window",
               "offset": 1744
@@ -98055,7 +98055,7 @@
           "meter": 150,
           "move_name": "2C",
           "move_name_source": "lookup",
-          "multi_hit_count": 0,
+          "multi_hit_count": 1,
           "normal_confirmed": true,
           "property_probe_count": 4,
           "recovery": 44,
@@ -98126,11 +98126,11 @@
           "attack_property": 12,
           "baroque_probe": "",
           "blockstun": 15,
-          "cancel_probe": "Special window @ 0x908B4DE0",
+          "cancel_probe": "Special window @ 0x908BE1C0",
           "cancel_window_count": 1,
           "cancel_windows": [
             {
-              "addr": 2425048544,
+              "addr": 2425086400,
               "kind": "special",
               "label": "Special window",
               "offset": 840
@@ -99073,7 +99073,7 @@
           "family_role": "",
           "family_strength": "",
           "id": 270,
-          "kind": "normal",
+          "kind": "special",
           "move_name": "anim_010E",
           "move_name_source": "anim",
           "recovery": 34,

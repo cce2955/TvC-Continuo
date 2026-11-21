@@ -30,8 +30,8 @@ A good first setup is HUD Settings > Core, then enable Hitboxes or Hurtboxes onl
 HUD Settings
 Opens the display switches and built-in Core, Research, and Full sets. Save the current switches and overlay appearance as a named preset, then load it later. Appearance and positions opens the visual customizer.
 
-Overlay
-Shows or hides the in-game overlay. HUD information switches live in HUD Settings.
+Core HUD
+Shows or hides the team HUD. Use the separate Hitboxes, Hurtboxes, and Ruler switches to see collision geometry. The hitbox legend lets you choose Sphere or Box. A dim preview marks startup and recovery. Each attack shape brightens while its native enable flag is set.
 
 Hit / Block
 Shows the live interaction ribbon for recent hit and block results.
@@ -292,6 +292,11 @@ Opens the separate Advantage Matrix for broader character-to-character punish co
     (
         "Training Tools",
         """TRAINING TOOLS
+
+Analysis
+Opens a separate analysis window. Start new enables the detailed Combo Lab recording for attempts, resources, damage, move starts, possible assist entries, and recent events. Use End round for manual round reviews. Stop archives that detailed session locally; it does not stop background match tracking. Save exports a chosen copy and Open reads earlier histories.
+
+Matchups in Analysis tracks verified results quietly in the background by default, even while full Combo Lab recording is off. Choose your side (P1 or P2); saved match history loads automatically and can be refreshed. The report compares raw team, character, starting-point, point-exposure, and move counts across sessions. A result is counted only after winner proof; unresolved matches remain uncounted. Turn tracking off for training KOs. Reset match stats clears the report without deleting saved analysis files.
 
 Cancel Mapper
 Read-only map of known cancel relationships. Choose a source move to inspect Allowed, Eligible, Blocked, or Unknown targets.

@@ -1,0 +1,213 @@
+WII RUNTIME 0x800710c0 -> DOL FILE OFFSET 0x0005b5a0
+QUERY 0x5b5a0 FUNCTION 0005b5a0 HitData_BindSphereList_Type1
+ENTRY REFERENCES: 000669a0
+
+void HitData_BindSphereList_Type1
+               (int param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,
+               undefined4 param_5,undefined4 param_6,undefined4 param_7)
+
+{
+  *(undefined4 *)(param_1 + 0x298) = param_2;
+  *(undefined4 *)(param_1 + 0x29c) = param_3;
+  *(undefined4 *)(param_1 + 0x2a0) = param_4;
+  *(undefined4 *)(param_1 + 0x2a4) = 1;
+  *(undefined4 *)(param_1 + 0x2a8) = param_5;
+  *(undefined4 *)(param_1 + 0x2ac) = param_6;
+  *(undefined4 *)(param_1 + 0x2b0) = param_7;
+  *(undefined4 *)(param_1 + 0x2d4) = 0x3c;
+  HitData_InitDefaults();
+  return;
+}
+
+
+
+WII RUNTIME 0x800710ec -> DOL FILE OFFSET 0x0005b5cc
+QUERY 0x5b5cc FUNCTION 0005b5cc HitData_BindLineList_Type2
+ENTRY REFERENCES: 000268ec, 00066a40
+
+void HitData_BindLineList_Type2
+               (int param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,
+               undefined4 param_5,undefined4 param_6,undefined4 param_7)
+
+{
+  *(undefined4 *)(param_1 + 0x298) = param_2;
+  *(undefined4 *)(param_1 + 0x29c) = param_3;
+  *(undefined4 *)(param_1 + 0x2a0) = param_4;
+  *(undefined4 *)(param_1 + 0x2a4) = 2;
+  *(undefined4 *)(param_1 + 0x2a8) = param_5;
+  *(undefined4 *)(param_1 + 0x2ac) = param_6;
+  *(undefined4 *)(param_1 + 0x2b0) = param_7;
+  *(undefined4 *)(param_1 + 0x2d4) = 0x3c;
+  HitData_InitDefaults();
+  return;
+}
+
+
+
+WII RUNTIME 0x800a61e8 -> DOL FILE OFFSET 0x000906c8
+QUERY 0x906c8 FUNCTION 000906c8 FUN_000906c8
+ENTRY REFERENCES: 0008fdbc, 0008c13c, 0008c154, 0008c254, 0008c394, 0008c1bc, 0008c2dc
+
+undefined4 FUN_000906c8(uint *param_1)
+
+{
+  if ((*param_1 & 1) == 0) {
+    return 0;
+  }
+  if ((*param_1 & 2) == 0) {
+    return 0;
+  }
+  return 1;
+}
+
+
+
+WII RUNTIME 0x800b9868 -> DOL FILE OFFSET 0x000a3d48
+QUERY 0xa3d48 FUNCTION 000a3d48 FUN_000a3d48
+ENTRY REFERENCES: 0008fe2c, 0008ff2c, 0008ff84, 00090684
+
+/* WARNING: Removing unreachable block (ram,0x000a3f1c) */
+/* WARNING: Removing unreachable block (ram,0x000a3f0c) */
+/* WARNING: Removing unreachable block (ram,0x000a3efc) */
+/* WARNING: Removing unreachable block (ram,0x000a3f04) */
+/* WARNING: Removing unreachable block (ram,0x000a3f14) */
+/* WARNING: Removing unreachable block (ram,0x000a3f24) */
+
+void FUN_000a3d48(double param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  float fVar1;
+  bool bVar2;
+  int unaff_r2;
+  int unaff_r13;
+  int iVar3;
+  float *pfVar4;
+  undefined4 in_GQR0;
+  double dVar5;
+  undefined8 in_f26;
+  undefined8 in_f27;
+  double dVar6;
+  undefined8 in_f28;
+  double dVar7;
+  undefined8 in_f29;
+  double dVar8;
+  undefined8 in_f30;
+  double dVar9;
+  undefined8 in_f31;
+  double dVar10;
+  undefined4 local_178;
+  undefined1 auStack_174 [4];
+  undefined1 auStack_170 [48];
+  float local_140 [53];
+  undefined1 auStack_58 [16];
+  undefined1 auStack_48 [16];
+  undefined1 auStack_38 [16];
+  undefined1 auStack_28 [16];
+  undefined1 auStack_18 [16];
+  undefined1 auStack_8 [8];
+  
+  __psq_st0(auStack_8,(int)((ulonglong)in_f31 >> 0x20),in_GQR0);
+  __psq_st1(auStack_8,(int)in_f31,in_GQR0);
+  __psq_st0(auStack_18,(int)((ulonglong)in_f30 >> 0x20),in_GQR0);
+  __psq_st1(auStack_18,(int)in_f30,in_GQR0);
+  __psq_st0(auStack_28,(int)((ulonglong)in_f29 >> 0x20),in_GQR0);
+  __psq_st1(auStack_28,(int)in_f29,in_GQR0);
+  __psq_st0(auStack_38,(int)((ulonglong)in_f28 >> 0x20),in_GQR0);
+  __psq_st1(auStack_38,(int)in_f28,in_GQR0);
+  __psq_st0(auStack_48,(int)((ulonglong)in_f27 >> 0x20),in_GQR0);
+  __psq_st1(auStack_48,(int)in_f27,in_GQR0);
+  __psq_st0(auStack_58,(int)((ulonglong)in_f26 >> 0x20),in_GQR0);
+  __psq_st1(auStack_58,(int)in_f26,in_GQR0);
+  local_178 = FUN_00086c2c();
+  FUN_0001481c(auStack_174,&local_178);
+  FUN_00300320(auStack_174,auStack_170);
+  thunk_FUN_00080520(auStack_170,auStack_170);
+  FUN_00137f40(auStack_170,3,param_2);
+  fVar1 = *(float *)(unaff_r2 + -0x6640);
+  pfVar4 = local_140;
+  dVar8 = (double)*(float *)(unaff_r2 + -0x6620);
+  iVar3 = 0;
+  dVar7 = (double)*(float *)(unaff_r2 + -0x6624);
+  dVar10 = (double)*(float *)(unaff_r2 + -0x6628);
+  do {
+    dVar6 = (double)fVar1;
+    bVar2 = false;
+    if ((dVar7 < dVar6) && (dVar6 < dVar8)) {
+      bVar2 = true;
+    }
+    if (bVar2) {
+      dVar9 = (double)*(float *)(unaff_r2 + -0x6634);
+    }
+    else {
+      dVar9 = (double)FUN_00004984(dVar6);
+    }
+    bVar2 = false;
+    if ((dVar7 < dVar6) && (dVar6 < dVar8)) {
+      bVar2 = true;
+    }
+    if (bVar2) {
+      dVar5 = (double)*(float *)(unaff_r2 + -0x6640);
+    }
+    else {
+      dVar5 = (double)FUN_00004990(dVar6);
+    }
+    FUN_0000475c((double)(float)(param_1 * dVar5),(double)(float)(param_1 * dVar9),
+                 (double)*(float *)(unaff_r2 + -0x6640),pfVar4);
+    thunk_FUN_00004770(pfVar4,auStack_170,pfVar4);
+    iVar3 = iVar3 + 1;
+    fVar1 = (float)(dVar6 + dVar10);
+    pfVar4 = pfVar4 + 3;
+  } while (iVar3 < 0x11);
+  FUN_000a3054(0);
+  FUN_001f971c(*(int *)(unaff_r13 + -0x69e8) + *(int *)(unaff_r13 + -0x69d8),
+               0x10000 - *(int *)(unaff_r13 + -0x69d8));
+  FUN_001f6028(0xb0,0,0x11);
+  pfVar4 = local_140;
+  iVar3 = 0;
+  do {
+    FUN_000a4914((double)*pfVar4,(double)pfVar4[1],(double)pfVar4[2]);
+    FUN_000a4928(param_3);
+    iVar3 = iVar3 + 1;
+    pfVar4 = pfVar4 + 3;
+  } while (iVar3 < 0x11);
+  FUN_000a4910();
+  FUN_000a33e4(unaff_r13 + -0x69d8);
+  __psq_l0(auStack_8,in_GQR0);
+  __psq_l1(auStack_8,in_GQR0);
+  __psq_l0(auStack_18,in_GQR0);
+  __psq_l1(auStack_18,in_GQR0);
+  __psq_l0(auStack_28,in_GQR0);
+  __psq_l1(auStack_28,in_GQR0);
+  __psq_l0(auStack_38,in_GQR0);
+  __psq_l1(auStack_38,in_GQR0);
+  __psq_l0(auStack_48,in_GQR0);
+  __psq_l1(auStack_48,in_GQR0);
+  __psq_l0(auStack_58,in_GQR0);
+  __psq_l1(auStack_58,in_GQR0);
+  return;
+}
+
+
+
+WII RUNTIME 0x80072d84 -> DOL FILE OFFSET 0x0005d264
+QUERY 0x5d264 FUNCTION 0005d264 FUN_0005d264
+ENTRY REFERENCES: 0008fe88, 0005d2b0, 00069cac, 00069e48, 0005b918, 0006d34c, 0006d43c, 001871b0
+
+uint FUN_0005d264(uint *param_1)
+
+{
+  return *param_1 & 1;
+}
+
+
+
+WII RUNTIME 0x80072e80 -> DOL FILE OFFSET 0x0005d360
+QUERY 0x5d360 FUNCTION 0005d360 FUN_0005d360
+ENTRY REFERENCES: 000902f8, 0005d39c
+
+uint FUN_0005d360(uint *param_1)
+
+{
+  return *param_1 & 1;
+}
+

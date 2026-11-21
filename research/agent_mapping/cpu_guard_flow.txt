@@ -1,0 +1,1487 @@
+80047C40 rlwinm. r0, r0, 0, 9, 9
+80047C44 bc    4, 2, 0x80047D7C
+80047C48 lwz     r0, 4612(r31)
+80047C4C cmpwi   r0, 2
+80047C50 bc    4, 1, 0x80047D7C
+80047C54 lwz     r0, 17628(r31)
+80047C58 cmplwi  r0, 0x0010
+80047C5C bc    12, 1, 0x80047D7C
+80047C60 or   r3, r31, r31
+80047C64 bl      0x800793B0
+80047C68 cmpwi   r3, 0
+80047C6C bc    12, 2, 0x80047C9C
+80047C70 lis     r4, -32705
+80047C74 addi    r3, r4, 22080
+80047C78 lwz     r0, 12(r3)
+80047C7C cmpwi   r0, 1
+80047C80 bc    4, 2, 0x80047C9C
+80047C84 lwz     r0, 22080(r4)
+80047C88 cmpwi   r0, 5
+80047C8C bc    12, 2, 0x80047C9C
+80047C90 li      r0, 1
+80047C94 stw     r0, 17800(r31)
+80047C98 b       0x80047D7C
+80047C9C or   r3, r31, r31
+80047CA0 bl      0x8013C848
+80047CA4 cmpwi   r3, 1
+80047CA8 bc    12, 2, 0x80047CBC
+80047CAC or   r3, r31, r31
+80047CB0 bl      0x8013C848
+80047CB4 cmpwi   r3, 2
+80047CB8 bc    4, 2, 0x80047D0C
+80047CBC or   r3, r31, r31
+80047CC0 li      r4, 128
+80047CC4 li      r5, 16
+80047CC8 li      r6, 0
+80047CCC li      r7, 0
+80047CD0 bl      0x8013D284
+80047CD4 or   r29, r3, r3
+80047CD8 or   r3, r31, r31
+80047CDC li      r4, 64
+80047CE0 li      r5, 16
+80047CE4 li      r6, 0
+80047CE8 li      r7, 0
+80047CEC bl      0x8013D284
+80047CF0 cmpwi   r29, -1
+80047CF4 bc    4, 2, 0x80047D00
+80047CF8 cmpwi   r3, -1
+80047CFC bc    12, 2, 0x80047D7C
+80047D00 li      r0, 1
+80047D04 stw     r0, 17800(r31)
+80047D08 b       0x80047D7C
+80047D0C or   r3, r31, r31
+80047D10 li      r4, 128
+80047D14 li      r5, 16
+80047D18 li      r6, 0
+80047D1C li      r7, 0
+80047D20 bl      0x8013D284
+80047D24 or   r29, r3, r3
+80047D28 or   r3, r31, r31
+80047D2C li      r4, 64
+80047D30 li      r5, 16
+80047D34 li      r6, 0
+80047D38 li      r7, 0
+80047D3C bl      0x8013D284
+80047D40 or   r30, r3, r3
+80047D44 or   r3, r31, r31
+80047D48 li      r4, 32
+80047D4C li      r5, 16
+80047D50 li      r6, 0
+80047D54 li      r7, 0
+80047D58 bl      0x8013D284
+80047D5C cmpwi   r29, -1
+80047D60 bc    12, 2, 0x80047D7C
+80047D64 cmpwi   r30, -1
+80047D68 bc    12, 2, 0x80047D7C
+80047D6C cmpwi   r3, -1
+80047D70 bc    12, 2, 0x80047D7C
+80047D74 li      r0, 1
+80047D78 stw     r0, 17800(r31)
+80047D7C lwz     r0, 8476(r31)
+80047D80 cmpwi   r0, 0
+8004E2C0 lwz     r0, 580(r16)
+8004E2C4 or   r31, r3, r3
+8004E2C8 rlwinm. r0, r0, 0, 29, 29
+8004E2CC bc    12, 2, 0x8004E30C
+8004E2D0 lwz     r0, 580(r18)
+8004E2D4 rlwinm. r0, r0, 0, 29, 29
+8004E2D8 bc    12, 2, 0x8004E30C
+8004E2DC or   r3, r18, r18
+8004E2E0 or   r4, r16, r16
+8004E2E4 bl      0x80050328
+8004E2E8 cmpwi   r3, 0
+8004E2EC bc    12, 2, 0x8004E30C
+8004E2F0 lwz     r0, 580(r18)
+8004E2F4 rlwinm r22, r22, 0, 30, 28
+8004E2F8 rlwinm r0, r0, 0, 30, 28
+8004E2FC stw     r0, 580(r18)
+8004E300 lwz     r0, 32(r17)
+8004E304 rlwinm r0, r0, 0, 30, 28
+8004E308 stw     r0, 32(r17)
+8004E30C cmpwi   r31, 0
+8004E310 bc    4, 2, 0x8004E5F0
+8004E314 rlwinm. r15, r22, 0, 29, 29
+8004E318 li      r29, 0
+8004E31C bc    12, 2, 0x8004E32C
+8004E320 rlwinm. r0, r22, 0, 12, 12
+8004E324 bc    4, 2, 0x8004E32C
+8004E328 li      r29, 1
+8004E32C rlwinm. r0, r22, 0, 28, 28
+8004E330 bc    12, 2, 0x8004E338
+8004E334 li      r29, 1
+8004E338 lwz     r0, 128(r18)
+8004E33C rlwinm. r0, r0, 0, 6, 6
+8004E340 bc    12, 2, 0x8004E348
+8004E344 li      r29, 1
+8004E348 lwz     r0, 124(r18)
+8004E34C rlwinm. r0, r0, 0, 4, 4
+8004E350 bc    12, 2, 0x8004E358
+8004E354 li      r29, 1
+8004E358 li      r3, 0
+8004E35C bl      0x8006EB24
+8004E360 cmpwi   r3, 0
+8004E364 bc    12, 2, 0x8004E380
+8004E368 rlwinm. r0, r22, 0, 22, 22
+8004E36C bc    12, 2, 0x8004E380
+8004E370 lwz     r0, 88(r18)
+8004E374 rlwinm. r0, r0, 0, 22, 22
+8004E378 bc    12, 2, 0x8004E380
+8004E37C li      r29, 1
+8004E380 cmpwi   r29, 0
+8004E384 bc    4, 2, 0x8004E5F0
+8004E388 lwz     r0, 96(r18)
+8004E38C rlwinm. r0, r0, 0, 7, 7
+8004E390 bc    4, 2, 0x8004E5C0
+8004E394 or   r3, r18, r18
+8004E398 bl      0x8006C800
+8004E39C lwz     r3, 88(r18)
+8004E3A0 rlwinm. r0, r3, 0, 22, 22
+8004E3A4 bc    12, 2, 0x8004E3D8
+8004E3A8 rlwinm. r0, r3, 0, 31, 31
+8004E3AC bc    4, 2, 0x8004E3D8
+8004E3B0 or   r3, r18, r18
+8004E3B4 bl      0x8014435C
+8004E3B8 cmpwi   r3, 0
+8004E3BC bc    12, 2, 0x8004E5C0
+8004E3C0 li      r0, 2
+8004E3C4 stw     r0, 17820(r18)
+8004E3C8 lwz     r0, 12(r1)
+8004E3CC oris    r0, r0, 0x1040
+8004E3D0 stw     r0, 12(r1)
+8004E3D4 b       0x8004E5C0
+8004E3D8 or   r3, r18, r18
+8004E3DC li      r29, 0
+8004E3E0 bl      0x800793B0
+8004E3E4 cmpwi   r3, 0
+8004E3E8 bc    12, 2, 0x8004E418
+8004E3EC lis     r4, -32705
+8004E3F0 addi    r3, r4, 22080
+8004E3F4 lwz     r0, 16(r3)
+8004E3F8 cmpwi   r0, 0
+8004E3FC bc    12, 2, 0x8004E418
+8004E400 lwz     r0, 22080(r4)
+8004E404 cmpwi   r0, 5
+8004E408 bc    12, 2, 0x8004E418
+8004E40C or   r3, r18, r18
+8004E410 bl      0x80145B08
+8004E414 or   r29, r3, r3
+8004E418 cmpwi   r29, 0
+8004E41C bc    12, 2, 0x8004E48C
+8004E420 cmpwi   r30, 1
+8004E424 bc    12, 2, 0x8004E48C
+8004E428 lis     r3, 26214
+8004E42C lwz     r0, 36(r18)
+8004E430 addi    r4, r3, 26215
+8004E434 li      r5, 0
+8004E438 mulhw   r0, r4, r0
+8004E43C or   r3, r18, r18
+8004E440 srawi r0, r0, 2
+8004E444 rlwinm r4, r0, 1, 31, 31
+8004E448 add   r0, r0, r4
+8004E44C neg  r4, r0
+8004E450 bl      0x800529D4
+8004E454 lfs     f1, -30284(r2)
+8004E458 or   r3, r18, r18
+8004E45C bl      0x80052F44
+8004E460 cmpwi   r29, 1
+8004E464 bc    12, 2, 0x8004E474
+8004E468 cmpwi   r29, 2
+8004E46C bc    12, 2, 0x8004E480
+8004E470 b       0x8004F8B8
+8004E474 li      r0, 448
+8004E478 stw     r0, 524(r18)
+8004E47C b       0x8004F8B8
+8004E480 li      r0, 450
+8004E484 stw     r0, 524(r18)
+8004E488 b       0x8004F8B8
+8004E48C lwz     r4, 8(r1)
+8004E490 or   r3, r18, r18
+8004E494 bl      0x801444C8
+8004E498 cmpwi   r15, 0
+8004E49C li      r0, 1
+8004E4A0 stw     r0, 17820(r18)
+8004E4A4 bc    12, 2, 0x8004E4B4
+8004E4A8 rlwinm. r0, r22, 0, 12, 12
+8004E4AC bc    4, 2, 0x8004E4B4
+8004E4B0 li      r3, 0
+8004E4B4 cmpwi   r3, 1
+8004E4B8 bc    12, 2, 0x8004E4C8
+8004E4BC cmpwi   r3, 2
+8004E4C0 bc    12, 2, 0x8004E528
+8004E4C4 b       0x8004E5C0
+8004E4C8 rlwinm. r0, r23, 0, 26, 26
+8004E4CC bc    12, 2, 0x8004E4EC
+8004E4D0 lwz     r0, 17816(r18)
+8004E4D4 cmpwi   r0, 1
+8004E4D8 bc    4, 2, 0x8004E5C0
+8004E4DC lwz     r0, 12(r1)
+8004E4E0 oris    r0, r0, 0x1040
+8004E4E4 stw     r0, 12(r1)
+8004E4E8 b       0x8004E5C0
+8004E4EC rlwinm. r0, r23, 0, 27, 27
+8004E4F0 bc    12, 2, 0x8004E510
+8004E4F4 lwz     r0, 17816(r18)
+8004E4F8 cmpwi   r0, 0
+8004E4FC bc    4, 2, 0x8004E5C0
+8004E500 lwz     r0, 12(r1)
+8004E504 oris    r0, r0, 0x1040
+8004E508 stw     r0, 12(r1)
+8004E50C b       0x8004E5C0
+8004E510 rlwinm. r0, r23, 0, 28, 28
+8004E514 bc    12, 2, 0x8004E5C0
+8004E518 lwz     r0, 12(r1)
+8004E51C oris    r0, r0, 0x1040
+8004E520 stw     r0, 12(r1)
+8004E524 b       0x8004E5C0
+8004E528 cmpwi   r29, 1
+8004E52C bc    4, 2, 0x8004E57C
+8004E530 cmpwi   r30, 1
+8004E534 bc    4, 2, 0x8004E57C
+8004E538 lis     r3, 26214
+8004E53C lwz     r0, 36(r18)
+8004E540 addi    r4, r3, 26215
+8004E544 li      r5, 0
+8004E548 mulhw   r0, r4, r0
+8004E54C or   r3, r18, r18
+8004E550 srawi r0, r0, 2
+8004E554 rlwinm r4, r0, 1, 31, 31
+8004E558 add   r0, r0, r4
+8004E55C neg  r4, r0
+8004E560 bl      0x800529D4
+8004E564 lfs     f1, -30284(r2)
+8004E568 or   r3, r18, r18
+8004E56C bl      0x80052F44
+8004E570 li      r0, 448
+8004E574 stw     r0, 524(r18)
+8004E578 b       0x8004F8B8
+8004E57C rlwinm. r0, r23, 0, 26, 26
+8004E580 bc    12, 2, 0x8004E594
+8004E584 lwz     r0, 12(r1)
+8004E588 oris    r0, r0, 0x1040
+8004E58C stw     r0, 12(r1)
+8004E590 b       0x8004E5C0
+8004E594 rlwinm. r0, r23, 0, 27, 27
+8004E598 bc    12, 2, 0x8004E5AC
+8004E59C lwz     r0, 12(r1)
+8004E5A0 oris    r0, r0, 0x1040
+8004E5A4 stw     r0, 12(r1)
+8004E5A8 b       0x8004E5C0
+8004E5AC rlwinm. r0, r23, 0, 28, 28
+8004E5B0 bc    12, 2, 0x8004E5C0
+8004E5B4 lwz     r0, 12(r1)
+8004E5B8 oris    r0, r0, 0x1040
+8004E5BC stw     r0, 12(r1)
+8004E5C0 lwz     r0, 12(r1)
+8004E5C4 andis.  r0, r0, 0x1040
+8004E5C8 bc    12, 2, 0x8004E5F0
+8004E5CC cmpwi   r20, 0
+8004E5D0 lwz     r27, 96(r17)
+8004E5D4 lwz     r25, 112(r17)
+8004E5D8 li      r26, -1
+8004E5DC li      r24, 0
+8004E5E0 bc    12, 2, 0x8004E5F0
+8004E5E4 lwz     r0, 24(r20)
+8004E5E8 oris    r0, r0, 0x0008
+8004E5EC stw     r0, 24(r20)
+8004E5F0 lwz     r0, 100(r18)
+8004E5F4 or   r3, r18, r18
+8004E5F8 rlwinm r0, r0, 0, 3, 1
+8004E5FC stw     r0, 100(r18)
+8004E600 bl      0x80057BD8
+8004E604 cmpwi   r3, 0
+8004E608 bc    4, 2, 0x8004E680
+8004E60C rlwinm. r0, r23, 0, 10, 10
+8004E610 bc    4, 2, 0x8004E61C
+8004E614 rlwinm. r0, r22, 0, 12, 12
+8004E618 bc    12, 2, 0x8004E680
+8004E61C lwz     r0, 12(r1)
+8004E620 andis.  r0, r0, 0x1040
+8004E624 bc    4, 2, 0x8004E680
+8004E628 lwz     r0, 17572(r18)
+8004E62C cmpwi   r0, 0
+8004E630 bc    12, 2, 0x8004E680
+8004E634 lwz     r0, 100(r18)
+8004E638 oris    r3, r0, 0x2000
+8004E63C stw     r3, 100(r18)
+8004E640 lwz     r0, 96(r16)
+8004E644 andis.  r0, r0, 0x0900
+8004E648 bc    12, 2, 0x8004E680
+8004E64C cmpwi   r20, 0
+8004E650 bc    4, 2, 0x8004E66C
+8004E654 lwz     r0, 80(r17)
+8004E658 cmpwi   r0, 0
+8004E65C bc    12, 0, 0x8004E680
+8004E660 rlwinm r0, r3, 0, 3, 1
+8004E664 stw     r0, 100(r18)
+8004E668 b       0x8004E680
+8004E66C lwz     r0, 1564(r20)
+8004E670 cmpwi   r0, 0
+8004E674 bc    12, 0, 0x8004E680
+8004E678 rlwinm r0, r3, 0, 3, 1
+8004E67C stw     r0, 100(r18)
+8004E680 lwz     r3, 12(r1)
+8004E684 rlwinm. r0, r3, 0, 3, 1
+8004E688 bc    4, 2, 0x8004F28C
+8004E68C or   r3, r16, r16
+8004E690 bl      0x80052758
+8004E694 or   r15, r3, r3
+8004E698 li      r3, 6
+8004E69C bl      0x8006EB24
+8004E6A0 cmpwi   r3, 0
+8004E6A4 bc    12, 2, 0x8004E76C
+8004E6A8 lwz     r4, 580(r16)
+8004E6AC li      r0, 0
+8004E6B0 rlwinm. r3, r4, 0, 29, 29
+8004E6B4 bc    12, 2, 0x8004E6C0
+8004E6B8 rlwinm. r3, r4, 0, 12, 12
+8004E6BC bc    12, 2, 0x8004E724
+8004E6C0 lwz     r4, 112(r18)
+8004E6C4 rlwinm. r3, r4, 0, 30, 30
+8004E6C8 bc    12, 2, 0x8004E6F0
+8004E6CC lwz     r3, 88(r18)
+8004E6D0 rlwinm. r3, r3, 0, 21, 22
+8004E6D4 bc    4, 2, 0x8004E724
+8004E6D8 rlwinm. r3, r23, 0, 27, 27
+8004E6DC bc    4, 2, 0x8004E724
+8004E6E0 ori     r0, r4, 0x0020
+8004E6E4 stw     r0, 112(r18)
+8004E6E8 li      r0, 1
+8004E6EC b       0x8004E724
+8004E6F0 rlwinm. r3, r4, 0, 31, 31
+8004E6F4 bc    12, 2, 0x8004E724
+8004E6F8 lwz     r4, 88(r18)
+8004E6FC rlwinm. r3, r4, 0, 21, 21
+8004E700 bc    4, 2, 0x8004E714
+8004E704 rlwinm. r3, r4, 0, 22, 22
+8004E708 bc    4, 2, 0x8004E714
+8004E70C rlwinm. r3, r23, 0, 26, 26
+8004E710 bc    4, 2, 0x8004E724
+8004E714 lwz     r3, 112(r18)
+8004E718 li      r0, 1
+8004E71C ori     r3, r3, 0x0010
+8004E720 stw     r3, 112(r18)
+8004E724 cmpwi   r0, 0
+8004E728 bc    12, 2, 0x8004E76C
+8004E72C rlwinm. r0, r23, 0, 31, 31
+8004E730 bc    12, 2, 0x8004E73C
+8004E734 li      r4, 4
+8004E738 b       0x8004E744
+8004E73C rlwinm r3, r23, 31, 31, 31
+8004E740 addi    r4, r3, 2
+8004E744 addi    r0, r4, 8
+8004E748 stw     r0, 8480(r16)
+8004E74C li      r0, 8
+8004E750 or   r3, r18, r18
+8004E754 stw     r0, 8480(r18)
+8004E758 stw     r4, 4632(r18)
+8004E75C bl      0x80147564
+8004E760 or   r3, r18, r18
+8004E764 bl      0x8013CC40
+8004E768 b       0x8004F8B8
+8004E76C lwz     r0, 12(r1)
+8004E770 oris    r0, r0, 0x0900
+8004E774 stw     r0, 12(r1)
+8004E778 lwz     r0, 580(r16)
+8004E77C rlwinm. r0, r0, 0, 29, 29
+8004E780 bc    4, 2, 0x8004E790
+8004E784 or   r3, r18, r18
+8004E788 li      r4, 1
+8004E78C bl      0x8013C75C
+8004E790 lwz     r0, 17572(r18)
+8004E794 cmpwi   r0, 1
+8004E798 bc    4, 2, 0x8004E7A4
+8004E79C ori     r21, r21, 0x0006
+8004E7A0 b       0x8004E7CC
+8004E7A4 rlwinm. r0, r23, 0, 19, 19
+8004E7A8 bc    4, 2, 0x8004E7B4
+8004E7AC ori     r21, r21, 0x0006
+8004E7B0 b       0x8004E7CC
+8004E7B4 lis     r4, 2
+8004E7B8 or   r3, r18, r18
+8004E7BC addi    r0, r4, -31073
+8004E7C0 stw     r0, 4632(r18)
+8004E7C4 li      r4, 0
+8004E7C8 bl      0x8013C75C
+8004E7CC rlwinm. r30, r22, 0, 31, 31
+8004E7D0 bc    12, 2, 0x8004E7F0
+8004E7D4 lwz     r0, 4(r18)
+8004E7D8 lis     r3, -32696
+8004E7DC addi    r3, r3, -22240
+8004E7E0 li      r4, 1
+8004E7E4 rlwinm r0, r0, 2, 0, 29
+8004E7E8 add   r3, r3, r0
+8004E7EC stw     r4, 80(r3)
+8004E7F0 li      r3, 8
+8004E7F4 bl      0x8006EB24
+8004E7F8 cmpwi   r3, 0
+8004E7FC bc    12, 2, 0x8004E830
+8004E800 lwz     r0, 88(r18)
+8004E804 rlwinm. r0, r0, 0, 9, 9
+8004E808 bc    12, 2, 0x8004E824
+8004E80C lfs     f1, 680(r18)
+8004E810 lfs     f0, -30280(r2)
+8004E814 fcmpo   cr0, f1, f0
+8004E818 cror    2, 0, 2
+8004E81C bc    4, 2, 0x8004E824
+8004E820 li      r28, 1
+8004E824 rlwinm. r0, r23, 0, 1, 1
+8004E828 bc    12, 2, 0x8004E830
+8004E82C li      r28, 1
+8004E830 rlwinm. r29, r22, 0, 29, 29
+8004E834 bc    12, 2, 0x8004E840
+8004E838 rlwinm. r0, r22, 0, 12, 12
+8004E83C bc    12, 2, 0x8004E860
+8004E840 cmpwi   r31, 0
+8004E844 bc    4, 2, 0x8004E860
+8004E848 or   r3, r16, r16
+8004E84C or   r4, r18, r18
+8004E850 or   r5, r20, r20
+8004E854 or   r6, r17, r17
+8004E858 or   r7, r23, r23
+8004E85C bl      0x80140AA0
+8004E860 li      r3, 5
+8004E864 bl      0x8006EB24
+8004E868 cmpwi   r3, 0
+8004E86C bc    4, 2, 0x8004E884
+8004E870 lwz     r0, 20(r1)
+8004E874 or   r3, r16, r16
+8004E878 or   r4, r18, r18
+8004E87C mulli   r5, r0, 10
+8004E880 bl      0x80063748
+8004E884 or   r3, r16, r16
+8004E888 or   r4, r18, r18
+8004E88C or   r5, r22, r22
+8004E890 or   r6, r23, r23
+8004E894 or   r9, r28, r28
+8004E898 or   r10, r17, r17
+8004E89C addi    r7, r1, 20
+8004E8A0 addi    r8, r1, 16
+8004E8A4 bl      0x801404DC
+8004E8A8 li      r3, 5
+8004E8AC bl      0x8006EB24
+8004E8B0 cmpwi   r3, 0
+8004E8B4 bc    12, 2, 0x8004E918
+8004E8B8 lwz     r5, 4548(r15)
+8004E8BC or   r3, r16, r16
+8004E8C0 lwz     r6, 20(r1)
+8004E8C4 or   r4, r18, r18
+8004E8C8 addi    r0, r5, -1
+8004E8CC lfd     f5, -30200(r2)
+8004E8D0 xoris   r0, r0, 0x8000
+8004E8D4 stw     r0, 36(r1)
+8004E8D8 xoris   r0, r6, 0x8000
+8004E8DC lfs     f2, -30276(r2)
+8004E8E0 lfd     f0, 32(r1)
+8004E8E4 stw     r0, 28(r1)
+8004E8E8 fsubs   f3, f0, f5
+8004E8EC lfs     f1, -30280(r2)
+8004E8F0 lfd     f4, 24(r1)
+8004E8F4 lfs     f0, -30272(r2)
+8004E8F8 fsubs   f4, f4, f5
+8004E8FC fmadds f1, f2, f3, f1
+8004E900 fmuls   f1, f4, f1
+8004E904 fmuls   f0, f0, f1
+8004E908 fctiwz    f0, f0
+8004E90C stfd     f0, 48(r1)
+8004E910 lwz     r5, 52(r1)
+8004E914 bl      0x80063748
+8004E918 or   r3, r16, r16
+8004E91C or   r4, r18, r18
+8004E920 or   r5, r20, r20
+8004E924 or   r6, r17, r17
+8004E928 or   r7, r23, r23
+8004E92C or   r8, r22, r22
+8004E930 or   r9, r28, r28
+8004E934 bl      0x80140D44
+8004E938 cmpwi   r3, 1
+8004E93C bc    12, 2, 0x8004F870
+8004E940 or   r3, r16, r16
+8004E944 or   r4, r18, r18
+8004E948 or   r5, r20, r20
+8004E94C or   r6, r17, r17
+8004E950 or   r7, r23, r23
+8004E954 or   r8, r22, r22
+8004E958 or   r9, r28, r28
+8004E95C bl      0x80140F58
+8004E960 or   r3, r16, r16
+8004E964 or   r4, r18, r18
+8004E968 or   r5, r20, r20
+8004E96C or   r6, r17, r17
+8004E970 or   r7, r23, r23
+8004E974 or   r8, r22, r22
+8004E978 or   r9, r28, r28
+8004E97C bl      0x80141168
+8004E980 rlwinm. r0, r23, 0, 2, 2
+8004E984 bc    12, 2, 0x8004E9A8
+8004E988 lwz     r3, 88(r18)
+8004E98C rlwinm. r0, r3, 0, 31, 31
+8004E990 bc    4, 2, 0x8004E99C
+8004E994 rlwinm. r0, r3, 0, 27, 27
+8004E998 bc    12, 2, 0x8004E9A8
+8004E99C lwz     r0, 8(r1)
+8004E9A0 oris    r5, r0, 0x4000
+8004E9A4 stw     r5, 8(r1)
+8004E9A8 rlwinm. r0, r23, 0, 14, 14
+8004E9AC bc    12, 2, 0x8004E9BC
+8004E9B0 lwz     r0, 8(r1)
+8004E9B4 ori     r5, r0, 0x2000
+8004E9B8 stw     r5, 8(r1)
+8004E9BC rlwinm. r0, r23, 0, 11, 11
+8004E9C0 bc    12, 2, 0x8004E9D0
+8004E9C4 lwz     r0, 8(r1)
+8004E9C8 oris    r5, r0, 0x0200
+8004E9CC stw     r5, 8(r1)
+8004E9D0 rlwinm. r15, r22, 0, 15, 15
+8004E9D4 bc    12, 2, 0x8004E9F4
+8004E9D8 or   r3, r16, r16
+8004E9DC bl      0x8013C8D0
+8004E9E0 li      r0, -1
+8004E9E4 stw     r0, 504(r16)
+8004E9E8 lwz     r0, 8(r1)
+8004E9EC oris    r5, r0, 0x0008
+8004E9F0 stw     r5, 8(r1)
+8004E9F4 rlwinm. r0, r22, 0, 1, 1
+8004E9F8 bc    12, 2, 0x8004EA08
+8004E9FC lwz     r0, 8(r1)
+8004EA00 ori     r5, r0, 0x0001
+8004EA04 stw     r5, 8(r1)
+8004EA08 cmpwi   r28, 0
+8004EA0C bc    12, 2, 0x8004EA2C
+8004EA10 lwz     r0, 8(r1)
+8004EA14 lis     r3, 1
+8004EA18 addi    r3, r3, 5
+8004EA1C li      r4, 0
+8004EA20 oris    r5, r0, 0x0010
+8004EA24 stw     r5, 8(r1)
+8004EA28 bl      0x80190FBC
+8004EA2C rlwinm. r0, r23, 0, 12, 12
+8004EA30 bc    12, 2, 0x8004EAB8
+8004EA34 lwz     r3, 88(r18)
+8004EA38 li      r4, 1
+8004EA3C rlwinm. r0, r3, 0, 22, 22
+8004EA40 bc    4, 2, 0x8004EA50
+8004EA44 lwz     r0, 96(r18)
+8004EA48 rlwinm. r0, r0, 0, 14, 14
+8004EA4C bc    12, 2, 0x8004EA64
+8004EA50 rlwinm. r0, r3, 0, 31, 31
+8004EA54 bc    4, 2, 0x8004EA64
+8004EA58 rlwinm. r0, r3, 0, 27, 27
+8004EA5C bc    4, 2, 0x8004EA64
+8004EA60 li      r4, 0
+8004EA64 lwz     r0, 17684(r18)
+8004EA68 cmpwi   r0, 1
+8004EA6C bc    4, 2, 0x8004EA74
+8004EA70 li      r4, 0
+8004EA74 cmpwi   r4, 1
+8004EA78 bc    4, 2, 0x8004EA84
+8004EA7C rlwinm r23, r23, 0, 13, 11
+8004EA80 b       0x8004EAB8
+8004EA84 lwz     r0, 96(r16)
+8004EA88 rlwinm. r0, r0, 0, 25, 25
+8004EA8C bc    12, 2, 0x8004EAB8
+8004EA90 rlwinm. r0, r23, 0, 0, 0
+8004EA94 bc    4, 2, 0x8004EAB8
+8004EA98 lwz     r4, 6544(r16)
+8004EA9C li      r0, 161
+8004EAA0 lwz     r3, 88(r16)
+8004EAA4 rlwinm r4, r4, 0, 27, 25
+8004EAA8 stw     r4, 6544(r16)
+8004EAAC oris    r3, r3, 0x0004
+8004EAB0 stw     r3, 88(r16)
+8004EAB4 stw     r0, 524(r16)
+8004EAB8 lwz     r0, 88(r18)
+8004EABC li      r3, 0
+8004EAC0 rlwinm. r4, r0, 0, 31, 31
+8004EAC4 bc    12, 2, 0x8004EAE4
+8004EAC8 rlwinm. r4, r0, 0, 21, 21
+8004EACC bc    4, 2, 0x8004EB04
+8004EAD0 lwz     r4, 96(r18)
+8004EAD4 rlwinm. r4, r4, 0, 25, 25
+8004EAD8 bc    12, 2, 0x8004EB04
+8004EADC li      r3, 1
+8004EAE0 b       0x8004EB04
+8004EAE4 rlwinm. r4, r0, 0, 22, 22
+8004EAE8 bc    4, 2, 0x8004EB00
+8004EAEC lwz     r5, 96(r18)
+8004EAF0 rlwinm. r4, r5, 0, 14, 14
+8004EAF4 bc    4, 2, 0x8004EB00
+8004EAF8 rlwinm. r4, r5, 0, 25, 25
+8004EAFC bc    12, 2, 0x8004EB04
+8004EB00 li      r3, 1
+8004EB04 lis     r4, -32705
+8004EB08 addi    r4, r4, -1216
+8004EB0C lwz     r4, 12(r4)
+8004EB10 lwz     r4, 12(r4)
+8004EB14 cmpwi   r4, 6
+8004EB18 bc    12, 2, 0x8004EB24
+8004EB1C cmpwi   r4, 11
+8004EB20 bc    4, 2, 0x8004EBB4
+8004EB24 lwz     r4, 0(r18)
+8004EB28 rlwinm. r4, r4, 0, 19, 19
+8004EB2C bc    12, 2, 0x8004EBB4
+8004EB30 lis     r4, -32705
+8004EB34 addi    r4, r4, -18472
+8004EB38 lwz     r4, 4(r4)
+8004EB3C cmplwi  r4, 0x000E
+8004EB40 bc    12, 2, 0x8004EBB4
+8004EB44 cmplwi  r4, 0x000B
+8004EB48 bc    12, 2, 0x8004EBB4
+8004EB4C or   r3, r16, r16
+8004EB50 bl      0x80057C04
+8004EB54 cmpwi   r3, 0
+8004EB58 bc    12, 2, 0x8004EB88
+8004EB5C lwz     r3, 8(r1)
+8004EB60 li      r0, 0
+8004EB64 lfs     f1, -30268(r2)
+8004EB68 ori     r5, r3, 0x0400
+8004EB6C stw     r5, 8(r1)
+8004EB70 lfs     f0, -30264(r2)
+8004EB74 stw     r0, 436(r18)
+8004EB78 stw     r0, 440(r18)
+8004EB7C stfs     f1, 444(r18)
+8004EB80 stfs     f0, 448(r18)
+8004EB84 b       0x8004ED2C
+8004EB88 lwz     r3, 8(r1)
+8004EB8C li      r0, 0
+8004EB90 lfs     f1, -30260(r2)
+8004EB94 ori     r5, r3, 0x0C00
+8004EB98 stw     r5, 8(r1)
+8004EB9C lfs     f0, -30256(r2)
+8004EBA0 stw     r0, 436(r18)
+8004EBA4 stw     r0, 440(r18)
+8004EBA8 stfs     f1, 444(r18)
+8004EBAC stfs     f0, 448(r18)
+8004EBB0 b       0x8004ED2C
+8004EBB4 rlwinm. r4, r0, 0, 22, 22
+8004EBB8 bc    4, 2, 0x8004EBE0
+8004EBBC rlwinm. r0, r0, 0, 17, 18
+8004EBC0 bc    12, 2, 0x8004EBE0
+8004EBC4 or   r3, r16, r16
+8004EBC8 or   r4, r18, r18
+8004EBCC or   r5, r23, r23
+8004EBD0 or   r6, r22, r22
+8004EBD4 addi    r7, r1, 8
+8004EBD8 bl      0x80141848
+8004EBDC b       0x8004ED2C
+8004EBE0 cmpwi   r3, 1
+8004EBE4 bc    4, 2, 0x8004EC04
+8004EBE8 or   r3, r16, r16
+8004EBEC or   r4, r18, r18
+8004EBF0 or   r5, r23, r23
+8004EBF4 or   r6, r22, r22
+8004EBF8 addi    r7, r1, 8
+8004EBFC bl      0x80141A88
+8004EC00 b       0x8004ED2C
+8004EC04 lwz     r0, 17684(r18)
+8004EC08 cmpwi   r0, 1
+8004EC0C bc    4, 2, 0x8004EC84
+8004EC10 cmpwi   r15, 0
+8004EC14 bc    4, 2, 0x8004ED2C
+8004EC18 rlwinm. r0, r23, 0, 13, 13
+8004EC1C bc    12, 2, 0x8004EC34
+8004EC20 lwz     r0, 8(r1)
+8004EC24 oris    r0, r0, 0x0100
+8004EC28 ori     r0, r0, 0x0020
+8004EC2C stw     r0, 8(r1)
+8004EC30 b       0x8004ED2C
+8004EC34 rlwinm. r0, r23, 0, 12, 12
+8004EC38 bc    12, 2, 0x8004EC50
+8004EC3C lwz     r0, 8(r1)
+8004EC40 oris    r0, r0, 0x0040
+8004EC44 ori     r0, r0, 0x0020
+8004EC48 stw     r0, 8(r1)
+8004EC4C b       0x8004ED2C
+8004EC50 rlwinm. r0, r23, 0, 22, 22
+8004EC54 bc    12, 2, 0x8004EC74
+8004EC58 or   r3, r16, r16
+8004EC5C or   r4, r18, r18
+8004EC60 or   r5, r23, r23
+8004EC64 or   r6, r22, r22
+8004EC68 addi    r7, r1, 8
+8004EC6C bl      0x80141C74
+8004EC70 b       0x8004ED2C
+8004EC74 lwz     r0, 8(r1)
+8004EC78 ori     r5, r0, 0x0420
+8004EC7C stw     r5, 8(r1)
+8004EC80 b       0x8004ED2C
+8004EC84 lwz     r0, 488(r18)
+8004EC88 cmpwi   r0, 61
+8004EC8C bc    4, 2, 0x8004ECE0
+8004EC90 rlwinm. r0, r23, 0, 13, 13
+8004EC94 bc    12, 2, 0x8004ECAC
+8004EC98 lwz     r0, 8(r1)
+8004EC9C oris    r0, r0, 0x0100
+8004ECA0 ori     r0, r0, 0x0020
+8004ECA4 stw     r0, 8(r1)
+8004ECA8 b       0x8004ED2C
+8004ECAC rlwinm. r0, r23, 0, 22, 22
+8004ECB0 bc    12, 2, 0x8004ECD0
+8004ECB4 or   r3, r16, r16
+8004ECB8 or   r4, r18, r18
+8004ECBC or   r5, r23, r23
+8004ECC0 or   r6, r22, r22
+8004ECC4 addi    r7, r1, 8
+8004ECC8 bl      0x80141C74
+8004ECCC b       0x8004ED2C
+8004ECD0 lwz     r0, 8(r1)
+8004ECD4 ori     r5, r0, 0x0420
+8004ECD8 stw     r5, 8(r1)
+8004ECDC b       0x8004ED2C
+8004ECE0 cmpwi   r0, 76
+8004ECE4 bc    4, 2, 0x8004ED14
+8004ECE8 rlwinm. r0, r23, 0, 13, 13
+8004ECEC bc    12, 2, 0x8004ED04
+8004ECF0 lwz     r0, 8(r1)
+8004ECF4 oris    r0, r0, 0x0100
+8004ECF8 ori     r0, r0, 0x0020
+8004ECFC stw     r0, 8(r1)
+8004ED00 b       0x8004ED2C
+8004ED04 lwz     r0, 8(r1)
+8004ED08 ori     r5, r0, 0x0420
+8004ED0C stw     r5, 8(r1)
+8004ED10 b       0x8004ED2C
+8004ED14 or   r3, r16, r16
+8004ED18 or   r4, r18, r18
+8004ED1C or   r5, r23, r23
+8004ED20 or   r6, r22, r22
+8004ED24 addi    r7, r1, 8
+8004ED28 bl      0x80141C74
+8004ED2C lwz     r0, 8(r1)
+8004ED30 rlwinm. r0, r0, 0, 7, 7
+8004ED34 bc    12, 2, 0x8004ED48
+8004ED38 li      r3, 26
+8004ED3C li      r0, 9
+8004ED40 stw     r3, 17512(r16)
+8004ED44 stw     r0, 17516(r16)
+8004ED48 or   r3, r16, r16
+8004ED4C or   r4, r18, r18
+8004ED50 or   r5, r23, r23
+8004ED54 or   r6, r22, r22
+8004ED58 bl      0x801415BC
+8004ED5C cmpwi   r29, 0
+8004ED60 or   r28, r3, r3
+8004ED64 bc    12, 2, 0x8004F104
+8004ED68 cmpwi   r3, 0
+8004ED6C bc    4, 2, 0x8004F104
+8004ED70 lis     r3, -32705
+8004ED74 li      r15, 1
+8004ED78 addi    r3, r3, -1216
+8004ED7C lwz     r3, 12(r3)
+8004ED80 lwz     r0, 12(r3)
+8004ED84 cmpwi   r0, 4
+8004ED88 bc    4, 2, 0x8004F8B8
+8004ED8C lwz     r0, 17572(r18)
+8004ED90 cmpwi   r0, 1
+8004ED94 bc    12, 2, 0x8004EDDC
+8004ED98 lwz     r0, 88(r16)
+8004ED9C rlwinm. r0, r0, 0, 7, 7
+8004EDA0 bc    12, 2, 0x8004F8B8
+8004EDA4 lwz     r0, 8(r1)
+8004EDA8 li      r15, 0
+8004EDAC lfs     f3, -30252(r2)
+8004EDB0 ori     r5, r0, 0x00B0
+8004EDB4 stw     r5, 8(r1)
+8004EDB8 lfs     f2, -30248(r2)
+8004EDBC lfs     f1, -30244(r2)
+8004EDC0 lfs     f0, -30240(r2)
+8004EDC4 stfs     f3, 316(r18)
+8004EDC8 stfs     f2, 320(r18)
+8004EDCC stfs     f1, 324(r18)
+8004EDD0 stfs     f0, 328(r18)
+8004EDD4 b       0x8004EDDC
+8004EDD8 b       0x8004F8B8
+8004EDDC lwz     r0, 20(r16)
+8004EDE0 cmplwi  r0, 0x0010
+8004EDE4 bc    4, 2, 0x8004EE2C
+8004EDE8 lwz     r3, 488(r16)
+8004EDEC addi    r0, r3, -353
+8004EDF0 cmplwi  r0, 0x0002
+8004EDF4 bc    4, 1, 0x8004EE04
+8004EDF8 addi    r0, r3, -434
+8004EDFC cmplwi  r0, 0x0002
+8004EE00 bc    12, 1, 0x8004EE2C
+8004EE04 lwz     r3, 88(r18)
+8004EE08 rlwinm. r0, r3, 0, 31, 31
+8004EE0C bc    12, 2, 0x8004EE18
+8004EE10 rlwinm. r0, r3, 0, 22, 22
+8004EE14 bc    4, 2, 0x8004F8B8
+8004EE18 cmplwi  r3, 0x0001
+8004EE1C bc    4, 2, 0x8004EE2C
+8004EE20 lwz     r0, 5068(r18)
+8004EE24 rlwinm. r0, r0, 0, 29, 29
+8004EE28 bc    4, 2, 0x8004F8B8
+8004EE2C lwz     r3, 88(r18)
+8004EE30 rlwinm. r0, r3, 0, 22, 22
+8004EE34 bc    4, 2, 0x8004EE64
+8004EE38 rlwinm. r0, r3, 0, 17, 18
+8004EE3C bc    12, 2, 0x8004EE64
+8004EE40 rlwinm. r0, r23, 0, 17, 17
+8004EE44 bc    4, 2, 0x8004EE54
+8004EE48 rlwinm. r0, r22, 0, 11, 11
+8004EE4C bc    4, 2, 0x8004EE54
+8004EE50 li      r15, 0
+8004EE54 lwz     r0, 488(r18)
+8004EE58 cmpwi   r0, 132
+8004EE5C bc    4, 2, 0x8004EE64
+8004EE60 li      r15, 0
+8004EE64 or   r3, r16, r16
+8004EE68 bl      0x8005344C
+8004EE6C cmpwi   r3, 0
+8004EE70 bc    12, 2, 0x8004EE78
+8004EE74 li      r15, 0
+8004EE78 cmpwi   r30, 0
+8004EE7C bc    4, 2, 0x8004EE90
+8004EE80 lwz     r0, 88(r18)
+8004EE84 rlwinm. r0, r0, 0, 14, 14
+8004EE88 bc    12, 2, 0x8004EE90
+8004EE8C li      r15, 0
+8004EE90 cmpwi   r20, 0
+8004EE94 bc    12, 2, 0x8004EECC
+8004EE98 lwz     r0, 20(r20)
+8004EE9C rlwinm. r0, r0, 0, 12, 12
+8004EEA0 bc    4, 2, 0x8004EECC
+8004EEA4 lwz     r0, 88(r18)
+8004EEA8 rlwinm. r0, r0, 0, 22, 22
+8004EEAC bc    12, 2, 0x8004EECC
+8004EEB0 lwz     r0, 580(r16)
+8004EEB4 rlwinm. r0, r0, 0, 31, 31
+8004EEB8 bc    4, 2, 0x8004EECC
+8004EEBC lwz     r0, 100(r18)
+8004EEC0 li      r15, 0
+8004EEC4 rlwinm r0, r0, 0, 3, 1
+8004EEC8 stw     r0, 100(r18)
+8004EECC lwz     r0, 88(r16)
+8004EED0 rlwinm. r0, r0, 0, 19, 19
+8004EED4 bc    4, 2, 0x8004EEE4
+8004EED8 lwz     r0, 96(r16)
+8004EEDC andis.  r0, r0, 0x0900
+8004EEE0 bc    12, 2, 0x8004EF4C
+8004EEE4 cmpwi   r20, 0
+8004EEE8 bc    4, 2, 0x8004EF1C
+8004EEEC lwz     r0, 80(r17)
+8004EEF0 cmpwi   r0, 0
+8004EEF4 bc    12, 0, 0x8004EEFC
+8004EEF8 li      r15, 0
+8004EEFC lwz     r0, 20(r16)
+8004EF00 cmplwi  r0, 0x000E
+8004EF04 bc    4, 2, 0x8004EF4C
+8004EF08 lwz     r0, 488(r16)
+8004EF0C cmpwi   r0, 368
+8004EF10 bc    4, 2, 0x8004EF4C
+8004EF14 li      r15, 0
+8004EF18 b       0x8004EF4C
+8004EF1C lwz     r0, 1564(r20)
+8004EF20 cmpwi   r0, 0
+8004EF24 bc    12, 0, 0x8004EF30
+8004EF28 li      r15, 0
+8004EF2C b       0x8004EF4C
+8004EF30 lwz     r0, 96(r18)
+8004EF34 rlwinm. r0, r0, 0, 25, 25
+8004EF38 bc    12, 2, 0x8004EF4C
+8004EF3C lwz     r0, 1572(r20)
+8004EF40 cmpwi   r0, 0
+8004EF44 bc    12, 0, 0x8004EF4C
+8004EF48 li      r15, 0
+8004EF4C cmpwi   r20, 0
+8004EF50 bc    12, 2, 0x8004EF74
+8004EF54 lwz     r0, 1564(r20)
+8004EF58 cmpwi   r0, 0
+8004EF5C bc    12, 0, 0x8004EF74
+8004EF60 lwz     r3, 1580(r20)
+8004EF64 lwz     r0, 488(r16)
+8004EF68 cmpw    r3, r0
+8004EF6C bc    12, 2, 0x8004EF74
+8004EF70 li      r15, 0
+8004EF74 or   r3, r18, r18
+8004EF78 bl      0x80057BD8
+8004EF7C cmpwi   r3, 0
+8004EF80 bc    12, 2, 0x8004EF94
+8004EF84 lwz     r0, 100(r18)
+8004EF88 li      r15, 0
+8004EF8C rlwinm r0, r0, 0, 3, 1
+8004EF90 stw     r0, 100(r18)
+8004EF94 cmpwi   r15, 0
+8004EF98 bc    12, 2, 0x8004F0FC
+8004EF9C lis     r3, -32705
+8004EFA0 addi    r3, r3, -1216
+8004EFA4 lwz     r3, 12(r3)
+8004EFA8 lwz     r0, 76(r3)
+8004EFAC stw     r0, -27572(r13)
+8004EFB0 lwz     r0, 17572(r16)
+8004EFB4 cmpwi   r0, 1
+8004EFB8 bc    4, 2, 0x8004EFD4
+8004EFBC lwz     r0, -27568(r13)
+8004EFC0 cmpwi   r0, 1
+8004EFC4 bc    12, 2, 0x8004EFE0
+8004EFC8 li      r0, 1
+8004EFCC stw     r0, -27568(r13)
+8004EFD0 b       0x8004EFE0
+8004EFD4 li      r0, 2
+8004EFD8 stw     r0, 4632(r16)
+8004EFDC stw     r0, 4632(r18)
+8004EFE0 cmpwi   r20, 0
+8004EFE4 bc    4, 2, 0x8004F02C
+8004EFE8 li      r0, -1
+8004EFEC stw     r0, 8416(r16)
+8004EFF0 lwz     r0, 80(r17)
+8004EFF4 cmpwi   r0, 0
+8004EFF8 bc    12, 0, 0x8004F000
+8004EFFC stw     r0, 8416(r16)
+8004F000 li      r0, -1
+8004F004 stw     r0, 8420(r16)
+8004F008 lwz     r0, 84(r17)
+8004F00C cmpwi   r0, 0
+8004F010 bc    12, 0, 0x8004F018
+8004F014 stw     r0, 8420(r16)
+8004F018 or   r3, r17, r17
+8004F01C bl      0x80071118
+8004F020 stw     r22, 32(r17)
+8004F024 stw     r23, 28(r17)
+8004F028 b       0x8004F090
+8004F02C lwz     r0, 1564(r20)
+8004F030 cmpwi   r0, 0
+8004F034 bc    12, 0, 0x8004F040
+8004F038 stw     r0, 8416(r16)
+8004F03C b       0x8004F048
+8004F040 li      r0, -1
+8004F044 stw     r0, 8416(r16)
+8004F048 lwz     r0, 1568(r20)
+8004F04C cmpwi   r0, 0
+8004F050 bc    12, 0, 0x8004F05C
+8004F054 stw     r0, 8420(r16)
+8004F058 b       0x8004F064
+8004F05C li      r0, -1
+8004F060 stw     r0, 8420(r16)
+8004F064 lwz     r0, 96(r18)
+8004F068 rlwinm. r0, r0, 0, 25, 25
+8004F06C bc    12, 2, 0x8004F090
+8004F070 lwz     r0, 1572(r20)
+8004F074 cmpwi   r0, 0
+8004F078 bc    12, 0, 0x8004F080
+8004F07C stw     r0, 8416(r16)
+8004F080 lwz     r0, 1576(r20)
+8004F084 cmpwi   r0, 0
+8004F088 bc    12, 0, 0x8004F090
+8004F08C stw     r0, 8420(r16)
+8004F090 lis     r3, 1
+8004F094 cmpwi   r30, 0
+8004F098 addi    r0, r3, -32768
+8004F09C li      r4, 2
+8004F0A0 li      r3, 4095
+8004F0A4 stw     r4, 4632(r16)
+8004F0A8 stw     r3, 8432(r16)
+8004F0AC stw     r0, 8412(r16)
+8004F0B0 bc    12, 2, 0x8004F0D8
+8004F0B4 cmpwi   r20, 0
+8004F0B8 bc    4, 2, 0x8004F0D8
+8004F0BC lwz     r0, 112(r16)
+8004F0C0 oris    r0, r0, 0x0800
+8004F0C4 stw     r0, 112(r16)
+8004F0C8 lwz     r0, 112(r18)
+8004F0CC oris    r0, r0, 0x0800
+8004F0D0 ori     r0, r0, 0x0200
+8004F0D4 stw     r0, 112(r18)
+8004F0D8 lwz     r3, 100(r18)
+8004F0DC li      r0, -1
+8004F0E0 stw     r0, 504(r18)
+8004F0E4 oris    r0, r3, 0x0020
+8004F0E8 ori     r0, r0, 0x0200
+8004F0EC stw     r0, 100(r18)
+8004F0F0 stw     r18, 17400(r16)
+8004F0F4 stw     r16, 17404(r18)
+8004F0F8 b       0x8004F10C
+8004F0FC ori     r21, r21, 0x0012
+8004F100 b       0x8004F10C
+8004F104 li      r0, 3
+8004F108 stw     r0, 4592(r18)
+8004F10C cmpwi   r29, 0
+8004F110 li      r0, 0
+8004F114 stw     r0, 4640(r18)
+8004F118 bc    12, 2, 0x8004F124
+8004F11C cmpwi   r28, 0
+8004F120 bc    12, 2, 0x8004F1D8
+8004F124 lwz     r3, 8(r1)
+8004F128 rlwinm r0, r3, 0, 7, 7
+8004F12C rlwimi. r0, r3, 0, 21, 21
+8004F130 bc    12, 2, 0x8004F1D8
+8004F134 cmpwi   r20, 0
+8004F138 bc    12, 2, 0x8004F150
+8004F13C lwz     r0, 244(r20)
+8004F140 cmpwi   r0, 0
+8004F144 bc    4, 1, 0x8004F150
+8004F148 stw     r0, 4640(r18)
+8004F14C b       0x8004F1D8
+8004F150 lwz     r0, 692(r16)
+8004F154 cmpwi   r0, 0
+8004F158 bc    4, 1, 0x8004F164
+8004F15C stw     r0, 4640(r18)
+8004F160 b       0x8004F1D8
+8004F164 li      r3, 10
+8004F168 bl      0x8006EB24
+8004F16C cmpwi   r3, 0
+8004F170 bc    12, 2, 0x8004F1D8
+8004F174 lwz     r3, 8(r1)
+8004F178 rlwinm. r0, r3, 0, 7, 7
+8004F17C bc    12, 2, 0x8004F194
+8004F180 lis     r3, -32705
+8004F184 addi    r3, r3, -928
+8004F188 lwz     r0, 12(r3)
+8004F18C stw     r0, 4640(r18)
+8004F190 b       0x8004F1D8
+8004F194 rlwinm. r0, r3, 0, 27, 27
+8004F198 bc    12, 2, 0x8004F1B0
+8004F19C lis     r3, -32705
+8004F1A0 addi    r3, r3, -928
+8004F1A4 lwz     r0, 8(r3)
+8004F1A8 stw     r0, 4640(r18)
+8004F1AC b       0x8004F1D8
+8004F1B0 rlwinm. r0, r3, 0, 28, 28
+8004F1B4 bc    12, 2, 0x8004F1CC
+8004F1B8 lis     r3, -32705
+8004F1BC addi    r3, r3, -928
+8004F1C0 lwz     r0, 4(r3)
+8004F1C4 stw     r0, 4640(r18)
+8004F1C8 b       0x8004F1D8
+8004F1CC lis     r3, -32705
+8004F1D0 lwz     r0, -928(r3)
+8004F1D4 stw     r0, 4640(r18)
+8004F1D8 li      r3, 11
+8004F1DC bl      0x8006EB24
+8004F1E0 cmpwi   r3, 0
+8004F1E4 bc    12, 2, 0x8004F24C
+8004F1E8 lwz     r0, 4640(r18)
+8004F1EC cmpwi   r0, 0
+8004F1F0 bc    4, 1, 0x8004F24C
+8004F1F4 or   r3, r16, r16
+8004F1F8 bl      0x80052758
+8004F1FC cmpwi   r3, 0
+8004F200 bc    12, 2, 0x8004F24C
+8004F204 lwz     r0, 4556(r3)
+8004F208 lfd     f2, -30200(r2)
+8004F20C xoris   r0, r0, 0x8000
+8004F210 stw     r0, 28(r1)
+8004F214 lfs     f0, -30236(r2)
+8004F218 lfd     f1, 24(r1)
+8004F21C lwz     r0, 4640(r18)
+8004F220 fsubs   f1, f1, f2
+8004F224 fmuls   f0, f0, f1
+8004F228 fctiwz    f0, f0
+8004F22C stfd     f0, 48(r1)
+8004F230 lwz     r3, 52(r1)
+8004F234 subf   r0, r3, r0
+8004F238 stw     r0, 4640(r18)
+8004F23C cmpwi   r0, 4
+8004F240 bc    4, 0, 0x8004F24C
+8004F244 li      r0, 4
+8004F248 stw     r0, 4640(r18)
+8004F24C lfs     f0, -30248(r2)
+8004F250 stfs     f0, 460(r18)
+8004F254 lwz     r0, 8(r1)
+8004F258 andi.   r0, r0, 0x0420
+8004F25C bc    12, 2, 0x8004F278
+8004F260 cmpwi   r20, 0
+8004F264 bc    4, 2, 0x8004F278
+8004F268 rlwinm. r0, r23, 0, 5, 5
+8004F26C bc    12, 2, 0x8004F278
+8004F270 lfs     f0, -30232(r2)
+8004F274 stfs     f0, 460(r18)
+8004F278 lwz     r3, 17156(r16)
+8004F27C li      r4, 3
+8004F280 li      r5, 1
+8004F284 bl      0x80064544
+8004F288 b       0x8004F704
+8004F28C ori     r0, r3, 0x0010
+8004F290 stw     r0, 12(r1)
+8004F294 li      r28, 0
+8004F298 oris    r21, r21, 0x0080
+8004F29C stw     r28, 17800(r16)
+8004F2A0 li      r0, 60
+8004F2A4 ori     r21, r21, 0x0010
+8004F2A8 li      r4, 1
+8004F2AC stw     r0, 17636(r18)
+8004F2B0 li      r5, 1
+8004F2B4 lwz     r3, 17156(r16)
+8004F2B8 bl      0x80064544
+8004F2BC lwz     r0, 88(r18)
+8004F2C0 rlwinm. r0, r0, 0, 9, 9
+8004F2C4 bc    4, 2, 0x8004F310
+8004F2C8 lwz     r3, 17708(r18)
+8004F2CC cmpwi   r3, 0
+8004F2D0 bc    12, 2, 0x8004F308
+8004F2D4 lwz     r0, 17792(r18)
+8004F2D8 addis   r3, r3, 1
+8004F2DC rlwinm r3, r3, 0, 0, 15
+8004F2E0 cmpwi   r0, 5
+8004F2E4 addi    r0, r3, 8
+8004F2E8 stw     r0, 17708(r18)
+8004F2EC bc    4, 0, 0x8004F2F4
+8004F2F0 b       0x8004F304
+8004F2F4 lwz     r3, 20(r1)
+8004F2F8 rlwinm r0, r3, 1, 31, 31
+8004F2FC add   r0, r0, r3
+8004F300 srawi r28, r0, 1
+8004F304 stw     r28, 20(r1)
+8004F308 li      r0, 1
+8004F30C stw     r0, 17632(r18)
+8004F310 rlwinm. r0, r22, 0, 31, 31
+8004F314 bc    12, 2, 0x8004F32C
+8004F318 lwz     r0, 20(r1)
+8004F31C srawi r0, r0, 3
+8004F320 addze  r0, r0
+8004F324 stw     r0, 20(r1)
+8004F328 b       0x8004F39C
+8004F32C rlwinm. r0, r22, 0, 13, 13
+8004F330 bc    12, 2, 0x8004F348
+8004F334 lwz     r0, 20(r1)
+8004F338 srawi r0, r0, 3
+8004F33C addze  r0, r0
+8004F340 stw     r0, 20(r1)
+8004F344 b       0x8004F39C
+8004F348 or   r3, r16, r16
+8004F34C bl      0x80057C04
+8004F350 cmpwi   r3, 0
+8004F354 bc    4, 2, 0x8004F370
+8004F358 lwz     r0, 20(r16)
+8004F35C cmplwi  r0, 0x0015
+8004F360 bc    4, 2, 0x8004F394
+8004F364 lwz     r0, 17916(r16)
+8004F368 rlwinm. r0, r0, 0, 31, 31
+8004F36C bc    12, 2, 0x8004F394
+8004F370 lis     r3, 10923
+8004F374 lwz     r0, 20(r1)
+8004F378 addi    r3, r3, -21845
+8004F37C mulhw   r0, r3, r0
+8004F380 srawi r0, r0, 1
+8004F384 rlwinm r3, r0, 1, 31, 31
+8004F388 add   r0, r0, r3
+8004F38C stw     r0, 20(r1)
+8004F390 b       0x8004F39C
+8004F394 li      r0, 0
+8004F398 stw     r0, 20(r1)
+8004F39C li      r3, 9
+8004F3A0 bl      0x8006EB24
+8004F3A4 cmpwi   r3, 0
+8004F3A8 bc    12, 2, 0x8004F3D0
+8004F3AC lwz     r4, 48(r18)
+8004F3B0 lwz     r3, 20(r1)
+8004F3B4 lwz     r0, 40(r18)
+8004F3B8 add   r3, r4, r3
+8004F3BC subf   r0, r3, r0
+8004F3C0 cmpwi   r0, 1
+8004F3C4 bc    4, 0, 0x8004F3D0
+8004F3C8 li      r0, 0
+8004F3CC stw     r0, 20(r1)
+8004F3D0 lwz     r0, 16(r1)
+8004F3D4 lis     r4, 20972
+8004F3D8 lis     r3, -32705
+8004F3DC mulli   r0, r0, 25
+8004F3E0 addi    r4, r4, -31457
+8004F3E4 addi    r3, r3, -1216
+8004F3E8 lwz     r3, 12(r3)
+8004F3EC mulhw   r0, r4, r0
+8004F3F0 srawi r0, r0, 5
+8004F3F4 rlwinm r4, r0, 1, 31, 31
+8004F3F8 add   r0, r0, r4
+8004F3FC stw     r0, 16(r1)
+8004F400 lwz     r0, 12(r3)
+8004F404 cmpwi   r0, 4
+8004F408 bc    12, 2, 0x8004F418
+8004F40C li      r0, 0
+8004F410 stw     r0, 20(r1)
+8004F414 stw     r0, 16(r1)
+8004F418 lwz     r0, 20(r18)
+8004F41C cmplwi  r0, 0x0012
+8004F420 bc    4, 2, 0x8004F458
+8004F424 lwz     r0, 17916(r18)
+8004F428 cmpwi   r0, 3
+8004F42C bc    4, 2, 0x8004F458
+8004F430 or   r3, r18, r18
+8004F434 bl      0x800533A0
+8004F438 lfs     f0, -30228(r2)
+8004F43C fcmpo   cr0, f1, f0
+8004F440 bc    4, 1, 0x8004F458
+8004F444 li      r0, 0
+8004F448 stw     r0, 20(r1)
+8004F44C lfs     f1, -30224(r2)
+8004F450 or   r3, r18, r18
+8004F454 bl      0x80052F44
+8004F458 lfs     f0, -30248(r2)
+8004F45C fcmpo   cr0, f31, f0
+8004F460 cror    2, 0, 2
+8004F464 bc    4, 2, 0x8004F4B0
+8004F468 rlwinm. r0, r23, 0, 31, 31
+8004F46C bc    12, 2, 0x8004F47C
+8004F470 li      r0, 9
+8004F474 stw     r0, 4612(r18)
+8004F478 b       0x8004F4C0
+8004F47C rlwinm. r0, r23, 0, 30, 30
+8004F480 bc    12, 2, 0x8004F490
+8004F484 li      r0, 12
+8004F488 stw     r0, 4612(r18)
+8004F48C b       0x8004F4C0
+8004F490 rlwinm. r0, r23, 0, 29, 29
+8004F494 bc    12, 2, 0x8004F4A4
+8004F498 li      r0, 15
+8004F49C stw     r0, 4612(r18)
+8004F4A0 b       0x8004F4C0
+8004F4A4 li      r0, 12
+8004F4A8 stw     r0, 4612(r18)
+8004F4AC b       0x8004F4C0
+8004F4B0 fctiwz    f0, f31
+8004F4B4 stfd     f0, 48(r1)
+8004F4B8 lwz     r0, 52(r1)
+8004F4BC stw     r0, 4612(r18)
+8004F4C0 cmpwi   r20, 0
+8004F4C4 bc    12, 2, 0x8004F4E4
+8004F4C8 or   r3, r18, r18
+8004F4CC or   r4, r16, r16
+8004F4D0 or   r5, r23, r23
+8004F4D4 or   r6, r22, r22
+8004F4D8 li      r7, 1
+8004F4DC bl      0x801450B4
+8004F4E0 b       0x8004F4FC
+8004F4E4 or   r3, r18, r18
+8004F4E8 or   r4, r16, r16
+8004F4EC or   r5, r23, r23
+8004F4F0 or   r6, r22, r22
+8004F4F4 li      r7, 0
+8004F4F8 bl      0x801450B4
+8004F4FC li      r0, 0
+8004F500 stw     r0, 17628(r18)
+8004F504 or   r3, r18, r18
+8004F508 bl      0x80055440
+8004F50C cmpwi   r3, 1
+8004F510 lis     r3, 1
+8004F514 addi    r0, r3, -16384
+8004F518 bc    4, 2, 0x8004F520
+8004F51C li      r0, 16384
+8004F520 xoris   r0, r0, 0x8000
+8004F524 stw     r0, 36(r1)
+8004F528 lfd     f3, -30200(r2)
+8004F52C lfd     f0, 32(r1)
+8004F530 lfs     f2, 216(r18)
+8004F534 lfs     f1, 212(r18)
+8004F538 fsubs   f3, f0, f3
+8004F53C lfs     f0, -30220(r2)
+8004F540 fsubs   f1, f2, f1
+8004F544 lwz     r3, 17164(r18)
+8004F548 fmsubs f1, f0, f3, f1
+8004F54C bl      0x800AA388
+8004F550 rlwinm. r29, r22, 0, 29, 29
+8004F554 bc    12, 2, 0x8004F560
+8004F558 rlwinm. r0, r22, 0, 12, 12
+8004F55C bc    12, 2, 0x8004F580
+8004F560 cmpwi   r31, 0
+8004F564 bc    4, 2, 0x8004F580
+8004F568 or   r3, r16, r16
+8004F56C or   r4, r18, r18
+8004F570 or   r5, r20, r20
+8004F574 or   r6, r17, r17
+8004F578 or   r7, r23, r23
+8004F57C bl      0x80140C10
+8004F580 lwz     r3, 88(r18)
+8004F584 rlwinm. r0, r3, 0, 9, 9
+8004F588 bc    4, 2, 0x8004F5E0
+8004F58C rlwinm. r0, r3, 0, 22, 22
+8004F590 bc    12, 2, 0x8004F5E0
+8004F594 lfs     f4, -30248(r2)
+8004F598 li      r0, 0
+8004F59C lfs     f3, -30216(r2)
+8004F5A0 lfs     f2, -30212(r2)
+8004F5A4 lfs     f1, -30224(r2)
+8004F5A8 lfs     f0, -30208(r2)
+8004F5AC stfs     f4, 316(r18)
+8004F5B0 stfs     f4, 320(r18)
+8004F5B4 stfs     f4, 292(r18)
+8004F5B8 stfs     f4, 360(r18)
+8004F5BC stfs     f4, 364(r18)
+8004F5C0 stfs     f3, 324(r18)
+8004F5C4 stfs     f2, 328(r18)
+8004F5C8 stfs     f1, 300(r18)
+8004F5CC stfs     f0, 308(r18)
+8004F5D0 stfs     f4, 304(r18)
+8004F5D4 stfs     f4, 312(r18)
+8004F5D8 stw     r0, 332(r18)
+8004F5DC stfs     f4, 336(r18)
+8004F5E0 rlwinm. r0, r23, 0, 14, 14
+8004F5E4 bc    12, 2, 0x8004F5F4
+8004F5E8 lwz     r0, 8(r1)
+8004F5EC ori     r5, r0, 0x2000
+8004F5F0 stw     r5, 8(r1)
+8004F5F4 rlwinm. r0, r22, 0, 15, 15
+8004F5F8 bc    12, 2, 0x8004F618
+8004F5FC or   r3, r16, r16
+8004F600 bl      0x8013C8D0
+8004F604 li      r0, -1
+8004F608 stw     r0, 504(r16)
+8004F60C lwz     r0, 8(r1)
+8004F610 oris    r5, r0, 0x0008
+8004F614 stw     r5, 8(r1)
+8004F618 lwz     r0, 88(r18)
+8004F61C andis.  r3, r0, 0x0048
+8004F620 addis   r0, r3, -72
+8004F624 cmplwi  r0, 0x0000
+8004F628 bc    4, 2, 0x8004F66C
+8004F62C lwz     r0, 580(r18)
+8004F630 rlwinm. r0, r0, 0, 29, 29
+8004F634 bc    12, 2, 0x8004F66C
+8004F638 stw     r16, 17400(r18)
+8004F63C lwz     r0, 112(r16)
+8004F640 stw     r18, 17404(r16)
+8004F644 oris    r0, r0, 0x0800
+8004F648 ori     r0, r0, 0x0200
+8004F64C stw     r0, 112(r16)
+8004F650 lwz     r0, 112(r18)
+8004F654 oris    r0, r0, 0x0800
+8004F658 stw     r0, 112(r18)
+8004F65C lwz     r0, 100(r16)
+8004F660 oris    r0, r0, 0x0020
+8004F664 ori     r0, r0, 0x0200
+8004F668 stw     r0, 100(r16)
+8004F66C lwz     r0, 20(r1)
+8004F670 cmpwi   r0, 0
+8004F674 bc    4, 1, 0x8004F684
+8004F678 lwz     r0, 36(r17)
+8004F67C ori     r0, r0, 0x0001
+8004F680 stw     r0, 36(r17)
+8004F684 lis     r5, -32705
+8004F688 addi    r5, r5, -1216
+8004F68C lwz     r3, 12(r5)
+8004F690 cmpwi   r3, 0
+8004F694 bc    12, 2, 0x8004F704
+8004F698 rlwinm r0, r22, 0, 13, 13
+8004F69C rlwimi. r0, r22, 0, 31, 31
+8004F6A0 bc    4, 2, 0x8004F6D8
+8004F6A4 lwz     r0, 4(r18)
+8004F6A8 rlwinm r0, r0, 2, 0, 29
+8004F6AC add   r4, r3, r0
+8004F6B0 lwz     r3, 188(r4)
+8004F6B4 addi    r0, r3, 1
+8004F6B8 stw     r0, 188(r4)
+8004F6BC lwz     r0, 4(r16)
+8004F6C0 lwz     r3, 12(r5)
+8004F6C4 rlwinm r0, r0, 2, 0, 29
+8004F6C8 add   r4, r3, r0
+8004F6CC lwz     r3, 236(r4)
+8004F6D0 addi    r0, r3, 1
+8004F6D4 stw     r0, 236(r4)
+8004F6D8 rlwinm. r0, r23, 0, 26, 27
+8004F6DC bc    12, 2, 0x8004F704
+8004F6E0 lis     r3, -32705
+8004F6E4 lwz     r0, 4(r18)
+8004F6E8 addi    r3, r3, -1216
+8004F6EC lwz     r3, 12(r3)
+8004F6F0 rlwinm r0, r0, 2, 0, 29
+8004F6F4 add   r4, r3, r0
+8004F6F8 lwz     r3, 204(r4)
+8004F6FC addi    r0, r3, 1
+8004F700 stw     r0, 204(r4)
+8004F704 lwz     r0, 0(r18)
+8004F708 rlwinm. r0, r0, 0, 19, 19
+8004F70C bc    12, 2, 0x8004F74C
+8004F710 lis     r3, -32705
+8004F714 addi    r3, r3, -18472
+8004F718 lwz     r0, 4(r3)
+8004F71C cmplwi  r0, 0x000E
+8004F720 bc    12, 2, 0x8004F74C
+8004F724 cmplwi  r0, 0x000B
+8004F728 bc    12, 2, 0x8004F74C
+8004F72C lis     r3, -32705
+8004F730 addi    r3, r3, -1216
+8004F734 lwz     r3, 12(r3)
+8004F738 lwz     r0, 12(r3)
+8004F73C cmpwi   r0, 6
+8004F740 bc    12, 2, 0x8004F74C
+8004F744 cmpwi   r0, 11
+8004F748 bc    4, 2, 0x8004F798
+8004F74C lwz     r0, 20(r1)
+8004F750 or   r3, r18, r18
+8004F754 li      r5, 0
+8004F758 neg  r4, r0
+8004F75C bl      0x80052880
+8004F760 lwz     r3, 17380(r18)
+8004F764 cmpwi   r3, 0
+8004F768 bc    12, 2, 0x8004F780
+8004F76C bl      0x80052758
+8004F770 lwz     r4, 4564(r3)
+8004F774 lwz     r0, 20(r1)
+8004F778 add   r0, r4, r0
+8004F77C stw     r0, 4564(r3)
+8004F780 lwz     r7, 16(r1)
+8004F784 or   r3, r16, r16
+8004F788 or   r4, r18, r18
+8004F78C or   r5, r23, r23
+8004F790 or   r6, r22, r22
+8004F794 bl      0x80141448
+8004F798 lwz     r0, 8(r1)
+8004F79C cmpwi   r20, 0
+8004F7A0 rlwinm r5, r0, 0, 11, 9
+8004F7A4 bc    12, 2, 0x8004F7AC
+8004F7A8 oris    r5, r5, 0x0020
+8004F7AC cmpwi   r29, 0
+8004F7B0 rlwinm r5, r5, 0, 23, 21
+8004F7B4 bc    12, 2, 0x8004F7BC
+8004F7B8 ori     r5, r5, 0x0200
+8004F7BC rlwinm. r0, r22, 0, 13, 13
+8004F7C0 rlwinm r5, r5, 0, 4, 2
+8004F7C4 bc    12, 2, 0x8004F7CC
+8004F7C8 oris    r5, r5, 0x1000
+8004F7CC rlwinm. r0, r22, 0, 31, 31
+8004F7D0 rlwinm r0, r5, 0, 3, 1
+8004F7D4 stw     r0, 8(r1)
+8004F7D8 bc    12, 2, 0x8004F7E4
+8004F7DC oris    r5, r0, 0x2000
+8004F7E0 stw     r5, 8(r1)
+8004F7E4 cmpwi   r20, 0
+8004F7E8 li      r0, 0
+8004F7EC stw     r18, 17392(r16)
+8004F7F0 stw     r21, 96(r16)
+8004F7F4 stw     r0, 17396(r16)
+8004F7F8 bc    12, 2, 0x8004F828
+8004F7FC lwz     r0, 24(r20)
+8004F800 rlwinm. r0, r0, 0, 4, 4
+8004F804 bc    12, 2, 0x8004F828
+8004F808 lwz     r0, 56(r20)
+8004F80C cmpwi   r0, 0
+8004F810 bc    12, 2, 0x8004F81C
+8004F814 stw     r0, 17396(r18)
+8004F818 b       0x8004F84C
+8004F81C lwz     r0, 17380(r18)
+8004F820 stw     r0, 17396(r18)
+8004F824 b       0x8004F84C
+8004F828 cmpwi   r20, 0
+8004F82C bc    12, 2, 0x8004F848
+8004F830 lwz     r0, 48(r20)
+8004F834 cmplw   r0, r18
+8004F838 bc    4, 2, 0x8004F848
+8004F83C lwz     r0, 17380(r18)
+8004F840 stw     r0, 17396(r18)
+8004F844 b       0x8004F84C
+8004F848 stw     r16, 17396(r18)
+8004F84C lwz     r0, 8(r1)
+8004F850 lis     r3, -16254
+8004F854 stw     r0, 108(r18)
+8004F858 addi    r3, r3, 86
+8004F85C lwz     r4, 96(r18)
+8004F860 lwz     r0, 12(r1)
+8004F864 and   r3, r4, r3
+8004F868 or   r0, r0, r3
+8004F86C stw     r0, 96(r18)
+8004F870 or   r3, r16, r16
+8004F874 or   r4, r18, r18
+8004F878 or   r5, r19, r19
+8004F87C or   r7, r17, r17
+8004F880 or   r8, r27, r27
+8004F884 or   r9, r25, r25
+8004F888 li      r6, 0
+8004F88C li      r10, 0
+8004F890 bl      0x801604E0
+8004F894 or   r3, r16, r16
+8004F898 or   r4, r18, r18
+8004F89C or   r5, r19, r19
+8004F8A0 or   r7, r17, r17
+8004F8A4 or   r8, r26, r26
+8004F8A8 or   r9, r24, r24
+8004F8AC li      r6, 0
+8004F8B0 li      r10, 0
+8004F8B4 bl      0x801604E0

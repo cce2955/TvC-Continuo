@@ -1,0 +1,98 @@
+WII RUNTIME 0x80191b40 -> DOL FILE OFFSET 0x0017c020
+QUERY 0x17c020 FUNCTION 0017c020 FUN_0017c020
+ENTRY REFERENCES: 0011e954, 0011e968
+
+void FUN_0017c020(undefined4 param_1,int param_2)
+
+{
+  undefined1 auStack_118 [268];
+  
+  func_0xfffee830(auStack_118,0,0x100);
+  FUN_0019a8f8(auStack_118,0x8035663b);
+  if (param_2 == -1) {
+    FUN_0019a8f8(auStack_118,0x8035684a,auStack_118);
+    FUN_0017b520(param_1,auStack_118);
+  }
+  else if ((param_2 == 0) || (param_2 == 10)) {
+    FUN_0019a8f8(auStack_118,0x80356854,auStack_118);
+    FUN_0017b520(param_1,auStack_118);
+  }
+  else if ((param_2 == 0x14) || (param_2 == 0x16)) {
+    FUN_0019a8f8(auStack_118,0x8035685e,auStack_118);
+    FUN_0017b520(param_1,auStack_118);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80192120 -> DOL FILE OFFSET 0x0017c600
+QUERY 0x17c600 FUNCTION 0017c600 FUN_0017c600
+ENTRY REFERENCES: 0005f6d8, 0005f984, 000c7b94, 000c7df0, 000c7e70, 0011ec3c, 0011eda4, 0011b78c
+
+void FUN_0017c600(void)
+
+{
+  int unaff_r13;
+  
+  *(undefined4 *)(unaff_r13 + -0x6504) = 0;
+  FUN_00105f94();
+  return;
+}
+
+
+
+WII RUNTIME 0x801911d0 -> DOL FILE OFFSET 0x0017b6b0
+QUERY 0x17b6b0 FUNCTION 0017b6b0 FUN_0017b6b0
+ENTRY REFERENCES: 0017c128, 0017c214, 0017bd84, 0017c01c
+
+undefined4 FUN_0017b6b0(int param_1)
+
+{
+  param_1 = param_1 * 4;
+  if (*(int *)(&DAT_8048c2c0 + param_1) != 0) {
+    FUN_001086c0();
+    FUN_00139ed8(*(undefined4 *)(&DAT_8048c310 + param_1),*(undefined4 *)(&DAT_8048c2c0 + param_1));
+    FUN_00139220(*(undefined4 *)(&DAT_8048c310 + param_1));
+    FUN_00139ed8(*(undefined4 *)(&DAT_8048c2e8 + param_1),*(undefined4 *)(&DAT_8048c298 + param_1));
+    FUN_00139220(*(undefined4 *)(&DAT_8048c2e8 + param_1));
+    *(undefined4 *)(&DAT_8048c310 + param_1) = 0;
+    *(undefined4 *)(&DAT_8048c2c0 + param_1) = 0;
+    *(undefined4 *)(&DAT_8048c2e8 + param_1) = 0;
+    *(undefined4 *)(&DAT_8048c298 + param_1) = 0;
+  }
+  return 1;
+}
+
+
+
+WII RUNTIME 0x80191c4c -> DOL FILE OFFSET 0x0017c12c
+QUERY 0x17c12c FUNCTION 0017c12c FUN_0017c12c
+ENTRY REFERENCES: 0017dc6c
+
+void FUN_0017c12c(undefined4 param_1,int param_2)
+
+{
+  undefined1 auStack_118 [268];
+  
+  func_0xfffee830(auStack_118,0,0x100);
+  FUN_0019a8f8(auStack_118,0x8035663b);
+  if (param_2 == 1) {
+    FUN_0019a8f8(auStack_118,0x80356868,auStack_118);
+    FUN_0017b520(param_1,auStack_118);
+  }
+  else if (param_2 == 2) {
+    FUN_0019a8f8(auStack_118,0x80356876,auStack_118);
+    FUN_0017b520(param_1,auStack_118);
+  }
+  else if (param_2 == 3) {
+    FUN_0019a8f8(auStack_118,0x80356884,auStack_118);
+    FUN_0017b520(param_1,auStack_118);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80191ae0 -> DOL FILE OFFSET 0x0017bfc0
+No containing function for 0x17bfc0

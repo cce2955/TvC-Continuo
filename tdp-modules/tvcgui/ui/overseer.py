@@ -116,6 +116,30 @@ def _format_state_text(state: dict[str, Any]) -> str:
     lines.append("Live status for safety features, HUD holds, assists, and performance.")
     lines.append(f"Last update: {time.strftime('%H:%M:%S')}")
     lines.append(f"Dolphin hooked according to main: {_yes(state.get('hooked'))}")
+    dolphin = state.get("dolphin") or {}
+    candidates = dolphin.get("candidates") or []
+    if dolphin.get("mem2_latched"):
+        lines.append(f"MEM2 process: PID {dolphin.get('mem2_pid')}  {dolphin.get('mem2_path') or '(path unavailable)'}")
+    else:
+        lines.append(f"MEM2 process: waiting ({dolphin.get('mem2_note') or 'no live map'})")
+    if len(candidates) > 1:
+        lines.append("Multiple Dolphin instances: DME's MEM1 process cannot be identified here.")
+    for candidate in candidates:
+        lines.append(f"  Dolphin PID {candidate.get('pid')}: {candidate.get('path') or '(path unavailable)'}")
+    lines.append(f"Overlay: {'ON' if state.get('overlay_enabled') else 'OFF'}")
+    lines.append(f"KO Control: {state.get('ko_control') or 'OFF'}")
+    lines.append("")
+
+    recent_events = state.get("recent_events") or []
+    lines.append("RECENT COMBAT EVENTS")
+    if recent_events:
+        for event in recent_events:
+            lines.append(
+                f"  #{event.get('seq')} {event.get('kind')} {event.get('slot')} "
+                f"action={event.get('action')} damage={event.get('damage')} combo={event.get('combo')}"
+            )
+    else:
+        lines.append("  No combat events yet.")
     lines.append("")
 
     mega = state.get("megacrash") or {}
@@ -220,7 +244,8 @@ def _format_state_text(state: dict[str, Any]) -> str:
     lines.append("")
 
     other_keys = sorted(k for k in state.keys() if k not in {
-        "hooked", "megacrash", "hud_editor", "assist", "slots", "perf", "active_quick_assist_by_slot", "runtime_patch_manager",
+        "hooked", "dolphin", "recent_events", "overlay_enabled", "ko_control",
+        "megacrash", "hud_editor", "assist", "slots", "perf", "active_quick_assist_by_slot", "runtime_patch_manager",
     })
     if other_keys:
         lines.append("OTHER STATE")
@@ -273,6 +298,12 @@ def open_overseer_window(
             fg=_MUTED,
             font=("Segoe UI", 9),
         ).pack(side="left", padx=(12, 0))
+        connection_badge = tk.Label(header, text="DOLPHIN WAITING", bg=_PANEL, fg=_MUTED,
+                                    font=("Segoe UI", 9, "bold"), padx=9, pady=4)
+        connection_badge.pack(side="right")
+        ko_badge = tk.Label(header, text="KO OFF", bg=_PANEL, fg=_MUTED,
+                            font=("Segoe UI", 9, "bold"), padx=9, pady=4)
+        ko_badge.pack(side="right", padx=(0, 8))
 
         controls_shell = tk.Frame(win, bg=_BORDER, padx=1, pady=1)
         controls_shell.pack(side="top", fill="x", padx=12, pady=(0, 8))
@@ -380,6 +411,17 @@ def open_overseer_window(
                 state = state_provider() or {}
                 rendered = _format_state_text(state)
                 dashboard_var.set(rendered)
+                connection_badge.configure(
+                    text="DOLPHIN HOOKED" if state.get("hooked") else "DOLPHIN WAITING",
+                    bg="#1d4438" if state.get("hooked") else _PANEL,
+                    fg="#b8f1d4" if state.get("hooked") else _MUTED,
+                )
+                ko_mode = str(state.get("ko_control") or "OFF").upper()
+                ko_badge.configure(
+                    text=f"KO {ko_mode}",
+                    bg="#1d4438" if ko_mode == "ACTIVE" else "#514228" if ko_mode == "ARMED" else _PANEL,
+                    fg="#b8f1d4" if ko_mode == "ACTIVE" else "#ffe0a0" if ko_mode == "ARMED" else _MUTED,
+                )
                 status_var.set(f"Live runtime state refreshed at {time.strftime('%H:%M:%S')}.")
             except Exception as e:
                 err = traceback.format_exc()
@@ -390,6 +432,16 @@ def open_overseer_window(
                     f"Error: {e!r}\n\n{err}"
                 )
                 status_var.set(f"Refresh failed: {e!r}")
+
+        def copy_status() -> None:
+            try:
+                report = _format_state_text(state_provider() or {})
+                win.clipboard_clear()
+                win.clipboard_append(report)
+                win.update_idletasks()
+                status_var.set("Current status and recent combat events copied.")
+            except Exception as e:
+                status_var.set(f"Copy failed: {e!r}")
 
         def safe_restore() -> None:
             try:
@@ -432,6 +484,13 @@ def open_overseer_window(
             refresh,
             tip_var,
             "Refresh reads the current tool state and redraws this panel. It does not write to game memory.",
+        ).pack(side="left", padx=(0, 8))
+        _tip_button(
+            action_row_1,
+            "Copy Status",
+            copy_status,
+            tip_var,
+            "Copy the current status and recent combat events as text.",
         ).pack(side="left", padx=(0, 8))
         _tip_button(
             action_row_1,

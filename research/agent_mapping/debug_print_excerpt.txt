@@ -1,0 +1,339 @@
+WII RUNTIME 0x800727b0 -> DOL FILE OFFSET 0x0005cc90
+QUERY 0x5cc90 FUNCTION 0005cc90 HitData_DebugPrint
+ENTRY REFERENCES: 0002dd00
+
+/* TvcHitData confirmed from HitData_DebugPrint.
+   
+   Confirmed field offsets:
+   +0x000 flags
+   +0x004 delay
+   +0x008 life
+   +0x010 hit_count_max
+   +0x014 hit_interval
+   +0x01C atk_flags
+   +0x020 atr_flags
+   +0x028 power
+   +0x02C damage_rate
+   +0x030 dstiff
+   +0x03C sa_power
+   +0x040 hitstop
+   +0x07C hit_count_current
+   +0x080 time
+   +0x084 tendover
+   +0x08C thitover
+   +0x2A0 timerate_ptr
+   +0x2A4 hit_type
+   +0x2A8 hit_shape_array
+   +0x2AC active_shape_array_or_copy
+   +0x2B0 hit_shape_count
+   
+   Shape dispatch:
+   hit_type 1: sphere, stride 0x18
+   hit_type 2: line,   stride 0x40
+   hit_type 3: box,    stride 0x20
+    */
+
+void HitData_DebugPrint(void)
+
+{
+  int iVar1;
+  undefined4 *puVar2;
+  undefined4 *puVar3;
+  undefined1 auStack_98 [152];
+  
+  puVar2 = (undefined4 *)FUN_00193398();
+  debug_printf_or_OSReport(0x8034efac,*puVar2);
+  iVar1 = puVar2[0xa9];
+  if (iVar1 == 1) {
+    debug_printf_or_OSReport(0x8034efb7,puVar2[0xac]);
+  }
+  else if (iVar1 == 2) {
+    debug_printf_or_OSReport(0x8034efd3,puVar2[0xac]);
+  }
+  else if (iVar1 == 3) {
+    debug_printf_or_OSReport(0x8034efed,puVar2[0xac]);
+  }
+  else {
+    debug_printf_or_OSReport(0x8034f006,puVar2[0xac]);
+  }
+  debug_printf_or_OSReport((double)(float)puVar2[1],(double)(float)puVar2[2],0x8034f023);
+  debug_printf_or_OSReport
+            ((double)(float)puVar2[0x20],(double)(float)puVar2[0x21],(double)(float)puVar2[0x23],
+             0x8034f03c);
+  debug_printf_or_OSReport((double)*(float *)puVar2[0xa8],0x8034f068);
+  func_0xfffee830(auStack_98,0,0x80);
+  iVar1 = 0;
+  puVar3 = (undefined4 *)&DAT_803689c0;
+  do {
+    if ((puVar2[7] & 1 << iVar1) != 0) {
+      FUN_0019a8f8(auStack_98,0x8034f078,auStack_98,*puVar3);
+    }
+    iVar1 = iVar1 + 1;
+    puVar3 = puVar3 + 1;
+  } while (iVar1 < 0x20);
+  debug_printf_or_OSReport(0x8034f07e,auStack_98);
+  func_0xfffee830(auStack_98,0,0x80);
+  iVar1 = 0;
+  puVar3 = (undefined4 *)&DAT_80368a40;
+  do {
+    if ((puVar2[8] & 1 << iVar1) != 0) {
+      FUN_0019a8f8(auStack_98,0x8034f078,auStack_98,*puVar3);
+    }
+    iVar1 = iVar1 + 1;
+    puVar3 = puVar3 + 1;
+  } while (iVar1 < 0x20);
+  debug_printf_or_OSReport(0x8034f087,auStack_98);
+  debug_printf_or_OSReport((double)(float)puVar2[0xb],0x8034f090,puVar2[10],puVar2[0xf]);
+  debug_printf_or_OSReport(0x8034f0ae,puVar2[0xc],puVar2[0x10]);
+  debug_printf_or_OSReport((double)(float)puVar2[5],0x8034f0c5,puVar2[0x1f],puVar2[4]);
+  FUN_001933e4();
+  return;
+}
+
+
+
+WII RUNTIME 0x800771d0 -> DOL FILE OFFSET 0x000616b0
+QUERY 0x616b0 FUNCTION 000616b0 FUN_000616b0
+ENTRY REFERENCES: 0002de94
+
+void FUN_000616b0(int param_1)
+
+{
+  if ((*(uint *)(param_1 + 0x13cc) & 0x8000) == 0) {
+    debug_printf_or_OSReport(0x8034f5c4);
+  }
+  else {
+    debug_printf_or_OSReport(0x8034f5b8);
+  }
+  debug_printf_or_OSReport(0x8034f5c7,*(undefined4 *)(param_1 + 0x13cc));
+  debug_printf_or_OSReport(0x8034f5d2,*(undefined4 *)(param_1 + 0x13d0));
+  debug_printf_or_OSReport(0x8034f5dd,*(undefined4 *)(param_1 + 0x13d4));
+  debug_printf_or_OSReport(0x8034f5e8,*(undefined4 *)(param_1 + 0x13d8));
+  debug_printf_or_OSReport(0x8034f5f3,*(undefined4 *)(param_1 + 0x13dc));
+  return;
+}
+
+
+
+WII RUNTIME 0x8004a06c -> DOL FILE OFFSET 0x0003454c
+QUERY 0x3454c FUNCTION 0003454c FUN_0003454c
+ENTRY REFERENCES: 0002dcb8
+
+void FUN_0003454c(int param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  undefined1 auStack_98 [140];
+  
+  iVar3 = *(int *)(param_1 + 0x1e8);
+  iVar4 = *(int *)(param_1 + 0x4310);
+  if (iVar3 < 0x200) {
+    if (iVar3 < 0xa0) {
+      if (-1 < iVar3) {
+        FUN_0019a8f8(auStack_98,0x8034dea8,*(undefined4 *)(iVar3 * 4 + -0x7fc9aef8));
+        goto LAB_00034660;
+      }
+    }
+    else if (0xff < iVar3) goto LAB_00034628;
+    FUN_0019a8f8(auStack_98,0x8034deb7);
+  }
+  else {
+    if (iVar3 < 0x240) {
+      if (iVar3 < 0x220) {
+        FUN_0019a8f8(auStack_98,0x8034dea8,*(undefined4 *)((iVar3 + -0x200) * 4 + -0x7fc9ac78));
+      }
+      else {
+        FUN_0019a8f8(auStack_98,0x8034dea8,*(undefined4 *)((iVar3 + -0x220) * 4 + -0x7fc9abf8));
+      }
+      goto LAB_00034660;
+    }
+LAB_00034628:
+    FUN_0019a8f8(auStack_98,0x8034deab,iVar3 + -0x100);
+  }
+LAB_00034660:
+  debug_printf_or_OSReport
+            (0x8034debc,*(undefined4 *)(param_1 + 0x1e8),auStack_98,*(undefined4 *)(param_1 + 0x21c)
+            );
+  debug_printf_or_OSReport
+            ((double)*(float *)(param_1 + 0x1d8),(double)*(float *)(param_1 + 0x1d0),0x8034dee0);
+  if (*(int *)(iVar4 + 0x1c) == 0) {
+    debug_printf_or_OSReport(0x8034df21);
+  }
+  else {
+    uVar1 = FUN_0003470c((double)*(float *)(*(int *)(iVar4 + 0x1c) + 0xc));
+    uVar2 = FUN_0003470c((double)*(float *)(iVar4 + 0xc));
+    debug_printf_or_OSReport(0x8034defd,uVar2,uVar1,*(undefined4 *)(iVar4 + 0x20));
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x8004be38 -> DOL FILE OFFSET 0x00036318
+QUERY 0x36318 FUNCTION 00036318 FUN_00036318
+ENTRY REFERENCES: 0002dccc
+
+void FUN_00036318(void)
+
+{
+  return;
+}
+
+
+
+WII RUNTIME 0x8005348c -> DOL FILE OFFSET 0x0003d96c
+QUERY 0x3d96c FUNCTION 0003d96c FUN_0003d96c
+ENTRY REFERENCES: 0002de60
+
+void FUN_0003d96c(int param_1)
+
+{
+  int unaff_r2;
+  double dVar1;
+  
+  dVar1 = (double)FUN_0003d838();
+  debug_printf_or_OSReport
+            ((double)(float)((double)*(float *)(unaff_r2 + -0x7570) * dVar1),0x8034eb30,
+             *(undefined4 *)(param_1 + 0x28),*(undefined4 *)(param_1 + 0x24));
+  dVar1 = (double)FUN_0003d880(param_1);
+  debug_printf_or_OSReport
+            ((double)(float)((double)*(float *)(unaff_r2 + -0x7570) * dVar1),0x8034eb4a,
+             *(undefined4 *)(param_1 + 0x4c),*(undefined4 *)(param_1 + 0x48));
+  return;
+}
+
+
+
+WII RUNTIME 0x8007728c -> DOL FILE OFFSET 0x0006176c
+QUERY 0x6176c FUNCTION 0006176c FUN_0006176c
+ENTRY REFERENCES: 0002dea8
+
+void FUN_0006176c(int param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  undefined1 local_58;
+  undefined1 local_57;
+  undefined1 local_56;
+  undefined1 local_55;
+  undefined1 local_54;
+  undefined1 local_53;
+  undefined1 local_52;
+  
+  iVar3 = 0;
+  iVar4 = *(int *)(&DAT_000013bc + param_1) + 1 >> 0x1f;
+  iVar4 = (iVar4 * 0x10 |
+          (uint)((*(int *)(&DAT_000013bc + param_1) + 1) * 0x10000000 + iVar4) >> 0x1c) - iVar4;
+  do {
+    iVar2 = iVar4 * 4 + param_1;
+    uVar1 = *(uint *)(&DAT_00001278 + iVar2 + 0x104) & 0xf;
+    if (uVar1 < 0xb) {
+                    /* WARNING: Could not emulate address calculation at 0x00061800 */
+                    /* WARNING: Treating indirect jump as call */
+      (**(code **)(uVar1 * 4 + -0x7fc96f60))();
+      return;
+    }
+    local_58 = 0x58;
+    if ((*(uint *)(&DAT_00001278 + iVar2 + 0x104) & 0x80) == 0) {
+      local_57 = 0x2d;
+    }
+    else {
+      local_57 = 0x41;
+    }
+    if ((*(uint *)(&DAT_00001278 + iVar2 + 0x104) & 0x40) == 0) {
+      local_56 = 0x2d;
+    }
+    else {
+      local_56 = 0x42;
+    }
+    if ((*(uint *)(&DAT_00001278 + iVar2 + 0x104) & 0x20) == 0) {
+      local_55 = 0x2d;
+    }
+    else {
+      local_55 = 0x43;
+    }
+    if ((*(uint *)(&DAT_00001278 + iVar2 + 0x104) & 0x10) == 0) {
+      local_54 = 0x2d;
+    }
+    else {
+      local_54 = 0x44;
+    }
+    local_53 = 0x20;
+    local_52 = 0;
+    debug_printf_or_OSReport(&local_58);
+    if (iVar3 == 7) {
+      debug_printf_or_OSReport(0x8034f5fe);
+    }
+    iVar3 = iVar3 + 1;
+    iVar2 = iVar4 + 1 >> 0x1f;
+    iVar4 = (iVar2 * 0x10 | (uint)((iVar4 + 1) * 0x10000000 + iVar2) >> 0x1c) - iVar2;
+  } while (iVar3 < 0x10);
+  debug_printf_or_OSReport(0x8034f5fe);
+  return;
+}
+
+
+
+WII RUNTIME 0x8013e6e8 -> DOL FILE OFFSET 0x00128bc8
+QUERY 0x128bc8 FUNCTION 00128bc8 FUN_00128bc8
+ENTRY REFERENCES: 0002dec0, 0002ded8
+
+void FUN_00128bc8(int param_1,int param_2)
+
+{
+  uint uVar1;
+  int iVar2;
+  int iVar3;
+  
+  if (param_1 != 0) {
+    if (param_2 == 0) {
+      iVar2 = 0;
+      iVar3 = 0;
+      do {
+        debug_printf_or_OSReport
+                  (0x803530d8,*(undefined4 *)(iVar3 + *(int *)(param_1 + 4) * 0x1e0 + -0x7fc36018));
+        if ((0xf < iVar2) &&
+           (uVar1 = iVar2 >> 0x1f, (uVar1 * 0x10 | iVar2 * 0x10000000 + uVar1 >> 0x1c) == uVar1)) {
+          debug_printf_or_OSReport(0x803530de);
+        }
+        iVar2 = iVar2 + 1;
+        iVar3 = iVar3 + 4;
+      } while (iVar2 < 0x78);
+    }
+    else {
+      iVar2 = 0;
+      iVar3 = 0;
+      do {
+        debug_printf_or_OSReport
+                  (0x803530d8,*(undefined4 *)(iVar3 + *(int *)(param_1 + 4) * 0x1e0 + -0x7fc35898));
+        if ((0xf < iVar2) &&
+           (uVar1 = iVar2 >> 0x1f, (uVar1 * 0x10 | iVar2 * 0x10000000 + uVar1 >> 0x1c) == uVar1)) {
+          debug_printf_or_OSReport(0x803530de);
+        }
+        iVar2 = iVar2 + 1;
+        iVar3 = iVar3 + 4;
+      } while (iVar2 < 0x78);
+    }
+    debug_printf_or_OSReport(0x803530de);
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x801351a0 -> DOL FILE OFFSET 0x0011f680
+QUERY 0x11f680 FUNCTION 0011f680 debug_printf_or_OSReport
+ENTRY REFERENCES: 0002dcb0, 0002dcc4, 0002dcf8, 0002dd0c, 0002dd54, 0002dd64, 0002dd7c, 0002dd90, 0002dda8, 0002ddb8, 0002ddcc, 0002dde4, 0002ddf4, 0002de1c, 0002de2c, 0002de58, 0002de8c, 0002dea0, 0002deb4, 0002decc, 0003467c, 00034690, 000346c8, 000346d8, 0003d9a4, 0003d9cc, 0005ccb8, 0005ccec, 0005cd04, 0005cd1c, 0005cd34, 0005cd50, 0005cd68, 0005cd7c, 0005cdec, 0005ce5c, 0005ce74, 0005ce88, 0005cea0, 000616e0, 000616f8, 00061710, 00061720, 00061730, 00061740, 00061750, 000618d4, 000618e8, 00061920, 00128c1c, 00128c48, 00128c90, 00128cbc, 00128ce0, 0009bfec, 0009c034, 0009c0ec, 0009c0bc, 0009c1a0, 000c6fdc, 000c7008, 000c704c, 000c7104, 000c7274, 000c72c0, 000c72d0, 000c72e0, 000c72f0, 000c7300, 000c7310, 000c7320, 000c7340, 000c7364, 000c7374, 000c7394, 000c75f4, 000c7610, 000c7630, 000c7820, 000c7844, 000c7854, 000c786c, 000c7880, 000c7998, 000c7acc, 000c7d8c, 000c7e0c, 000c7e8c, 000c7f20, 000c7f38, 000c7f8c, 000c7fa4, 000c7fbc, 000c7fd4, 000c8100, 000c8118, 000c8124, 000c8144, 000c8154, 000c816c, 000c8210, 000c8294, 000c82a4, 000c8330, 000c8348, 000c83b4, 000c841c, 000c8434, 000c84b4, 0013fda8, 0013fdf8, 0013fe0c, 0013fe20, 0013fe30, 0013fe40, 0013fe50, 0013fe60, 0013fe84, 0013fea0, 0013feb0, 0013fec0, 0013fed0, 0013fee0, 0013ff04, 0013ff20, 0013ff34, 0013ff4c, 0013ff5c, 0013ff6c, 0013ff7c, 0013ff8c, 0013ffb0, 0013ffcc, 0013ffe0, 0013fff4, 00140008, 00140018, 00140028, 00140038, 00140048, 000da8a0, 000da900, 000da930, 000da960, 000da990, 001181a8, 0011e508, 0011e538, 0011e570, 0011e588, 0016e35c, 0016ea54, 0013a884, 0013a8a8
+
+void debug_printf_or_OSReport(void)
+
+{
+  return;
+}
+

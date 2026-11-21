@@ -1,0 +1,13 @@
+8005feb8 8005fed8 base-r30 stw-offset=0034 word=90fe0034
+8005feb8 8005fedc base-r30 stw-offset=0038 word=93fe0038
+80083f98 80083fcc base-r3 stw-offset=001c word=9003001c
+80083f98 80083fd0 base-r3 stw-offset=0020 word=90030020
+80083f98 80083fe4 base-r3 stw-offset=0034 word=90030034
+80083f98 80083fe8 base-r3 stw-offset=0038 word=90030038
+80084a00 80084afc base-r3 stw-offset=0038 word=90030038
+80084a00 80084afc base-r3 stw-offset=0038 word=90030038
+800e2bb4 800e2bd4 base-r8 stw-offset=0034 word=90080034
+800e2bb4 800e2be0 base-r8 stw-offset=0038 word=90080038
+80104aa8 80104b7c base-r29 stw-offset=0034 word=907d0034
+80104aa8 80104b8c base-r29 stw-offset=0038 word=907d0038
+80198880 801988fc base-r4 stw-offset=001c word=9064001c

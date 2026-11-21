@@ -1,3 +1,5 @@
+"""Coalesced background work for features that must not block the HUD."""
+
 from __future__ import annotations
 
 import threading
@@ -6,7 +8,11 @@ from typing import Callable, Optional
 
 
 class DeferredWorkLoop:
-    """Run coalesced background work without blocking the HUD thread."""
+    """Run callbacks periodically or on request, with a minimum interval.
+
+    Multiple requests can be coalesced into one callback. Worker exceptions are
+    isolated so a background feature cannot stop the HUD loop.
+    """
 
     def __init__(
         self,
@@ -46,6 +52,11 @@ class DeferredWorkLoop:
             next_allowed = time.monotonic() + self._interval
 
     def close(self, *, final_callback: Optional[Callable[[], None]] = None, timeout: float = 1.5) -> None:
+        """Request shutdown, wait up to ``timeout``, then run final cleanup.
+
+        A callback that exceeds the timeout can still be running when the final
+        callback is invoked, so callers must coordinate any shared resources.
+        """
         self._stop.set()
         self._wake.set()
         if self._thread.is_alive():

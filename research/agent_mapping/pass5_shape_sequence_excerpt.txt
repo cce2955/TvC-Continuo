@@ -1,0 +1,250 @@
+WII RUNTIME 0x8010ff90 -> DOL FILE OFFSET 0x000fa470
+QUERY 0xfa470 FUNCTION 000fa448 FUN_000fa448
+ENTRY REFERENCES: 
+
+uint * FUN_000fa448(undefined4 param_1,undefined4 param_2,uint *param_3)
+
+{
+  uint uVar1;
+  uint *puVar2;
+  
+  uVar1 = *param_3 >> 0x10 & 0xff;
+  if (uVar1 < 0x27) {
+                    /* WARNING: Could not emulate address calculation at 0x000fa498 */
+                    /* WARNING: Treating indirect jump as call */
+    puVar2 = (uint *)(**(code **)(uVar1 * 4 + -0x7fc8f7c8))();
+    return puVar2;
+  }
+  FUN_000cad1c(param_1,param_2,param_3);
+  uRam00000001 = 0;
+  return param_3;
+}
+
+
+
+WII RUNTIME 0x800a94d0 -> DOL FILE OFFSET 0x000939b0
+No containing function for 0x939b0
+
+WII RUNTIME 0x80071308 -> DOL FILE OFFSET 0x0005b7e8
+QUERY 0x5b7e8 FUNCTION 0005b7e8 HitData_ActivateType1Shape
+ENTRY REFERENCES: 
+
+void HitData_ActivateType1Shape(undefined8 param_1,int param_2,int param_3,undefined4 param_4)
+
+{
+  int iVar1;
+  uint *puVar2;
+  int iVar3;
+  int iVar4;
+  
+  if (*(int *)(param_2 + 0x2a4) != 1) {
+    uRam00000001 = 0;
+  }
+  if (param_3 != 0) {
+    iVar4 = 0;
+    for (iVar3 = 0; iVar3 < *(int *)(param_2 + 0x2b0); iVar3 = iVar3 + 1) {
+      puVar2 = (uint *)(*(int *)(param_2 + 0x2a8) + iVar4);
+      iVar1 = HitShape_IsActiveOrAllocated_candidate(puVar2);
+      if (iVar1 == 0) {
+        HitShape_ActivateSphereRuntime_candidate(param_1,puVar2,param_3,param_4);
+        *puVar2 = *puVar2 | 8;
+        HitShape_MarkActiveOrCommit_candidate(puVar2);
+        HitShape_HandleSphereType(*(int *)(param_2 + 0x2ac) + iVar3 * 0xc,puVar2);
+        return;
+      }
+      iVar4 = iVar4 + 0x18;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x800713d8 -> DOL FILE OFFSET 0x0005b8b8
+QUERY 0x5b8b8 FUNCTION 0005b8b8 HitData_ActivateType2LineShape
+ENTRY REFERENCES: 
+
+void HitData_ActivateType2LineShape
+               (undefined8 param_1,uint *param_2,int param_3,undefined4 param_4,undefined4 param_5,
+               undefined4 param_6)
+
+{
+  int iVar1;
+  uint *puVar2;
+  int iVar3;
+  int iVar4;
+  
+  if (param_2[0xa9] != 2) {
+    uRam00000001 = 0;
+  }
+  if (param_3 != 0) {
+    iVar4 = 0;
+    for (iVar3 = 0; iVar3 < (int)param_2[0xac]; iVar3 = iVar3 + 1) {
+      puVar2 = (uint *)(param_2[0xaa] + iVar4);
+      iVar1 = FUN_0005d264(puVar2);
+      if (iVar1 == 0) {
+        FUN_0008bfac(param_1,puVar2,param_3,param_4,param_5,param_6);
+        if ((*param_2 & 0x20) != 0) {
+          *puVar2 = *puVar2 | 0x20;
+        }
+        if ((*param_2 & 8) != 0) {
+          *puVar2 = *puVar2 | 0x10;
+        }
+        *puVar2 = *puVar2 | 0x40;
+        FUN_0005d270(puVar2);
+        HitShape_HandleLineType(0,param_2[0xab] + iVar3 * 0xc,puVar2);
+        return;
+      }
+      iVar4 = iVar4 + 0x40;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x800e0534 -> DOL FILE OFFSET 0x000caa14
+QUERY 0xcaa14 FUNCTION 000caa14 HitRef_SelectSpawnEntryAndSources_entry
+ENTRY REFERENCES: 000d70c4, 000d70ec, 000d7114, 000eeb70, 000eebf0, 000eec60, 000eeca8, 000eee64, 000f02e0, 000f0410, 000f061c, 000f06f4, 001890fc, 00189368, 00189588, 001899ac, 00189a10, 00189a74, 00189ab4, 0018b1ac, 0018b308, 0018b3ec, 0018b4fc, 000dff20
+
+/* HitRef_SelectSpawnEntryAndSources
+   
+   Argument map:
+   - r3 -> r27 = hit lookup context
+   - r4 -> r28 = caller/source table
+   - r5 -> r29 = output pointer slot A
+   - r6 -> r30 = output pointer slot B
+   - r7 -> r31 = encoded owner/input record
+   
+   This decodes selector bytes from the encoded owner/input record.
+   
+   Selector source behavior:
+   - selector < 0x18 uses caller/source table
+   - selector 0x18..0x2F uses lookup_context +0x0C table
+   - selector >= 0x30 delegates to HitRef_ResolveExtendedSelector_candidate
+   
+   The dispatcher uses:
+   - returned r3 as spawn entry descriptor
+   - *(output slot A) as r31 source actor/object
+   - *(output slot B) as r29 aux/source pointer
+    */
+
+uint * HitRef_SelectSpawnEntryAndSources_entry
+                 (int param_1,int param_2,int *param_3,int *param_4,uint *param_5)
+
+{
+  uint uVar1;
+  int iVar2;
+  uint uVar3;
+  uint *puVar4;
+  
+  uVar1 = *param_5 >> 8;
+  uVar3 = uVar1 & 0xff;
+  if ((*param_5 >> 8 & 0x40) == 0) {
+    if ((uVar1 & 0x80) == 0) {
+      if (uVar3 < 0x18) {
+        *param_3 = param_2 + uVar3 * 4;
+        uVar1 = *param_5 & 0xff;
+      }
+      else if (uVar3 < 0x30) {
+        *param_3 = *(int *)(param_1 + 0xc) + (uVar3 - 0x18) * 4;
+        uVar1 = *param_5 & 0xff;
+      }
+      else {
+        iVar2 = HitRef_ResolveExtendedSelector_candidate(uVar3,param_3,param_5);
+        param_5 = (uint *)(iVar2 + 4);
+        uVar1 = *(uint *)(iVar2 + 4) >> 0x18;
+      }
+    }
+    else {
+      uVar1 = uVar1 & 0x3f;
+      if (uVar1 < 0x18) {
+        *param_3 = *(int *)(param_2 + uVar1 * 4);
+      }
+      else if (uVar1 < 0x30) {
+        *param_3 = *(int *)(*(int *)(param_1 + 0xc) + (uVar1 - 0x18) * 4);
+      }
+      else {
+        HitRef_ResolveExtendedSelector_candidate(uVar1,param_3,param_5 + 1);
+      }
+      uVar1 = param_5[1] & 0xffff;
+      if (uVar1 < 0x18) {
+        iVar2 = *(int *)(param_2 + uVar1 * 4);
+      }
+      else {
+        iVar2 = *(int *)(*(int *)(param_1 + 0xc) + (uVar1 - 0x18) * 4);
+      }
+      *param_3 = *param_3 + iVar2 + ((int)param_5[1] >> 0x10);
+      param_5 = param_5 + 2;
+      uVar1 = *param_5 >> 0x18;
+    }
+  }
+  else {
+    uVar1 = uVar1 & 0x3f;
+    if (uVar1 < 0x18) {
+      *param_3 = *(int *)(param_2 + uVar1 * 4);
+    }
+    else if (uVar1 < 0x30) {
+      *param_3 = *(int *)(*(int *)(param_1 + 0xc) + (uVar1 - 0x18) * 4);
+    }
+    else {
+      HitRef_ResolveExtendedSelector_candidate(uVar1,param_3,param_5 + 1);
+    }
+    *param_3 = *param_3 + param_5[1];
+    param_5 = param_5 + 2;
+    uVar1 = *param_5 >> 0x18;
+  }
+  if ((uVar1 & 0x40) == 0) {
+    if ((uVar1 & 0x80) == 0) {
+      if (uVar1 < 0x18) {
+        puVar4 = param_5 + 1;
+        *param_4 = param_2 + uVar1 * 4;
+      }
+      else if (uVar1 < 0x30) {
+        puVar4 = param_5 + 1;
+        *param_4 = *(int *)(param_1 + 0xc) + (uVar1 - 0x18) * 4;
+      }
+      else {
+        iVar2 = HitRef_ResolveExtendedSelector_candidate(uVar1,param_4,param_5);
+        puVar4 = (uint *)(iVar2 + 4);
+      }
+    }
+    else {
+      uVar1 = uVar1 & 0x3f;
+      if (uVar1 < 0x18) {
+        *param_4 = *(int *)(param_2 + uVar1 * 4);
+      }
+      else if (uVar1 < 0x30) {
+        *param_4 = *(int *)(*(int *)(param_1 + 0xc) + (uVar1 - 0x18) * 4);
+      }
+      else {
+        HitRef_ResolveExtendedSelector_candidate(uVar1,param_4,param_5 + 1);
+      }
+      uVar1 = param_5[1] & 0xffff;
+      if (uVar1 < 0x18) {
+        iVar2 = *(int *)(param_2 + uVar1 * 4);
+      }
+      else {
+        iVar2 = *(int *)(*(int *)(param_1 + 0xc) + (uVar1 - 0x18) * 4);
+      }
+      puVar4 = param_5 + 2;
+      *param_4 = *param_4 + iVar2 + ((int)param_5[1] >> 0x10);
+    }
+  }
+  else {
+    uVar1 = uVar1 & 0x3f;
+    if (uVar1 < 0x18) {
+      *param_4 = *(int *)(param_2 + uVar1 * 4);
+    }
+    else if (uVar1 < 0x30) {
+      *param_4 = *(int *)(*(int *)(param_1 + 0xc) + (uVar1 - 0x18) * 4);
+    }
+    else {
+      HitRef_ResolveExtendedSelector_candidate(uVar1,param_4,param_5 + 1);
+    }
+    puVar4 = param_5 + 2;
+    *param_4 = *param_4 + param_5[1];
+  }
+  return puVar4;
+}
+

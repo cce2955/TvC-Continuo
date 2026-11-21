@@ -1,0 +1,16 @@
+WII RUNTIME 0x80192118 -> DOL FILE OFFSET 0x0017c5f8
+QUERY 0x17c5f8 FUNCTION 0017c5e8 FUN_0017c5e8
+ENTRY REFERENCES: 00133d40, 00133d48
+
+void FUN_0017c5e8(void)
+
+{
+  int unaff_r13;
+  
+  if (*(int *)(unaff_r13 + -0x6504) == 0) {
+    return;
+  }
+  FUN_0017c530(*(undefined4 *)(unaff_r13 + -0x6500));
+  return;
+}
+

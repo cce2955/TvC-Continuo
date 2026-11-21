@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Lean Frame Data workbench.
 
 This module intentionally keeps the normal interaction path cache-only:
@@ -11,6 +9,8 @@ This module intentionally keeps the normal interaction path cache-only:
 All cached move fields remain reachable from the inspector. Expensive raw
 containers are only materialized after an explicit user action.
 """
+
+from __future__ import annotations
 
 import json
 import math

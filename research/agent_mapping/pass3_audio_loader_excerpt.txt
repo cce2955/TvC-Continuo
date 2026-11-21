@@ -1,0 +1,79 @@
+WII RUNTIME 0x80191d38 -> DOL FILE OFFSET 0x0017c218
+QUERY 0x17c218 FUNCTION 0017c218 FUN_0017c218
+ENTRY REFERENCES: 000c86ec
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_0017c218(void)
+
+{
+  undefined4 uVar1;
+  int unaff_r13;
+  
+  if (*(int *)(unaff_r13 + -0x6508) != 1) {
+    _DAT_8048c298 = 0;
+    _DAT_8048c2c0 = 0;
+    _DAT_8048c2e8 = 0;
+    _DAT_8048c310 = 0;
+    _DAT_8048c29c = 0;
+    _DAT_8048c2c4 = 0;
+    _DAT_8048c2ec = 0;
+    _DAT_8048c314 = 0;
+    _DAT_8048c2a0 = 0;
+    _DAT_8048c2c8 = 0;
+    _DAT_8048c2f0 = 0;
+    _DAT_8048c318 = 0;
+    _DAT_8048c2a4 = 0;
+    _DAT_8048c2cc = 0;
+    _DAT_8048c2f4 = 0;
+    _DAT_8048c31c = 0;
+    _DAT_8048c2a8 = 0;
+    _DAT_8048c2d0 = 0;
+    _DAT_8048c2f8 = 0;
+    _DAT_8048c320 = 0;
+    _DAT_8048c2ac = 0;
+    _DAT_8048c2d4 = 0;
+    _DAT_8048c2fc = 0;
+    _DAT_8048c324 = 0;
+    _DAT_8048c2b0 = 0;
+    _DAT_8048c2d8 = 0;
+    _DAT_8048c300 = 0;
+    _DAT_8048c328 = 0;
+    _DAT_8048c2b4 = 0;
+    _DAT_8048c2dc = 0;
+    _DAT_8048c304 = 0;
+    _DAT_8048c32c = 0;
+    _DAT_8048c2b8 = 0;
+    _DAT_8048c2e0 = 0;
+    _DAT_8048c308 = 0;
+    _DAT_8048c330 = 0;
+    _DAT_8048c2bc = 0;
+    _DAT_8048c2e4 = 0;
+    _DAT_8048c30c = 0;
+    _DAT_8048c334 = 0;
+    thunk_FUN_001b642c(0x80190e34,0x80190e94);
+    FUN_0017b520(0,0x80356892);
+    FUN_0017b520(1,0x803568a3);
+    FUN_0017b520(2,0x803568b4);
+    uVar1 = FUN_001390e8(1,&DAT_00180040,0,0xc);
+    *(undefined4 *)(unaff_r13 + -0x6518) = uVar1;
+    uVar1 = FUN_00139e80(uVar1,0x180000,0);
+    *(undefined4 *)(unaff_r13 + -0x6528) = uVar1;
+    FUN_00105f40(uVar1,0x60000,4);
+    uVar1 = FUN_001390e8(1,0x5040,0,0xc);
+    *(undefined4 *)(unaff_r13 + -0x6514) = uVar1;
+    uVar1 = FUN_00139e80(uVar1,0x5000,0);
+    *(undefined4 *)(unaff_r13 + -0x6524) = uVar1;
+    FUN_00133f1c(0x803568c5,uVar1);
+    FUN_00106054(0,*(undefined4 *)(unaff_r13 + -0x6524),0x8038af50,0x41);
+    uVar1 = FUN_001390e8(1,0x5040,0,0xc);
+    *(undefined4 *)(unaff_r13 + -0x6510) = uVar1;
+    uVar1 = FUN_00139e80(uVar1,0x5000,0);
+    *(undefined4 *)(unaff_r13 + -0x6520) = uVar1;
+    FUN_00133f1c(0x803568db,uVar1);
+    FUN_00106054(1,*(undefined4 *)(unaff_r13 + -0x6520),0x8038b058,0x3c);
+    *(undefined4 *)(unaff_r13 + -0x6508) = 1;
+  }
+  return;
+}
+

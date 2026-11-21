@@ -1,0 +1,132 @@
+address,proposed_name,subsystem,confidence,evidence_summary
+0x80076bf0,TestInputMaskWithControllerFallback,input,high,Tests fighter +0x13cc mask; fallback depends on slot controller class and ten mapping entries
+0x800767b0,BuildFighterInputTransitions,input/match-flow,high,Builds current and rising/falling input words; routes and masks based on global state
+0x8014177c,EncodeReactionFlags,collision,high,Maps input property bits into destination reaction word with explicit precedence
+0x8004dfd4,ProcessContactCandidate,collision,high,Instructions confirm entry r4 packet reads at +0x1c +0x20 and +0x28; decompiler register recovery is unreliable
+0x80077574,ConvertControllerSlotBits,input,high,Reads per-slot globals 0x803f4050 and 0x803f4054 with 0x48 stride and applies class-specific mapping
+0x801470a8,AdjustConvertedInputForState,input,medium,Called after slot conversion and can replace input based on fighter state
+0x8003c2ac,ConstructFighterFromSetup,character-loading,high,Selects giant allocation class using setup +0x1c and copies identity to object +0x14
+0x8003c0fc,AllocateFighterAndArena,character-loading,high,Selects 0x380000 or 0x700000 arena and allocates 0x46dc object storing arena at +0x4434
+0x80147c7c,SelectPartnerActionCandidate,assists,medium,Eligibility path returns actions 426 or 427 and increments a director counter
+0x8014813c,SelectAction420Candidate,assists,medium,Conditional action 420 path clears fields sets +0x44b8 and increments director counter
+0x80147b24,ConsumeDeferredActionRequest,gameplay-state,high,Maps fighter +0x44ac values to action IDs except in director states 6 and 11
+0x80058024,FindPairedFighterCandidate,assists,high,Maps source index via [2 3 0 1] then looks up corresponding live object
+0x80057d18,FindFighterBySlotIndex,gameplay-state,high,Walks manager lists for object with +4 matching slot index 0 through 3
+0x80052758,FindSidePrimarySlotCandidate,assists,high,For valid slot 0-3 resolves slot index modulo two through fighter lookup
+0x80047154,UpdateFighterStateAndAssistGates,gameplay-state,medium,Clears primary object +0x456c when +0x11c4 is zero and updates +0x44b8 under conditions
+0x8005042c,UpdatePrimaryComboCounterCandidate,gameplay-state,high,Updates primary-slot +0x11c4 with bounded helper and clears it in later director states
+0x800494e0,ClearComboStateCandidate,gameplay-state,medium,Conditionally clears primary +0x11c4 and adjacent fields
+0x800e13e8,CreateResourceWrapperCandidate,character-loading,medium,Allocates 0x38-byte wrapper and frees it if a downstream lookup fails
+0x8007c3b0,BindHitShapeListsCandidate,collision,high,Passes owner +0xa38 or +0xd38 and count five to binders; separate conversion loops 32 times
+0x80051b90,TestShapeRecordBit0,collision,high,Returns first record word masked with one
+0x80051bac,ClearShapeRecordBit1IfBit0Set,collision,high,Conditionally clears bit one; existing label implies more than observed
+0x800a58b4,ProcessSphereShapeCandidate,collision,medium,Processes enabled record and passes float +0x14 downstream
+0x800710c0,BindShapeListType1,collision,high,Stores type one list pointer and count in embedded shape descriptor
+0x800710ec,BindShapeListType2,collision,high,Stores type two list pointer and count in embedded shape descriptor
+0x800a61e8,TestShapeFlags0And1,collision,high,Returns one when both low flag bits are set
+0x800729dc,DispatchShapeRecordsByType,collision,high,Walks descriptor count with strides 0x18 0x40 or 0x20 for types one two and three
+0x80051aa0,ProcessFirst24SphereRecords,collision,high,Processes 24 records at object +0xc20 with stride 0x18
+0x80051b0c,ProcessSecond24SphereRecords,collision,high,Processes 24 records at object +0xe60 with stride 0x18
+0x80043634,DrawFighterDebugShapeModes,debug/collision,high,Per-index mode at 0x803eb7f8 selects shape dispatcher and two 24-record processors
+0x801351a0,DiscardDebugPrintArguments,debug,high,Instructions save argument registers on stack and return without output call
+0x800771d0,FormatInputStateForDebug,debug/input,high,Passes fighter +0x13cc through +0x13dc input fields to no-output debug entry
+0x80316258,RecalculateSceneViewMatrixCandidate,camera,medium,Builds 3x4 float matrix from object fields in graphics draw chain; link to fixed Continuo camera unproven
+0x80315e40,CopySceneViewMatrixCandidate,camera,medium,Conditionally invokes matrix recomputation and copies 0x30 bytes to destination
+0x8031a6f8,SelectSceneViewCandidate,camera,medium,Selects record using byte +0xf4 and stride 0x10c in graphics chain
+0x8014121c,ResolveProtectionHeightMatch,collision/protection,high,Tests property and defender height bits; includes branch-specific Joe action and attacker +0x44a4 exception
+0x8006cc24,RouteMiniGameAndMenuResources,loading,high,Formats mini-game and menu resource paths with argument-dependent selection and handles lookup failure
+0x80049064,SelectFighterActionCandidate,gameplay-state,high,Writes selected low-15-bit action to +0x1e8 and reflects selection bit 0x8000 in +0x60
+0x80049118,CommitFighterActionCandidate,gameplay-state,high,Checks current and previous action clears fields calls setup and copies action +0x1e8 to +0x1ec
+0x80070e64,SelectDoronjoPairSpecificValue,character-specific,medium,Uses fighter IDs and returns 0x168 for first ID 6 and second ID 20; consumer unknown
+0x8003c87c,FindJoeWithNonzeroCharacterState,character-specific,high,Scans manager lists for Joe ID 27 with +0x4600 nonzero; called by candidate action selector
+0x80064b9c,SelectEntryWithCharacterGates,character-specific,medium,Selects six-byte entry with one-shot flags for Doronjo action 0x150 and Ippatsuman action 0x170
+0x80064d94,UpdateCharacterEntrySelector,character-specific,medium,Updates entry selector state and invokes selection on a queued entry count
+0x8007c248,BuildEmbeddedAttackPacketCandidate,collision/loading,high,Clears 0x9c bytes and remaps compact template words to different packet offsets
+0x8007fe88,ResolveGroupAndBuildEmbeddedPacket,collision/loading,high,Resolves group template and fills owner +0x698 +0x69c and +0x738
+0x8007230c,AdvanceHitDataTimers,collision/animation,high,Updates delay lifetime and elapsed values with +0x2a0 float step and clears shapes on expiry or count limit
+0x8007124c,InitializeHitDataWindow,collision/animation,high,Initializes two floats from three window arguments and enforces a two-step delay minimum
+0x80071308,AllocateFirstFreeType1Shape,collision,high,Scans configured 0x18-byte records and initializes first whose flag bit zero is clear
+0x800713d8,AllocateFirstFreeType2Shape,collision,high,Scans configured 0x40-byte records and initializes first whose flag bit zero is clear
+0x800a1c34,TestEnabledType1Pair,collision,high,Requires bits zero and one on both records before pair test
+0x800a20d4,TestType1PairAndContactCandidate,collision,medium,Transforms points compares radii and can write penetration-like output; null-output branch differs
+0x80071c50,CompareHitDataShapeListsCandidate,collision,high,Dispatches shape pairs; a negative type-one size sets 0x80561068 and returns success
+0x80039b04,ClampStageAndGiantDependentFields,stage/camera,high,Clamps object floats based on stage result 4 and presence of active ID 11 or 22-25
+0x80057c3c,HasPointGiantClassCandidate,stage/gameplay,high,Checks four fighter slots for ID 11 or 22-25 with +0x44a0 equal to one
+0x80191d38,InitializeNativeSoundResources,audio/loading,high,Loads bgm.srt and vo.srt into separate buffers and registers 65-entry and 60-entry path tables
+0x8011bb74,RegisterStreamResourceTable,audio/loading,high,Resolves four relative offsets and registers a supplied stream path table and count
+0x80191040,LoadPairedSoundBankCandidate,audio/loading,high,Checks and loads matching .tsb and .whd files for a bank base path
+0x801415bc,ResolveCharacterConditionalContactFlag,collision/character-specific,medium,Checks Karas 0x13e-0x140 and Yatterman-1 0x133-0x135 within contact flag path
+0x801455a0,SelectBaroqueRelatedActionCandidate,gameplay/character-specific,medium,Soki actions 0x136-0x138 and +0x1d8 threshold influence eligibility before Baroque state writes
+0x8011bdb8,GetStreamRegistrationGroup,audio,high,Returns group record at 0x8042b158 + 0x48 + group * 0x28
+0x80191b40,LoadModeDependentSoundBank,audio/loading,high,Maps specific mode values to se_mgcm se_mg00 or se_mg22 bank bases
+0x80191c4c,LoadVariantSoundBank,audio/loading,high,Selects se_mg22_gac ryu or tkb bank base for inputs one through three
+0x801911d0,ReleasePairedSoundBank,audio/loading,high,Unregisters and frees paired bank buffers and clears their pointer slots
+0x80191260,LoadCharacterSoundBankCandidate,audio/character-specific,high,Dispatches ID-like argument through bank table; ID 6 uses fourth argument to choose six Doronjo bank variants
+0x801918a8,LoadStageSoundBankCandidate,audio/stage,high,Dispatches 0-15 to se_map bank names but cases 0 5 and 11 do not invoke the paired-bank loader
+0x80190ebc,RequestCharacterBankSoundCandidate,audio/character-specific,high,Packs a sound-like ID with bank group side plus three then routes it to the sound manager
+0x80190ea0,RoutePackedSoundRequest,audio,high,Splits a packed argument into high and low 16-bit values and calls sound manager
+0x8006c5f8,ClassifyPairedFighterEligibilityCandidate,character-select/gameplay,medium,Mode-two ID rules and preceding fighter state checks include giant and Yami exclusions
+0x80051e20,UpdateFighterHealthAndKOState,gameplay/KO,medium,Broad updater sets fighter KO bit under HP and state gates and checks paired fighter for a downstream event
+0x80076300,UpdateOrClearFighterInputHistory,input/KO,high,Clears input packet under KO or state gates; otherwise updates per-bit timing counters
+0x80053540,DispatchFighterEventGroup16,gameplay/KO,medium,Stores event context globals then dispatches group 0x10; used by full-team-KO candidate path
+0x80156b14,DispatchEventGroup,gameplay,high,Indexes event group table through 0x80561460 with 0x30 stride and walks callbacks
+0x801213b8,DispatchSoundGroupRecordCandidate,audio,high,Looks up a group record by index and dispatches it and linked records by type
+0x8011f6ec,LookupSoundGroupRecordByIndex,audio,high,Checks a descriptor count and retrieves an indexed record pointer
+0x80121490,DispatchLinkedSoundRecordsCandidate,audio,high,Follows signed record byte plus 0x0a until minus one or invalid lookup
+0x80192050,RequestGroupSoundAndUpdateStateCandidate,audio,medium,Invokes stream request wrapper and updates group-zero small-data state for selected IDs
+0x8004ff20,CheckContactCandidateEligibility,gameplay/collision,high,Tests object state and contains two conditional re-enable paths requiring target KO bit clear
+0x8014548c,CheckBaroqueInputHistoryCandidate,gameplay/input,high static,Queries three history entries for partner mask and exactly one attack mask; timing units unverified
+0x80145300,CheckBaroqueStateGatesCandidate,gameplay/baroque,high static,Checks lane state action director lockout and health-related gates; caller has additional requirements
+0x8013d284,FindInputMaskInHistoryCandidate,gameplay/input,high static,Scans bounded slot-indexed input history for a mask; index timing semantics unverified
+0x80045d7c,ResolveNormalRuleCandidate,gameplay/cancel,high static,Walks fighter +0x13e8 24-byte rules with lane phase and action gates; decompiler has recovery warnings
+0x8014121c,MatchProtectionHeightCandidate,gameplay/collision,high static,Checks second-object protection masks against attack property bits and sets +0x5c bit 0x80 under additional gates
+0x8004971c,UpdateFighterExclusionCounterCandidate,gameplay/collision,high static,Subtracts 0x100 from positive fighter +0x1218 and clamps to zero per invocation; game-frame timing unverified
+0x80077908,BuildResourcePathCandidate,resources,high,Switch cases 11 and 12 build character and stage package paths from native tag tables
+0x8006cf88,RequestStagePackageCandidate,stage/loading,high,Builds result-indexed stage package path and passes it to request manager
+0x8006d1c0,RequestFighterPackagesCandidate,character/loading,high,Walks four descriptors and skips zero IDs before issuing character package requests
+0x8014a754,QueueOrFindResourceRequestCandidate,resources,medium,Finds a resource request or creates a record containing supplied flags
+0x80133fe0,DebugControlCallbackCandidate,debug,high,Processes player count and debug toggle commands and passes status labels to no-output print stub
+0x80133e70,InitializeDebugControlObjectCandidate,debug,medium,Initializes callback and debug-control fields in a larger state machine
+0x801503d0,AdjustBoundedControlValue,input/debug,high,Clamps a value and adjusts it based on input bits
+0x8010453c,DispatchResourceSequenceCommandsCandidate,resources/sequence,medium,Sequence command byte 2 requests four fighter descriptors and byte 6 routes to stage or effect requests
+0x800e2b2c,WriteIndexedFighterDescriptorCandidate,character/loading,high,Sequence handler writes six operand values into a descriptor indexed with stride 0x3c
+0x80149b80,ResolveResourceSizeCandidate,resources/loading,medium,Normalizes a path and queries resource entries before filesystem fallback
+0x801fa300,ResolveFilesystemPathCandidate,resources/filesystem,medium,Traverses slash-separated path components across 12-byte directory entries
+0x801fa608,InitializeFileInfoFromEntryCandidate,resources/filesystem,high,Validates a file entry and copies its position and size into file info
+0x800a73e0,LookupNamedTimgResourceCandidate,ui/resources,high,Uses resource type timg and requested name then initializes unrelocated TPL data
+0x80259974,RelocateTPLPointers,ui/resources,high,Checks TPL magic and converts descriptor and image or palette offsets to pointers
+0x8006d2fc,ResolveFighterPackagesCandidate,character/loading,high,Walks four descriptors and records nonzero resource tokens for nonzero IDs
+0x8006d098,ResolveStagePackageCandidate,stage/loading,high,Builds a stage package path from the result ID and requests a resource token
+0x80152514,CreateResourceTokenCandidate,resources,medium,Creates a 0x8c-stride resource entry and returns a one-based token on nonzero input
+0x8015246c,FindFreeResourceTokenSlot,resources,high,Scans the 0x8c-stride resource table for an entry with zero pointer
+0x8015281c,ReleaseResourceTokenCandidate,resources,high,Positive token releases slot token minus one; negative value traverses the table
+0x8006d388,ReleaseFighterResourceTokensCandidate,character/loading,high,Releases recorded fighter tokens in reverse order and decrements their count
+0x80156588,SetEventGroupManager,match-flow/events,high,Sets event group manager pointer with a static fallback
+0x801565e0,RegisterEventGroupNodeCandidate,match-flow/events,medium,Allocates a node for the supplied event group using 0x30-byte group stride
+0x80122470,SetMatchedStreamVoicesStateZero,audio/stream,high,Requests voice state zero for up to two stream voice pointers and marks stream flag
+0x801224ec,SetMatchedStreamVoicesStateOne,audio/stream,high,When stream flag is set requests voice state one for up to two stream voice pointers
+0x801c893c,SetAudioVoiceState,audio/voice,high,Writes voice state halfword at plus 0x38 and marks update flags
+0x8010ff68,DispatchShapeSequenceCommandsCandidate,gameplay/sequence,high,Inner command cases 4 and 0x0d reach type-one and type-two shape activation
+0x8015024c,UpdateDebugMenuSelectionCandidate,debug/input,high,Cycles control entry byte using input bits and the configured entry count
+0x801501a4,DispatchDebugMenuDisplayCallbacksCandidate,debug,high,Calls display callback for header each configured entry and terminal command
+0x80146118,UpdateLinkedFighterTransitionCandidate,assists/team-flow,medium,Paired-object transition has a Polimar linked-state exception that suppresses a local movement/state branch
+0x801464e0,UpdateLinkedFighterTransitionAlternateCandidate,assists/team-flow,medium,Alternate paired-object transition applies the same Polimar linked-state exception
+0x80059bf4,SelectIndexedFighterStatePointersCandidate,gameplay/state,high,Updates selected fighter pointers from a seven-record 0x4d0-stride table with a fallback to record zero
+0x80045c80,ResolveStateDependentActionCandidate,gameplay/actions,high,Zero action 0x14b repeat candidate is rejected until two fighter-relative thresholds are met
+0x8015c6f8,ClearPerFighterExtendedStateBlock,gameplay/state,high,Loops four fighter slots clearing +0x45fc through +0x4638 and additional fields
+0x800dc9d4,HandleDebugStartupMenuCandidate,debug/menu,high,Handles UAS system and submode menu commands and sends labels to the no-output print stub
+0x800dc888,InitializeDebugStartupMenuCandidate,debug/menu,high,Installs the 11-entry debug menu callback on a state object and saves mode fields
+0x800dc784,RunDebugStartupMenuLoopCandidate,debug/menu,high,Updates the initialized debug control object in a loop until its exit global becomes negative
+0x800de008,RunMainSystemModeLoopCandidate,match-flow/debug,medium,Initializes system mode and routes mode zero to a debug-menu loop
+0x800533a0,CalculatePrimaryMeterInFiveLevelUnits,gameplay/meter,high,Resolves primary owner and divides current +0x4c by max +0x48 divided by five
+0x80049118,CommitFighterActionAndInitializeHitDataCandidate,gameplay/actions,high,On a changed valid selected action updates last committed action and initializes fighter hit data at plus 0x224
+0x80146c88,SelectInputActionWithCharacterCounterCandidate,gameplay/actions,high,One gated action path increments fighter plus 0x44c4 twice for Ken Jun and Joe the Condor
+0x80063c20,CreateCharacterCpuControlCandidate,cpu/resource,high static,Formats cpu/<character-tag>/0010 and installs nested resource object at fighter +0x4304
+0x80063e14,ResolveFighterControlWordCandidate,cpu/input,high static,Routes linked object +0x0c or slot controller word; caller passes result to fighter input update
+0x80065c00,EvaluateCpuRecordsAndTimedInputCandidate,cpu/decision,medium static,Evaluates 0x1c stride records and conditionally copies timed object +0x10 to +0x0c
+0x80065400,EvaluateCpuRecordConditionCandidate,cpu/decision,high static,Dispatches type 0 through 24 using table 0x80366868 and tests owner/linked state
+0x80065050,EvaluateCpuRecordThresholdCandidate,cpu/decision,high static,Combines generator output with object +0x114 and indexed table 0x80366858
+0x80065174,EvaluateLinkedObjectThreatCandidate,cpu/decision,medium static,Candidate type 2 inspects linked object list and state/protection conditions
+0x800f056c,DispatchFighterSequenceCommandsCandidate,cpu/sequence,high static,Extracts inner command byte and dispatches through table 0x8036db30
+0x80064964,MergeCpuResponseCandidate,cpu/decision,high static,Merges or appends bounded six-byte response records in control object
+0x800e0380,ResolveSequenceOperandAddress,sequence/operands,high static,Direct selector 2 resolves current sequence context +8; indirect selector forms differ

@@ -33,11 +33,11 @@ def test_hurtbox_reader_uses_one_descriptor_and_one_matrix_read(monkeypatch):
 def test_hitbox_reader_uses_one_contiguous_memory_read(monkeypatch):
     layout = renderer.HITBOX
     base = 0x9246B9C0 + layout.struct_shift
-    start = min(layout.blocks[0], layout.off_flag)
+    start = layout.blocks[0] + layout.slot_flag_offset
     end = max(layout.blocks[-1] + layout.off_r + 4, layout.off_flag + 1)
     blob = bytearray(end - start)
-    blob[layout.off_flag - start] = 0x53
     for index, block in enumerate(layout.blocks):
+        blob[block + layout.slot_flag_offset - start] = (0x53, 0x51, 0x53)[index]
         for offset, value in ((layout.off_x, index), (layout.off_y, index + 1), (layout.off_r, index + 2)):
             struct.pack_into(">f", blob, block + offset - start, float(value))
     calls = []

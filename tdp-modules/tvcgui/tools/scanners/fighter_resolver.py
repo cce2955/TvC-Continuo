@@ -1,18 +1,21 @@
-# resolver.py
-# SlotResolver and Y-offset sampler. :contentReference[oaicite:4]{index=4}
+"""Resolve fighter slots and sample candidate vertical-position offsets."""
 
-import time, math
+import math
+import time
+
 from tvcgui.platform.dolphin import rd32, rdf32, addr_in_ram
 from tvcgui.core.constants import (
     OFF_MAX_HP, OFF_CUR_HP, OFF_AUX_HP,
     POSX_OFF, POSY_CANDS,
     BAD_PTRS, INDIR_PROBES, LAST_GOOD_TTL,
 )
-# looks_like_hp is used by resolver and fighter
 
-# looks_like_hp is used by resolver and fighter
 def looks_like_hp(maxhp, curhp, auxhp):
-    '\n    Very forgiving sanity check for HP.\n\n    Only reject obviously junk data:\n      - maxhp is None, <= 0, or absurdly huge.\n    curhp/auxhp are *not* used to gate the struct anymore, because\n    they can flap during loads or special states and cause the resolver\n    to drop otherwise valid fighter bases.\n    '
+    """Apply the resolver's permissive max-HP sanity check.
+
+    Current and auxiliary HP stay in the signature for existing callers but
+    do not gate identity: both can change during loading and special states.
+    """
     if maxhp is None:
         return False
     if maxhp <= 0 or maxhp > 80_000:
@@ -27,10 +30,12 @@ def _variance(vals):
     m = sum(vals) / n
     return sum((v - m) * (v - m) for v in vals) / (n - 1)
 
+
 def _slope(vals):
     if len(vals) < 2:
         return 0.0
     return (vals[-1] - vals[0]) / (len(vals) - 1)
+
 
 def _corr(a, b):
     n = len(a)
@@ -45,10 +50,12 @@ def _corr(a, b):
         return 0.0
     return num / (da * db)
 
+
 def pick_posy_off_no_jump(base):
-    """
-    Sample x and candidate y offsets for ~1 sec, choose the y offset
-    that looks the most 'ground stable' relative to x. This avoids jumpy Y.
+    """Choose a candidate Y offset using approximately one second of samples.
+
+    The score favors stability relative to X; it does not prove that the
+    selected offset represents Y for every character or animation.
     """
     xs = []
     ys = {off: [] for off in POSY_CANDS}
@@ -79,11 +86,9 @@ def pick_posy_off_no_jump(base):
 
     return best_off or 0xF4
 
+
 class SlotResolver:
-    """
-    Resolve each slot pointer (P1-C1, etc.) to an actual fighter base struct.
-    Caches last_good for stability. Uses probes if first-level pointer isn't HP-looking.
-    """
+    """Resolve slot pointers, retaining recent candidates for continuity."""
 
     def __init__(self):
         # slot_addr -> (base, ttl_expiration)
@@ -102,7 +107,11 @@ class SlotResolver:
         return None
 
     def resolve_base(self, slot_addr):
-        '\n        Returns (base_addr or None, changed_this_frame: bool).\n        changed_this_frame is True if the module found a new base vs last_known.\n        '
+        """Return a fighter candidate and whether it was freshly validated.
+
+        A cached candidate can be returned briefly when the slot is unreadable;
+        callers that need current identity must validate the pointer again.
+        """
         now = time.time()
         s = rd32(slot_addr)
 
@@ -133,5 +142,6 @@ class SlotResolver:
             return lg[0], False
 
         return None, False
+
 
 RESOLVER = SlotResolver()

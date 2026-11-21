@@ -5466,6 +5466,8 @@ def get_assist_runtime_debug_state(snaps: dict | None = None) -> dict:
             snap = snaps.get(slot_label) if isinstance(snaps, dict) else None
             row = dict((prof or {}).get("row", {}) or {}) if isinstance(prof, dict) else {}
             last = _HEADLESS_LAST_RUNTIME_WRITE_BY_SLOT.get(str(slot_label))
+            state_info = row.get("assist_state_info") or {}
+            direct_info = row.get("direct_426_info") or {}
             state_id = _snap_state_id_for_runtime(snap if isinstance(snap, dict) else {})
             out["slot_profiles"][str(slot_label)] = {
                 "selected": bool(prof),
@@ -5475,6 +5477,9 @@ def get_assist_runtime_debug_state(snaps: dict | None = None) -> dict:
                 "char_id": int((prof or {}).get("char_id") or 0) if isinstance(prof, dict) else 0,
                 "owner_base": int((prof or {}).get("owner_base") or 0) if isinstance(prof, dict) else 0,
                 "fighter_base": int((prof or {}).get("fighter_base") or 0) if isinstance(prof, dict) else 0,
+                "wrapper_address": direct_info.get("wrapper_addr") or direct_info.get("default_target") or state_info.get("wrapper_addr"),
+                "state_wrapper_address": (int(state_info.get("wrapper_addr") or 0) + int(state_info.get("state_wrapper_off") or 0)) if state_info.get("wrapper_addr") and state_info.get("state_wrapper_off") else None,
+                "patch_status": "write reported; read-back unverified" if last is not None else "unavailable: no cached runtime write",
                 "route_type": str(row.get("typ") or ""),
                 "route_block": int(row.get("block") or 0),
                 "route_epoch": int(row.get("_assist_epoch", -1)) if row else -1,

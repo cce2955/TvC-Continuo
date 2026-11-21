@@ -1,0 +1,4 @@
+00034098 | FUN_00033fb0 | lwz r3,0x4b4(r3)
+0024e800 | FUN_0024e268 | stw r12,0x4b4(r1)
+002cd2f8 | FUN_002ccf9c | stw r23,0x4b4(r1)
+00324770 | FUN_00324708 | stw r0,0x4b4(r30)

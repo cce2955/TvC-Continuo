@@ -1,0 +1,19 @@
+0038d930 | HCIS: Unable to allocate buffer for incoming HCI message. | 
+0038d96c | HCIS: Invalid length for incoming HCI message. | 
+00390aa0 | L2CAP - cannot send message bigger than peer's mtu size | 
+003a8dcf | 8<< RVL_SDK - SCCheckPCMessageRestriction >> | 
+003adc84 | Received buddy authenticated message from %u.
+ | 
+003af100 | Received undefined buddy message. '%s'
+ | 
+003af128 | Received different version buddy message command. '%s'
+ | 
+003af7d8 | Backup message timed out.
+ | 
+003af9a8 |   ignore qr2 message.
+ | 
+003b2208 | Recv NULL message %x, size = %d
+ | 
+003b34d8 | Invalid message. | 
+003b36d8 | Error reading keys reply message | 
+003b3f80 | Error parsing buddy message. | 

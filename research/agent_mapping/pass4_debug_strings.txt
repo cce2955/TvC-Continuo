@@ -1,0 +1,14 @@
+0034dba3 | [(SYS_DEBUG)
+ | 
+0034f09c | DEBUG  OFF
+ | 
+0034f0a8 | DEBUG  ON
+ | 
+00351410 | *Debug Support* | 
+0039b080 | >>> OSINIT: exception %d vectored to debugger
+ | 
+003aa744 | This TV format "DEBUG_PAL" is only for 
+ | 
+003ad3b0 | NHTTPDisableVerifyOptionForDebug | 
+003ad928 | DWC_DEBUG    : | 
+003bb5b0 | DEBUG | 

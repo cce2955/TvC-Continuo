@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Resolve native attack-property phases from TvC action scripts.
 
 The live collision record is too short-lived for an external Python poll, but
@@ -14,6 +12,8 @@ operations to build result behavior. This parser replays those operations in
 script order, preserves every mutation, and separates the initial guard/tier
 byte from the later hit-result word instead of collapsing them into one value.
 """
+
+from __future__ import annotations
 
 import struct
 import threading

@@ -14,5 +14,6 @@
       0.0
     ]
   },
-  "edit_mode": false
+  "edit_mode": false,
+  "reduce_mission_motion": false
 }

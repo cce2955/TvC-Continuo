@@ -1,0 +1,2 @@
+0017c3a4 | FUN_0017c218 | subi r5,r5,0x50b0
+0018b4ac | FUN_0018b0f8 | lfs f3,-0x50b0(r2)

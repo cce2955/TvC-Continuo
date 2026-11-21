@@ -1,0 +1,7 @@
+FUNCTION FUN_0005b344
+0005b3a4 lwz r0,0x14(r3)
+0005b3a8 cmplwi r0,0x14
+
+FUNCTION FUN_002fcbdc
+002fccfc lwz r0,0x14(r1)
+002fcd00 cmplwi r0,0x14

@@ -21,6 +21,34 @@ class BoneResult:
     sample: Tuple[float, ...]
 
 
+def scale_matrix_basis(raw: bytes, factor: float) -> bytes:
+    """Scale a candidate Wii 3x4 transform while preserving its translation."""
+    if len(raw) != 48 or not math.isfinite(factor) or factor <= 0:
+        raise ValueError("Scaling requires a readable 3×4 transform and a positive finite factor.")
+    values = struct.unpack(">12f", raw)
+    if not all(map(math.isfinite, values)):
+        raise ValueError("The selected block contains non-finite values.")
+    axes = [values[i::4] for i in range(3)]
+    lengths = [math.hypot(*axis) for axis in axes]
+    if any(length < 1e-6 for length in lengths):
+        raise ValueError("The selected block has a missing basis axis.")
+    for i, j in ((0, 1), (0, 2), (1, 2)):
+        dot = sum(a * b for a, b in zip(axes[i], axes[j]))
+        if abs(dot) > 0.02 * lengths[i] * lengths[j]:
+            raise ValueError("The selected block has no orthogonal transform basis.")
+    result = bytearray(raw)
+    for i, value in enumerate(values):
+        if i % 4 != 3:
+            scaled = value * factor
+            if abs(scaled) > 3.4028234663852886e38:
+                raise ValueError("That factor exceeds the range of a game float.")
+            struct.pack_into(">f", result, 4 * i, scaled)
+    scaled_values = struct.unpack(">12f", result)
+    if any(math.hypot(*scaled_values[i::4]) < 1e-6 for i in range(3)):
+        raise ValueError("That factor would collapse a basis axis.")
+    return bytes(result)
+
+
 # ============================================================
 # Low-level helpers
 # ============================================================

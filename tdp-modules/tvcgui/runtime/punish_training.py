@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Deterministic Punish / Sequence Trainer runtime.
 
 This module intentionally keeps the repeating drill scheduler separate from the
@@ -16,6 +14,8 @@ sequence, the only automatic scheduling signal is the selected mailbox target's
 native idle action (0x001).
 Leaving idle cancels any pending countdown and the next idle starts a fresh one.
 """
+
+from __future__ import annotations
 
 import json
 import os

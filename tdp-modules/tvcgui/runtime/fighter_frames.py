@@ -11,7 +11,11 @@ GIANT_IDS = {11, 22}
 
 
 def resolve_bases(last_base_by_ptr: dict, y_off_by_base: dict) -> list:
-    """Resolve four fighter slots and refresh position offsets on pointer churn."""
+    """Read four slot pointers and refresh cached position offsets on change.
+
+    This fast path checks the guest address range; it does not establish actor
+    identity. Consumers requiring attribution must validate the fighter fields.
+    """
     resolved = []
     for slotname, ptr_addr, teamtag in SLOTS:
         raw_base = rd32(ptr_addr)
@@ -46,10 +50,11 @@ def compute_team_giant_solo(snaps: dict) -> tuple[bool, bool]:
 
 
 def read_fighter_frame(base: int, y_offset: int, block_size: int):
-    """Return (snapshot, block), keeping both views on the same RAM sample.
+    """Return a fighter snapshot and the bulk block supplied to its parser.
 
-    A failed bulk read falls back to the parser's individual reads. The HUD
-    still receives ``None`` for an invalid fighter, as it did before.
+    The parser may perform individual reads when the block is incomplete, and
+    the running game can update memory during a read. This is not a validated
+    frame-atomic snapshot. An exception or invalid fighter returns no snapshot.
     """
     try:
         block = rbytes(base, block_size)

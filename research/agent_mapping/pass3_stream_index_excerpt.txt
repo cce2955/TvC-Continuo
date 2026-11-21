@@ -1,0 +1,16 @@
+WII RUNTIME 0x8011f6ec -> DOL FILE OFFSET 0x00109bcc
+QUERY 0x109bcc FUNCTION 00109bcc FUN_00109bcc
+ENTRY REFERENCES: 00109ab8
+
+undefined4 FUN_00109bcc(int *param_1,uint param_2)
+
+{
+  if (*param_1 == 0) {
+    return 0;
+  }
+  if (*(uint *)(*param_1 + 4) <= param_2) {
+    return 0;
+  }
+  return *(undefined4 *)(param_1[1] + param_2 * 4);
+}
+

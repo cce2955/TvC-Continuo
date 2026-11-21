@@ -1,0 +1,26 @@
+index,table_runtime_address,dol_file_offset,case_wii_address,evidence
+0x00,0x80366868,0x00362948,0x800654a4,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x01,0x8036686c,0x0036294c,0x800654cc,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x02,0x80366870,0x00362950,0x80065598,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x03,0x80366874,0x00362954,0x800655b0,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x04,0x80366878,0x00362958,0x800655f0,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x05,0x8036687c,0x0036295c,0x800655cc,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x06,0x80366880,0x00362960,0x8006570c,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x07,0x80366884,0x00362964,0x80065748,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x08,0x80366888,0x00362968,0x80065604,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x09,0x8036688c,0x0036296c,0x80065774,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x0a,0x80366890,0x00362970,0x8006562c,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x0b,0x80366894,0x00362974,0x80065650,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x0c,0x80366898,0x00362978,0x80065678,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x0d,0x8036689c,0x0036297c,0x8006569c,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x0e,0x803668a0,0x00362980,0x80065868,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x0f,0x803668a4,0x00362984,0x80065788,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x10,0x803668a8,0x00362988,0x800657ac,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x11,0x803668ac,0x0036298c,0x800657d4,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x12,0x803668b0,0x00362990,0x800657f8,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x13,0x803668b4,0x00362994,0x80065820,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x14,0x803668b8,0x00362998,0x80065844,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x15,0x803668bc,0x0036299c,0x80065868,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x16,0x803668c0,0x003629a0,0x800656c4,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x17,0x803668c4,0x003629a4,0x80065868,Ghidra flat image and archived DOL agree; case meaning not automatically established
+0x18,0x803668c8,0x003629a8,0x800656e8,Ghidra flat image and archived DOL agree; case meaning not automatically established

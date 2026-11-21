@@ -1,0 +1,75 @@
+0034adab | eft/menu/vs/1000 | 
+0034b463 | menu/main/miniresult_dummy | 
+0034b5de | menu/main/point_result | 
+0034bbdc | NW4R:Failed assertion bResult | 
+0034bcd3 | NW4R:Failed assertion bResult != false | 
+0034c3a1 | NW4R:Failed assertion bResult != false | 
+0034c3c8 | NW4R:Failed assertion bResult | 
+0034cae5 | NW4R:Failed assertion bResult | 
+0034d227 | NW4R:Failed assertion bResult | 
+0034e4a4 | mini/result/result_00 | 
+00350dd0 |  [Where the Wind Blows] | 
+0038916c |   result = %d
+ | 
+00389230 | result: %d
+ | 
+003892d2 | 7$INQUIRY RESULT: %02x:%02x:%02x:%02x:%02x:%02x   %02x%02x%02x   %d
+ | 
+0038932c | DISCOVER RESULT:  %02x:%02x:%02x:%02x:%02x:%02x   %s (%04x)
+ | 
+00389864 | result: %d, handle: %d, addr: %02x:%02x:%02x:%02x:%02x:%02x
+ | 
+0038db68 | bta_hh_sdp_cback: p_cb: %d result 0x%02x,                             attr_mask 0x%02x | 
+0038ecb0 | BTM_SetDiscoverability: mode %d [NonDisc-0, Lim-1, Gen-2], window 0x%04x, interval 0x%04x | 
+0038ed0c | BTM_SetConnectability: mode %d [NonConn-0, Conn-1], window 0x%04x, interval 0x%04x | 
+0038ee84 | BTM Inq Compl Callback: status 0x%02x, num results %d | 
+0038fd70 |    GAP Inquiry Complete Event (Status 0x%04x, Result(s) %d) | 
+0038fdac |    GAP Discovery Complete Event(SDP Result: 0x%04x) | 
+0038fe5f | `GAP Inquiry Results Callback (bdaddr [%02x%02x%02x%02x%02x%02x]) | 
+0038ffaf |     GAP: FindAddrByName Inq Cmpl Evt (Status 0x%04x, Result(s) %d) | 
+0039043c | HID - Rcvd cfg cfm, CID: 0x%x  Result: %d | 
+0039081c | L2CA_ConnectRsp()  CID: 0x%04x  Result: %d  Status: %d | 
+00390954 | L2CA_ConfigRsp()  CID: 0x%04x  Result: %d | 
+00391728 | LCB %d Priority:%d XmitWindow:%d Congestion Start:%d End:%d Discard:%d | 
+00391c08 | PORT_StartCnf result:%d | 
+00391c20 | PORT_StartCnf failed result:%d | 
+00391ce0 | PORT_DlcEstablishCnf dlci:%d mtu:%d result:%d | 
+00391e78 | PORT_FlowInd fc:%d | 
+00392ca8 | SDP - Rcvd cfg cfm, CID: 0x%x  Result: %d | 
+00394144 | (DVDLowInit) Error: IOS_Open failed - pathname '/dev/di' does not exist
+ | 
+00394190 | (DVDLowInit) Error: IOS_Open failed - calling thread lacks permission
+ | 
+003941d8 | (DVDLowInit) Error: IOS_Open failed - connection limit has been reached
+ | 
+00394224 | (DVDLowInit) IOS_Open failed, errorcode = %d
+ | 
+00394780 | @@@ (DVDLowInquiry) IOS_IoctlAsync returned error: %d
+ | 
+00395f04 | midi\16_start_connect_window.mid | 
+00395f88 | midi\21_end_connect_window.mid | 
+00396690 | _btry_wink.brlan | 
+003966c8 | _btry_wink_gry.brlan | 
+00396ff3 | tnw4hbm::lyt::DrawInfo | 
+003973a0 | nw4hbm::lyt::Window | 
+0039b234 | The following errors have been detected and cleared :
+ | 
+003adaac | GHTTPCompleteCallback result : %d
+ | 
+003ae26c | Finished connecting to GP server, result = %d
+ | 
+003aed18 | Unknown result!
+ | 
+003af0bc | RESULT: %s (%d)
+ | 
+003afc08 | DWCi_GT2ConnectedCallback(port=%d,result=%d,msg=[%s])
+ | 
+003afc40 | gt2ConnectedCallback: Already cancel(port=%d,result=%d,msg=[%s]).
+ | 
+003b1acc | NN, Complete NAT Negotiation. result : %d
+ | 
+003b1bec | Match, NN result %d
+ | 
+003b4540 | \version\%d\result\%d | 
+003b60b0 | Sending REPORT to %s:%d (result: %d)
+ | 

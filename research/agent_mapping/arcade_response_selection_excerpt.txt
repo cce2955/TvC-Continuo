@@ -1,0 +1,407 @@
+WII RUNTIME 0x80064b9c -> DOL FILE OFFSET 0x0004f07c
+QUERY 0x4f07c FUNCTION 0004f07c FUN_0004f07c
+ENTRY REFERENCES: 0004f3b4
+
+int FUN_0004f07c(uint *param_1)
+
+{
+  bool bVar1;
+  uint *puVar2;
+  int iVar3;
+  uint uVar4;
+  int iVar5;
+  uint uVar6;
+  
+  iVar3 = -1;
+  uVar4 = 0xffffffff;
+  if (param_1 == (uint *)0x0) {
+    return -1;
+  }
+  if (((*(ushort *)((int)param_1 + 0x26) & 1) != 0) && ((*param_1 & 1) == 0)) {
+    uVar4 = (uint)*(ushort *)(param_1 + 10);
+  }
+  puVar2 = param_1;
+  for (iVar5 = 0; iVar5 < (int)(uint)*(byte *)((int)param_1 + 0x22); iVar5 = iVar5 + 1) {
+    bVar1 = false;
+    if ((*(ushort *)((int)param_1 + 0x26) & 0x101) == 0x101) {
+      if ((*(ushort *)((int)puVar2 + 0x32) & 8) != 0) {
+        bVar1 = true;
+      }
+    }
+    else if ((*(ushort *)((int)puVar2 + 0x32) & 0x18) == 0) {
+      if ((int)uVar4 < (int)(uint)*(ushort *)(puVar2 + 0xd)) {
+        bVar1 = true;
+      }
+    }
+    else {
+      bVar1 = true;
+    }
+    uVar6 = param_1[0x26];
+    if (uVar6 != 0) {
+      if (*(int *)(uVar6 + 0x14) == 6) {
+        if (*(int *)(uVar6 + 0x1e8) == 0x150) {
+          if ((iVar5 == 0) && ((*(uint *)(uVar6 + 0x45fc) & 0x20) == 0)) {
+            *param_1 = *param_1 | 1;
+            *(uint *)(uVar6 + 0x45fc) = *(uint *)(uVar6 + 0x45fc) | 0x20;
+          }
+        }
+        else {
+          *(uint *)(uVar6 + 0x45fc) = *(uint *)(uVar6 + 0x45fc) & 0xffffffdf;
+        }
+      }
+      uVar6 = param_1[0x26];
+      if (*(int *)(uVar6 + 0x14) == 7) {
+        if (*(int *)(uVar6 + 0x1e8) == 0x170) {
+          if ((iVar5 == 0) && ((*(uint *)(uVar6 + 0x460c) & 1) == 0)) {
+            *param_1 = *param_1 | 1;
+            *(uint *)(uVar6 + 0x460c) = *(uint *)(uVar6 + 0x460c) | 1;
+          }
+        }
+        else {
+          *(uint *)(uVar6 + 0x460c) = *(uint *)(uVar6 + 0x460c) & 0xfffffffe;
+        }
+      }
+    }
+    if ((bVar1) &&
+       (((*param_1 & 1) != 0 ||
+        ((*(short *)((int)param_1 + 0x2a) != *(short *)((int)puVar2 + 0x36) &&
+         (*(short *)((int)puVar2 + 0x36) != 0xff)))))) {
+      uVar4 = (uint)*(ushort *)(puVar2 + 0xd);
+      iVar3 = iVar5;
+    }
+    puVar2 = (uint *)((int)puVar2 + 6);
+  }
+  return iVar3;
+}
+
+
+
+WII RUNTIME 0x80064abc -> DOL FILE OFFSET 0x0004ef9c
+QUERY 0x4ef9c FUNCTION 0004ef84 FUN_0004ef84
+ENTRY REFERENCES: 0004f250
+
+void FUN_0004ef84(uint *param_1,int param_2)
+
+{
+  ushort uVar1;
+  uint uVar2;
+  
+  if ((param_1 != (uint *)0x0) && (param_2 != 0)) {
+    FUN_0004ef68(param_1 + 0xb,(int)param_1 + 0x26);
+    FUN_0004ef68((int)param_1 + 0x26,param_2);
+    uVar1 = *(ushort *)((int)param_1 + 0x26);
+    *(ushort *)((int)param_1 + 0x26) = uVar1 | 1;
+    uVar2 = *param_1 & 0xffffff99;
+    *param_1 = uVar2 | 5;
+    if ((uVar1 & 4) == 0) {
+      if ((uVar1 & 2) != 0) {
+        *param_1 = uVar2 | 0x25;
+      }
+    }
+    else {
+      *param_1 = uVar2 | 0x45;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80064d30 -> DOL FILE OFFSET 0x0004f210
+QUERY 0x4f210 FUNCTION 0004f210 FUN_0004f210
+ENTRY REFERENCES: 0004f3cc
+
+void FUN_0004f210(int param_1,int param_2,int param_3)
+
+{
+  int iVar1;
+  
+  if (param_1 != 0) {
+    iVar1 = param_1 + param_3 * 6;
+    if (*(short *)(param_1 + 0x2a) != *(short *)(iVar1 + 0x36)) {
+      FUN_0004ef84(param_1,iVar1 + 0x32);
+      *(uint *)(param_2 + 8) = (uint)*(ushort *)(param_1 + 0x2a);
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80064d94 -> DOL FILE OFFSET 0x0004f274
+QUERY 0x4f274 FUNCTION 0004f274 FUN_0004f274
+ENTRY REFERENCES: 
+
+void FUN_0004f274(int param_1,int param_2)
+
+{
+  short sVar1;
+  int iVar2;
+  uint *puVar3;
+  uint *puVar4;
+  
+  if (((((param_1 != 0) && (param_2 != 0)) &&
+       (puVar4 = *(uint **)(param_1 + 0x14), puVar4 != (uint *)0x0)) &&
+      ((puVar3 = (uint *)puVar4[0x26], puVar3 != (uint *)0x0 && (puVar3[0x10f9] != 0)))) &&
+     ((*puVar3 & 0x1000) == 0)) {
+    if ((*puVar4 & 8) != 0) {
+      *puVar4 = *puVar4 & 0xfffffff7;
+    }
+    if ((*puVar4 & 0x20) == 0) {
+      if (puVar3 != (uint *)0x0) {
+        if ((puVar3[5] == 6) && (puVar3[0x7a] == 0x150)) {
+          *(undefined1 *)((int)puVar4 + 0x23) = 0;
+          *puVar4 = *puVar4 & 0xffffffef;
+        }
+        if ((puVar3[5] == 7) && (puVar3[0x7a] == 0x170)) {
+          *(undefined1 *)((int)puVar4 + 0x23) = 0;
+          *puVar4 = *puVar4 & 0xffffffef;
+        }
+      }
+      if ((*puVar4 & 0x10) != 0) {
+        if (*(short *)(puVar4 + 9) == 0) {
+          *(undefined1 *)((int)puVar4 + 0x23) = 0;
+          *puVar4 = *puVar4 & 0xffffffef;
+        }
+        else {
+          sVar1 = *(short *)(puVar4 + 9) + -1;
+          *(short *)(puVar4 + 9) = sVar1;
+          if (0 < sVar1) {
+            return;
+          }
+          *(undefined2 *)(puVar4 + 9) = 0;
+        }
+      }
+      if (*(char *)((int)puVar4 + 0x22) != '\0') {
+        if (((*puVar4 & 0x40) == 0) && (iVar2 = FUN_0004f07c(puVar4), -1 < iVar2)) {
+          FUN_0004f210(puVar4,param_2,iVar2);
+        }
+        *(undefined1 *)((int)puVar4 + 0x22) = 0;
+      }
+      puVar4[5] = puVar4[5] + 1;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x80064aa4 -> DOL FILE OFFSET 0x0004ef84
+QUERY 0x4ef84 FUNCTION 0004ef84 FUN_0004ef84
+ENTRY REFERENCES: 0004f250
+
+void FUN_0004ef84(uint *param_1,int param_2)
+
+{
+  ushort uVar1;
+  uint uVar2;
+  
+  if ((param_1 != (uint *)0x0) && (param_2 != 0)) {
+    FUN_0004ef68(param_1 + 0xb,(int)param_1 + 0x26);
+    FUN_0004ef68((int)param_1 + 0x26,param_2);
+    uVar1 = *(ushort *)((int)param_1 + 0x26);
+    *(ushort *)((int)param_1 + 0x26) = uVar1 | 1;
+    uVar2 = *param_1 & 0xffffff99;
+    *param_1 = uVar2 | 5;
+    if ((uVar1 & 4) == 0) {
+      if ((uVar1 & 2) != 0) {
+        *param_1 = uVar2 | 0x25;
+      }
+    }
+    else {
+      *param_1 = uVar2 | 0x45;
+    }
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x800643c8 -> DOL FILE OFFSET 0x0004e8a8
+QUERY 0x4e8a8 FUNCTION 0004e8a8 FUN_0004e8a8
+ENTRY REFERENCES: 0004f4fc
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined4 FUN_0004e8a8(int param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  undefined4 uVar1;
+  
+  if (param_1 == 0) {
+    return 0;
+  }
+  if (*(int *)(_DAT_803efb4c + 0xc) != -1) {
+    uVar1 = FUN_0005b284(param_2,param_3);
+    return uVar1;
+  }
+  return 0;
+}
+
+
+
+WII RUNTIME 0x800f056c -> DOL FILE OFFSET 0x000daa4c
+QUERY 0xdaa4c FUNCTION 000daa4c FUN_000daa4c
+ENTRY REFERENCES: 
+
+/* WARNING: Removing unreachable block (ram,0x000dea9c) */
+/* WARNING: Removing unreachable block (ram,0x000deaa8) */
+
+void FUN_000daa4c(undefined4 param_1,undefined4 param_2,uint *param_3)
+
+{
+  uint uVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 in_GQR0;
+  undefined8 in_f30;
+  undefined8 in_f31;
+  undefined8 uVar4;
+  undefined1 auStack_18 [16];
+  undefined1 auStack_8 [8];
+  
+  __psq_st0(auStack_8,(int)((ulonglong)in_f31 >> 0x20),in_GQR0);
+  __psq_st1(auStack_8,(int)in_f31,in_GQR0);
+  __psq_st0(auStack_18,(int)((ulonglong)in_f30 >> 0x20),in_GQR0);
+  __psq_st1(auStack_18,(int)in_f30,in_GQR0);
+  uVar4 = FUN_00193380();
+  iVar2 = (int)((ulonglong)uVar4 >> 0x20);
+  iVar3 = *(int *)(*(int *)(iVar2 + 0xc) + 0x20);
+  if ((iVar3 != 0) && (*(int *)(iVar3 + 0x449c) != 1)) {
+    iVar3 = *(int *)(iVar3 + 8);
+    if (iVar3 == 0) {
+      FUN_00042314(2);
+    }
+    else if (iVar3 == 1) {
+      FUN_00042314(3);
+    }
+    else if (iVar3 == 2) {
+      FUN_00042314(0);
+    }
+    else if (iVar3 == 3) {
+      FUN_00042314(1);
+    }
+  }
+  uVar1 = *param_3 >> 0x10 & 0xff;
+  if (uVar1 < 0x100) {
+                    /* WARNING: Could not emulate address calculation at 0x000dab4c */
+                    /* WARNING: Treating indirect jump as call */
+    (**(code **)(uVar1 * 4 + -0x7fc924d0))();
+    return;
+  }
+  FUN_000cad1c(iVar2,(int)uVar4,param_3);
+  uRam00000001 = 0;
+  __psq_l0(auStack_8,in_GQR0);
+  __psq_l1(auStack_8,in_GQR0);
+  __psq_l0(auStack_18,in_GQR0);
+  __psq_l1(auStack_18,in_GQR0);
+  FUN_001933cc(param_3);
+  return;
+}
+
+
+
+WII RUNTIME 0x80065174 -> DOL FILE OFFSET 0x0004f654
+QUERY 0x4f654 FUNCTION 0004f654 FUN_0004f654
+ENTRY REFERENCES: 
+
+/* WARNING: Removing unreachable block (ram,0x0004f8c4) */
+
+void FUN_0004f654(undefined4 param_1,undefined4 param_2,int param_3,int param_4)
+
+{
+  bool bVar1;
+  uint uVar2;
+  int unaff_r2;
+  undefined4 uVar3;
+  int iVar4;
+  uint *puVar5;
+  uint uVar6;
+  int iVar7;
+  int *piVar8;
+  undefined4 in_GQR0;
+  undefined8 in_f31;
+  double dVar9;
+  undefined8 uVar10;
+  undefined1 auStack_8 [8];
+  
+  __psq_st0(auStack_8,(int)((ulonglong)in_f31 >> 0x20),in_GQR0);
+  __psq_st1(auStack_8,(int)in_f31,in_GQR0);
+  uVar10 = FUN_00193398();
+  iVar7 = (int)((ulonglong)uVar10 >> 0x20);
+  puVar5 = (uint *)uVar10;
+  if (iVar7 == 0) {
+    uVar3 = 0;
+  }
+  else if (puVar5 == (uint *)0x0) {
+    uVar3 = 0;
+  }
+  else if (param_3 == 0) {
+    uVar3 = 0;
+  }
+  else if (param_4 == 0) {
+    uVar3 = 0;
+  }
+  else if (iVar7 == -0xd4) {
+    uVar3 = 0;
+  }
+  else if ((puVar5[0x16] & 0x7000) == 0 && (puVar5[0x16] & 0x400000) == 0) {
+    iVar4 = FUN_0004e9e4(iVar7,0x40000);
+    if ((iVar4 == 0) && (*(float *)(unaff_r2 + -0x7300) <= *(float *)(iVar7 + 0xf0))) {
+      bVar1 = false;
+      dVar9 = (double)*(float *)(unaff_r2 + -0x72fc);
+      for (piVar8 = *(int **)(param_3 + 0x4358); iVar7 = *piVar8, iVar7 != 1;
+          piVar8 = (int *)piVar8[2]) {
+        if ((((((((iVar7 != 0) && (*(int *)(iVar7 + 0xa2c) != 0)) &&
+                (iVar4 = FUN_0006d028(*(int *)(iVar7 + 0xa2c),iVar7), iVar4 == 0)) &&
+               (((*(uint *)(iVar7 + 100) & 2) == 0 && (*(int *)(*(int *)(iVar7 + 0xa2c) + 0x1c) < 1)
+                ))) && (((dVar9 < (double)*(float *)(iVar7 + 0x6c) &&
+                         (((*(uint *)(iVar7 + 0x18) & 0x80000000) == 0 &&
+                          ((*(uint *)(iVar7 + 0x10) & 8) != 0)))) &&
+                        (uVar2 = *(uint *)(iVar7 + 0x14), (uVar2 & 0x10) == 0)))) &&
+             (((((((*(uint *)(iVar7 + 0x18) & 2) == 0 && ((*(uint *)(iVar7 + 0x10) & 0x80000) == 0))
+                 && (-1 < *(int *)(iVar7 + 0x8c))) &&
+                (((*(int *)(iVar7 + 0x314) != 0 && ((puVar5[0x19] & 0x301) == 0)) &&
+                 (((*puVar5 & 2) != 0 &&
+                  ((uVar6 = puVar5[0x16], (uVar6 & 0x200000) == 0 && ((uVar6 & 0x8000) == 0))))))))
+               && (puVar5[0x486] == 0)) &&
+              ((puVar5[0x1114] == 0 &&
+               (((uVar2 & 0x2000) == 0 || (((puVar5[0x18] & 0x40) == 0 && ((uVar6 & 0x200) == 0)))))
+               ))))) &&
+            (((uVar2 & 0x4000) == 0 || (((puVar5[0x18] & 0x40) != 0 || ((uVar6 & 0x200) != 0))))))
+           && (((uVar2 & 0x1000000) == 0 || ((int)puVar5[0x847] < 1)))) {
+          bVar1 = true;
+        }
+      }
+      if (bVar1) {
+        uVar3 = 1;
+        goto LAB_0004f8c0;
+      }
+    }
+    if ((*(uint *)(param_3 + 0x58) & 0x400000) == 0) {
+      uVar3 = 0;
+    }
+    else if ((*(float *)(unaff_r2 + -0x7300) < *(float *)(param_3 + 0x228)) ||
+            (*(float *)(unaff_r2 + -0x7300) < *(float *)(param_3 + 0x22c))) {
+      iVar7 = FUN_0005605c(param_3);
+      if (iVar7 == 0) {
+        uVar3 = 1;
+      }
+      else {
+        uVar3 = 0;
+      }
+    }
+    else {
+      uVar3 = 0;
+    }
+  }
+  else {
+    uVar3 = 0;
+  }
+LAB_0004f8c0:
+  __psq_l0(auStack_8,in_GQR0);
+  __psq_l1(auStack_8,in_GQR0);
+  FUN_001933e4(uVar3);
+  return;
+}
+

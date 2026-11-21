@@ -1,0 +1,442 @@
+[
+  {
+    "file_offset": "0x34db50",
+    "text": "【TATSUNOKO VS. CAPCOM UAS 】"
+  },
+  {
+    "file_offset": "0x34db6e",
+    "text": "デバッグ起動メニュー "
+  },
+  {
+    "file_offset": "0x34db84",
+    "text": "SYS MODE  %d/%d"
+  },
+  {
+    "file_offset": "0x34db94",
+    "text": "デバッグメニュー(SYS_DEBUG) "
+  },
+  {
+    "file_offset": "0x34dbb1",
+    "text": "テストモード(SYS_TEST) "
+  },
+  {
+    "file_offset": "0x34dbc9",
+    "text": "ゲーム(SYS_GAME) "
+  },
+  {
+    "file_offset": "0x34dbdb",
+    "text": "メニュー(SYS_MENU) "
+  },
+  {
+    "file_offset": "0x34dbef",
+    "text": "ミニゲーム(SYS_MINIGAME) "
+  },
+  {
+    "file_offset": "0x34dc09",
+    "text": "ストーリー(SYS_STORY) "
+  },
+  {
+    "file_offset": "0x34dc20",
+    "text": "ムービー(SYS_MOVIE) "
+  },
+  {
+    "file_offset": "0x34dc35",
+    "text": "テストスイッチ(SYS_TESTMODE) "
+  },
+  {
+    "file_offset": "0x34dc53",
+    "text": "------ "
+  },
+  {
+    "file_offset": "0x34dc5b",
+    "text": "SUB MODE  %d/%d"
+  },
+  {
+    "file_offset": "0x34dc6b",
+    "text": "モーションテスト "
+  },
+  {
+    "file_offset": "0x34dc7d",
+    "text": "表情アニメテスト "
+  },
+  {
+    "file_offset": "0x34dc8f",
+    "text": "テクスチャビューア "
+  },
+  {
+    "file_offset": "0x34dca3",
+    "text": "サウンドテスト "
+  },
+  {
+    "file_offset": "0x34dcb3",
+    "text": "フラッシュメモリ "
+  },
+  {
+    "file_offset": "0x34dcc5",
+    "text": "オートFPACK "
+  },
+  {
+    "file_offset": "0x34dcd2",
+    "text": "ＴＨＰテスト "
+  },
+  {
+    "file_offset": "0x34dce0",
+    "text": "対戦テスト "
+  },
+  {
+    "file_offset": "0x34dcec",
+    "text": "すぐに対戦 "
+  },
+  {
+    "file_offset": "0x34dcf8",
+    "text": "メインメニュー "
+  },
+  {
+    "file_offset": "0x34dd08",
+    "text": "キャラセレ "
+  },
+  {
+    "file_offset": "0x34dd14",
+    "text": "ランキング "
+  },
+  {
+    "file_offset": "0x34dd20",
+    "text": "プレイデータ "
+  },
+  {
+    "file_offset": "0x34dd2e",
+    "text": "ビューア "
+  },
+  {
+    "file_offset": "0x34dd38",
+    "text": "リザルト "
+  },
+  {
+    "file_offset": "0x34dd42",
+    "text": "ＶＳ "
+  },
+  {
+    "file_offset": "0x34dd48",
+    "text": "ストラップ装着 "
+  },
+  {
+    "file_offset": "0x34dd58",
+    "text": "オートロード "
+  },
+  {
+    "file_offset": "0x34dd66",
+    "text": "オートセーブ "
+  },
+  {
+    "file_offset": "0x34dd74",
+    "text": "社名ロゴ "
+  },
+  {
+    "file_offset": "0x34dd7e",
+    "text": "ギャラリー "
+  },
+  {
+    "file_offset": "0x34dd8a",
+    "text": "スタッフロール "
+  },
+  {
+    "file_offset": "0x34dd9a",
+    "text": "ゲームオーバー "
+  },
+  {
+    "file_offset": "0x34ddaa",
+    "text": "エンディング "
+  },
+  {
+    "file_offset": "0x34ddb8",
+    "text": "タイトル "
+  },
+  {
+    "file_offset": "0x34ddc2",
+    "text": "オープニングムービー "
+  },
+  {
+    "file_offset": "0x34ddd8",
+    "text": "ステージ移行 "
+  },
+  {
+    "file_offset": "0x34dde6",
+    "text": "メニュー（ｗｉｉ版） "
+  },
+  {
+    "file_offset": "0x34ddfc",
+    "text": "図鑑モード "
+  },
+  {
+    "file_offset": "0x34de08",
+    "text": "コンティニュー "
+  },
+  {
+    "file_offset": "0x34de18",
+    "text": "ワーニング "
+  },
+  {
+    "file_offset": "0x34de24",
+    "text": "ポイント取得 "
+  },
+  {
+    "file_offset": "0x34de32",
+    "text": "ショップ "
+  },
+  {
+    "file_offset": "0x34de3c",
+    "text": "ステージビューア "
+  },
+  {
+    "file_offset": "0x34de4e",
+    "text": "サウンドビューア "
+  },
+  {
+    "file_offset": "0x34de60",
+    "text": "イラストビューア "
+  },
+  {
+    "file_offset": "0x34de72",
+    "text": "ムービービューア "
+  },
+  {
+    "file_offset": "0x34de84",
+    "text": "WiFiテスト "
+  },
+  {
+    "file_offset": "0x34de90",
+    "text": "WiFiリザルト "
+  },
+  {
+    "file_offset": "0x34de9e",
+    "text": "WiFiランキング "
+  },
+  {
+    "file_offset": "0x34deae",
+    "text": "WiFiフレンドライバルリスト "
+  },
+  {
+    "file_offset": "0x34deca",
+    "text": "%2d %s "
+  },
+  {
+    "file_offset": "0x34ded2",
+    "text": "ALX エンディング "
+  },
+  {
+    "file_offset": "0x34dee4",
+    "text": "BAT エンディング "
+  },
+  {
+    "file_offset": "0x34def6",
+    "text": "CAS エンディング "
+  },
+  {
+    "file_offset": "0x34df08",
+    "text": "CHU エンディング "
+  },
+  {
+    "file_offset": "0x34df1a",
+    "text": "DRO エンディング "
+  },
+  {
+    "file_offset": "0x34df2c",
+    "text": "GAC エンディング "
+  },
+  {
+    "file_offset": "0x34df3e",
+    "text": "GLD エンディング "
+  },
+  {
+    "file_offset": "0x34df50",
+    "text": "TS2 エンディング "
+  },
+  {
+    "file_offset": "0x34df62",
+    "text": "IPA エンディング "
+  },
+  {
+    "file_offset": "0x34df74",
+    "text": "JUN エンディング "
+  },
+  {
+    "file_offset": "0x34df86",
+    "text": "KRS エンディング "
+  },
+  {
+    "file_offset": "0x34df98",
+    "text": "MOR エンディング "
+  },
+  {
+    "file_offset": "0x34dfaa",
+    "text": "POL エンディング "
+  },
+  {
+    "file_offset": "0x34dfbc",
+    "text": "PTX エンディング "
+  },
+  {
+    "file_offset": "0x34dfce",
+    "text": "ROC エンディング "
+  },
+  {
+    "file_offset": "0x34dfe0",
+    "text": "ROL エンディング "
+  },
+  {
+    "file_offset": "0x34dff2",
+    "text": "RYU エンディング "
+  },
+  {
+    "file_offset": "0x34e004",
+    "text": "SAK エンディング "
+  },
+  {
+    "file_offset": "0x34e016",
+    "text": "TEK エンディング "
+  },
+  {
+    "file_offset": "0x34e028",
+    "text": "VJO エンディング "
+  },
+  {
+    "file_offset": "0x34e03a",
+    "text": "YAT エンディング "
+  },
+  {
+    "file_offset": "0x34e04c",
+    "text": "YUK エンディング "
+  },
+  {
+    "file_offset": "0x34e05e",
+    "text": "TKB エンディング "
+  },
+  {
+    "file_offset": "0x34e070",
+    "text": "YA2 エンディング "
+  },
+  {
+    "file_offset": "0x34e082",
+    "text": "JOE エンディング "
+  },
+  {
+    "file_offset": "0x34e094",
+    "text": "ZER エンディング "
+  },
+  {
+    "file_offset": "0x34e0a6",
+    "text": "FRA エンディング "
+  },
+  {
+    "file_offset": "0x34e0b8",
+    "text": "オープニング "
+  },
+  {
+    "file_offset": "0x34e0c6",
+    "text": "SUB MODE  ------ "
+  },
+  {
+    "file_offset": "0x34e0da",
+    "text": "国コード            "
+  },
+  {
+    "file_offset": "0x34e0ef",
+    "text": "%s日本 "
+  },
+  {
+    "file_offset": "0x34e0f7",
+    "text": "%sアメリカ "
+  },
+  {
+    "file_offset": "0x34e103",
+    "text": "%sヨーロッパ "
+  },
+  {
+    "file_offset": "0x34e111",
+    "text": "%sアジア "
+  },
+  {
+    "file_offset": "0x34e11b",
+    "text": "%s韓国 "
+  },
+  {
+    "file_offset": "0x34e123",
+    "text": "%s中国 "
+  },
+  {
+    "file_offset": "0x34e12b",
+    "text": "言語                "
+  },
+  {
+    "file_offset": "0x34e140",
+    "text": "%s日本語 "
+  },
+  {
+    "file_offset": "0x34e14a",
+    "text": "%s英語 "
+  },
+  {
+    "file_offset": "0x34e152",
+    "text": "%sフランス語 "
+  },
+  {
+    "file_offset": "0x34e160",
+    "text": "%sスペイン語 "
+  },
+  {
+    "file_offset": "0x34e16e",
+    "text": "%sドイツ語 "
+  },
+  {
+    "file_offset": "0x34e17a",
+    "text": "%sイタリア語 "
+  },
+  {
+    "file_offset": "0x34e188",
+    "text": "%sオランダ語 "
+  },
+  {
+    "file_offset": "0x34e196",
+    "text": "%sハングル "
+  },
+  {
+    "file_offset": "0x34e1a2",
+    "text": "ストリームテスト:   Block(%d) 0x%04x "
+  },
+  {
+    "file_offset": "0x34e1c8",
+    "text": "SYS_SEテスト        0x%04x "
+  },
+  {
+    "file_offset": "0x34e1e4",
+    "text": "COM_SEテスト        0x%04x "
+  },
+  {
+    "file_offset": "0x34e200",
+    "text": "ワイド画面          無効 "
+  },
+  {
+    "file_offset": "0x34e21a",
+    "text": "ワイド画面          有効 "
+  },
+  {
+    "file_offset": "0x34e234",
+    "text": "パッド記録          無効 "
+  },
+  {
+    "file_offset": "0x34e24e",
+    "text": "パッド記録          フリーズ時のみ有効 "
+  },
+  {
+    "file_offset": "0x34e276",
+    "text": "パッド記録          有効 "
+  },
+  {
+    "file_offset": "0x34e290",
+    "text": "パッド記録          有効(ＭＣＳ吐出し) "
+  },
+  {
+    "file_offset": "0x34e2b8",
+    "text": "非表"
+  }
+]

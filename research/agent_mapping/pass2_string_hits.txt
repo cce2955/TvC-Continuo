@@ -1,0 +1,80 @@
+0034b604 | menu/main/stageview | 
+0034b655 | menu/wifi/0000 | 
+0034b664 | menu/wifi/1000 | 
+0034b673 | menu/wifi/2000 | 
+0034b682 | menu/wifi/3000 | 
+0034bfd8 | mat '%s' has more than %d tev stages.(%d)
+ | 
+0034c01b | NW4R:Failed assertion numTevStages == numTevStageData | 
+0034c051 | NW4R:Failed assertion numTevStages + 1 == numTevStageData | 
+0034dba3 | [(SYS_DEBUG)
+ | 
+0034e468 | wifi/error/0000.seq | 
+0034f09c | DEBUG  OFF
+ | 
+0034f0a8 | DEBUG  ON
+ | 
+0035114c | *Network Supervisors* | 
+00351410 | *Debug Support* | 
+003524d8 | ./snd/stream/us/stage_01.ssd | 
+003524f8 | ./snd/stream/us/stage_02.ssd | 
+00352518 | ./snd/stream/us/stage_03.ssd | 
+00352538 | ./snd/stream/us/stage_04.ssd | 
+00352558 | ./snd/stream/us/stage_05.ssd | 
+00352578 | ./snd/stream/us/stage_06.ssd | 
+00352598 | ./snd/stream/us/stage_07.ssd | 
+003525b8 | ./snd/stream/us/stage_08.ssd | 
+003525d8 | ./snd/stream/us/stage_09.ssd | 
+003525f8 | ./snd/stream/us/stage_10.ssd | 
+00352618 | ./snd/stream/us/stage_11.ssd | 
+00352638 | ./snd/stream/us/stage_12.ssd | 
+00352658 | ./snd/stream/us/stage_13.ssd | 
+00352678 | ./snd/stream/us/stage_14.ssd | 
+00352698 | ./snd/stream/us/stage_17.ssd | 
+0039b080 | >>> OSINIT: exception %d vectored to debugger
+ | 
+003a86b8 | Failed to register network shutdown function. %d
+ | 
+003a8720 | Failed to synchronize time with network resource managers. %d
+ | 
+003aa744 | This TV format "DEBUG_PAL" is only for 
+ | 
+003aaff8 | Check the update of WiFi using channel
+ | 
+003ab020 | WiFi uses channel = %d
+ | 
+003ad3b0 | NHTTPDisableVerifyOptionForDebug | 
+003ad8e4 | gamestats.gs.nintendowifi.net | 
+003ad928 | DWC_DEBUG    : | 
+003ae6cc | gpcm.gs.nintendowifi.net | 
+003ae6e8 | gpsp.gs.nintendowifi.net | 
+003ae704 | gamestats.gs.nintendowifi.net | 
+003ae724 | gamestats2.gs.nintendowifi.net | 
+003ae744 | %s.available.gs.nintendowifi.net | 
+003ae768 | %s.natneg1.gs.nintendowifi.net | 
+003ae788 | %s.natneg2.gs.nintendowifi.net | 
+003ae7a8 | %s.natneg3.gs.nintendowifi.net | 
+003ae7c8 | %s.master.gs.nintendowifi.net | 
+003ae7e8 | %s.gamestats.gs.nintendowifi.net | 
+003ae80c | %s.gamestats2.gs.nintendowifi.net | 
+003ae830 | %s.ms%d.gs.nintendowifi.net | 
+003aecf4 | GP_NETWORK_ERROR | 
+003aed74 | GP_NETWORK | 
+003b2730 | https://naswii.test.nintendowifi.net/ac | 
+003b2758 | https://naswii.nintendowifi.net/ac | 
+003b277c | https://naswii.dev.nintendowifi.net/ac | 
+003b27b0 | https://naswii.test.nintendowifi.net/pr | 
+003b27d8 | https://naswii.nintendowifi.net/pr | 
+003b27fc | https://naswii.dev.nintendowifi.net/pr | 
+003b3084 | http://gamestats2.gs.nintendowifi.net/ | 
+003b32f8 | %s.available.gs.nintendowifi.net | 
+003b37b0 | gpcm.gs.nintendowifi.net | 
+003b3d1c | \hasnetwork\ | 
+003b41f8 | gpsp.gs.nintendowifi.net | 
+003b53bc | %s.master.gs.nintendowifi.net | 
+003b5d90 | gamestats.gs.nintendowifi.net | 
+003b5fb8 | natneg1.gs.nintendowifi.net | 
+003b5fd4 | natneg2.gs.nintendowifi.net | 
+003b5ff0 | natneg3.gs.nintendowifi.net | 
+003b6140 | %s.ms%d.gs.nintendowifi.net | 
+003bb5b0 | DEBUG | 

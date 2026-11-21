@@ -70,21 +70,16 @@ def test_ruler_runs_without_visible_hitboxes_or_hurtboxes() -> None:
     src = _text(HITBOX)
     assert "or _range_ruler_enabled()" in src
     assert "hitboxes_on or hurtboxes_on or ruler_on" in src
-    assert "cached[hurt_slot] = raw_hlist if (hurtboxes_on or ruler_on) else []" in src
     assert "range_ruler_on = bool(ruler_on)" in src
     assert "_range_ruler_enabled() and hurtboxes_on" not in src
 
 
-def test_core_hud_and_each_card_can_draw_independently() -> None:
+def test_core_hud_and_research_panels_can_draw_independently() -> None:
     src = _text(HUD)
-    assert "if not core_visible:" in src
-    assert "standalone HUD modules" in src
-    assert "interaction_visible =" in src
-    assert "combo_visible =" in src
-    assert "tag_visible =" in src
-    assert "punish_visible =" in src
-    assert "core_visible or interaction_visible or combo_visible or tag_visible" in src
-    assert "if punish_visible:" in src
+    assert 'core_visible = control is None or getattr(control, "show_hud", True)' in src
+    assert "if core_visible:" in src
+    assert "else:\n        _draw_research_panels(" in src
+    assert "if not hud_visible and not research_visible:" in src
 
 
 def test_mission_renderer_has_no_core_hud_gate() -> None:

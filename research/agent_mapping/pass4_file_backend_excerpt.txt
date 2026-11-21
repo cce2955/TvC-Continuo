@@ -1,0 +1,166 @@
+WII RUNTIME 0x801487a8 -> DOL FILE OFFSET 0x00132c88
+QUERY 0x132c88 FUNCTION 00132c88 FUN_00132c88
+ENTRY REFERENCES: 00133f44, 0013407c, 001340f4
+
+void FUN_00132c88(undefined1 *param_1,char *param_2)
+
+{
+  char cVar1;
+  undefined1 uVar2;
+  
+  for (; ((cVar1 = *param_2, cVar1 != '\0' && (cVar1 != '\r')) && (cVar1 != '\n'));
+      param_2 = param_2 + 1) {
+    uVar2 = FUN_00197398((int)*param_2);
+    *param_1 = uVar2;
+    param_1 = param_1 + 1;
+  }
+  *param_1 = 0;
+  return;
+}
+
+
+
+WII RUNTIME 0x80152a04 -> DOL FILE OFFSET 0x0013cee4
+QUERY 0x13cee4 FUNCTION 0013cee4 FUN_0013cee4
+ENTRY REFERENCES: 00134084
+
+uint FUN_0013cee4(void)
+
+{
+  int iVar1;
+  uint uVar2;
+  
+  iVar1 = FUN_0013cdc8();
+  if (iVar1 == 0) {
+    uVar2 = 0;
+  }
+  else {
+    uVar2 = *(int *)(iVar1 + 0x2c) + 0x1fU & 0xffffffe0;
+  }
+  return uVar2;
+}
+
+
+
+WII RUNTIME 0x80156330 -> DOL FILE OFFSET 0x00140810
+QUERY 0x140810 FUNCTION 00140810 FUN_00140810
+ENTRY REFERENCES: 00134098
+
+undefined4 FUN_00140810(void)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  
+  iVar1 = FUN_00140798();
+  if (iVar1 == 0) {
+    uVar2 = 0;
+  }
+  else {
+    uVar2 = *(undefined4 *)(iVar1 + 0x18);
+  }
+  return uVar2;
+}
+
+
+
+WII RUNTIME 0x80149440 -> DOL FILE OFFSET 0x00133920
+QUERY 0x133920 FUNCTION 00133920 FUN_00133920
+ENTRY REFERENCES: 001340b8
+
+uint FUN_00133920(void)
+
+{
+  int iVar1;
+  uint uVar2;
+  undefined1 auStack_48 [52];
+  int local_14;
+  
+  iVar1 = FUN_001e47e0();
+  if (iVar1 < 0) {
+    uVar2 = 0;
+  }
+  else {
+    iVar1 = FUN_001e4ae8(iVar1,auStack_48);
+    if (iVar1 == 0) {
+      uVar2 = 0;
+    }
+    else {
+      uVar2 = local_14 + 0x1fU & 0xffffffe0;
+      FUN_001e4dfc(auStack_48);
+    }
+  }
+  return uVar2;
+}
+
+
+
+WII RUNTIME 0x8014f62c -> DOL FILE OFFSET 0x00139b0c
+QUERY 0x139b0c FUNCTION 00139b0c FUN_00139b0c
+ENTRY REFERENCES: 00139ebc, 00139e68
+
+undefined4 FUN_00139b0c(int param_1,uint param_2,int param_3)
+
+{
+  int iVar1;
+  int iVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  uint uVar5;
+  uint uVar6;
+  int iVar7;
+  
+  uVar6 = -(uint)*(ushort *)(param_1 + 0xe) & (param_3 + (uint)*(ushort *)(param_1 + 0xe)) - 1;
+  if ((param_2 & 0x8000) == 0) {
+    uVar5 = param_2 & 0x4000;
+    for (iVar2 = FUN_001399b0(param_1,0,uVar5); iVar2 != 0;
+        iVar2 = FUN_001399b0(param_1,iVar2,uVar5)) {
+      iVar1 = *(int *)(iVar2 + 0x10) + -0x20;
+      if ((int)uVar6 <= iVar1) {
+        uVar4 = iVar1 - uVar6;
+        if (uVar4 < *(ushort *)(param_1 + 0xe) + 0x20) {
+          iVar1 = *(int *)(iVar2 + 8);
+          uVar6 = uVar6 + uVar4;
+        }
+        else {
+          iVar7 = *(int *)(iVar2 + 8);
+          iVar1 = iVar2 + uVar6 + 0x20;
+          FUN_00139904(iVar1,iVar2,iVar7);
+          *(int *)(iVar7 + 0xc) = iVar1;
+        }
+        uVar3 = FUN_00139a60(iVar2,*(undefined4 *)(iVar2 + 0xc),iVar1,param_2,uVar6,
+                             *(undefined4 *)(param_1 + 8));
+        *(int *)(param_1 + 0x10) = *(int *)(param_1 + 0x10) - *(int *)(iVar2 + 0x10);
+        if (uVar5 != 0) {
+          return uVar3;
+        }
+        *(int *)(param_1 + 0x1c) = iVar1;
+        return uVar3;
+      }
+    }
+  }
+  else {
+    for (iVar2 = FUN_001399b0(param_1,0,0x8000); iVar2 != 0;
+        iVar2 = FUN_001399b0(param_1,iVar2,0x8000)) {
+      iVar1 = *(int *)(iVar2 + 0x10) + -0x20;
+      if ((int)uVar6 <= iVar1) {
+        uVar5 = iVar1 - uVar6;
+        if (uVar5 < *(ushort *)(param_1 + 0xe) + 0x20) {
+          uVar3 = FUN_00139a60(iVar2,*(undefined4 *)(iVar2 + 0xc),*(undefined4 *)(iVar2 + 8),param_2
+                               ,uVar6 + uVar5,*(undefined4 *)(param_1 + 8));
+          *(int *)(param_1 + 0x10) = *(int *)(param_1 + 0x10) - *(int *)(iVar2 + 0x10);
+          return uVar3;
+        }
+        iVar1 = iVar2 + uVar5;
+        iVar7 = *(int *)(iVar2 + 8);
+        FUN_00139904(iVar2,*(undefined4 *)(iVar2 + 0xc),iVar1,uVar5);
+        *(int *)(iVar7 + 0xc) = iVar1;
+        uVar3 = FUN_00139a60(iVar1,iVar2,iVar7,param_2,uVar6,*(undefined4 *)(param_1 + 8));
+        *(int *)(param_1 + 0x10) = *(int *)(param_1 + 0x10) - *(int *)(iVar1 + 0x10);
+        return uVar3;
+      }
+    }
+  }
+  return 0;
+}
+

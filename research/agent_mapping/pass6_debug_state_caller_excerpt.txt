@@ -1,0 +1,137 @@
+WII RUNTIME 0x800dc834 -> DOL FILE OFFSET 0x000c6d14
+QUERY 0xc6d14 FUNCTION 000c6c64 FUN_000c6c64
+ENTRY REFERENCES: 000c86cc
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_000c6c64(void)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  
+  _DAT_8047819c = 0;
+  _DAT_80416e6c = 0;
+  _DAT_80416e94 = 1;
+  _DAT_80416e90 = 1;
+  FUN_00132d40(3);
+  while (-1 < _DAT_8047819c) {
+    iVar1 = FUN_00134ac8();
+    if ((iVar1 == 0) && (_DAT_80416e94 == 1)) {
+      _DAT_80416e94 = 0;
+    }
+    uVar2 = FUN_002358b8();
+    FUN_00132ef4(0,uVar2,0);
+    FUN_00133528();
+    uVar2 = FUN_002358b8();
+    FUN_00132ef4(0,uVar2,0);
+    FUN_0013d644(1);
+    FUN_00140d68();
+    FUN_0013527c(0);
+    FUN_000c6d68(0x80416e50);
+    FUN_000a5de8();
+    uVar2 = FUN_002358b8();
+    FUN_00132ef4(0,uVar2,0);
+    FUN_001335fc();
+    FUN_00133708();
+  }
+  FUN_00056f74();
+  return;
+}
+
+
+
+WII RUNTIME 0x800dc888 -> DOL FILE OFFSET 0x000c6d68
+QUERY 0xc6d68 FUNCTION 000c6d68 FUN_000c6d68
+ENTRY REFERENCES: 000c6d14
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_000c6d68(int param_1)
+
+{
+  int iVar1;
+  
+  iVar1 = *(int *)(param_1 + 0x1c);
+  if (iVar1 == 0) {
+    FUN_0013a5c8(param_1,0x800dc9d4,0xb);
+    *(undefined1 *)(param_1 + 7) = 2;
+    *(undefined4 *)(param_1 + 0x24) = _DAT_80478a9c;
+    *(undefined4 *)(param_1 + 0x28) = _DAT_80478aa0;
+    *(undefined4 *)(param_1 + 0x2c) = _DAT_80478974;
+    *(undefined4 *)(param_1 + 0x30) = _DAT_80478978;
+    *(uint *)(param_1 + 0x38) = (uint)DAT_80478a11;
+    *(undefined4 *)(param_1 + 0x20) = 0;
+    *(undefined4 *)(param_1 + 0x3c) = 0;
+    *(undefined4 *)(param_1 + 0x1c) = 1;
+  }
+  else if (iVar1 == 1) {
+    FUN_0013a604();
+    if ((_DAT_80473870 & 0x110) != 0) {
+      *(undefined4 *)(param_1 + 0x1c) = 0xf0;
+      *(undefined4 *)(param_1 + 0x20) = 0;
+    }
+  }
+  else {
+    if (iVar1 == 0xf0) {
+      if (*(int *)(param_1 + 0x20) == 0) {
+        _DAT_80478194 = *(undefined4 *)(param_1 + 0x24);
+        _DAT_80478198 = *(undefined4 *)(param_1 + 0x28);
+      }
+      _DAT_80478a9c = *(undefined4 *)(param_1 + 0x24);
+      _DAT_80478aa0 = *(undefined4 *)(param_1 + 0x28);
+      *(undefined4 *)(param_1 + 0x1c) = 0xf1;
+    }
+    else if (iVar1 != 0xf1) {
+      return;
+    }
+    *(undefined4 *)(param_1 + 0x1c) = 0xffffffff;
+    _DAT_804781ac = *(undefined4 *)(param_1 + 0x20);
+    _DAT_8047819c = 0xffffffff;
+  }
+  return;
+}
+
+
+
+WII RUNTIME 0x800dc7a0 -> DOL FILE OFFSET 0x000c6c80
+QUERY 0xc6c80 FUNCTION 000c6c64 FUN_000c6c64
+ENTRY REFERENCES: 000c86cc
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_000c6c64(void)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  
+  _DAT_8047819c = 0;
+  _DAT_80416e6c = 0;
+  _DAT_80416e94 = 1;
+  _DAT_80416e90 = 1;
+  FUN_00132d40(3);
+  while (-1 < _DAT_8047819c) {
+    iVar1 = FUN_00134ac8();
+    if ((iVar1 == 0) && (_DAT_80416e94 == 1)) {
+      _DAT_80416e94 = 0;
+    }
+    uVar2 = FUN_002358b8();
+    FUN_00132ef4(0,uVar2,0);
+    FUN_00133528();
+    uVar2 = FUN_002358b8();
+    FUN_00132ef4(0,uVar2,0);
+    FUN_0013d644(1);
+    FUN_00140d68();
+    FUN_0013527c(0);
+    FUN_000c6d68(0x80416e50);
+    FUN_000a5de8();
+    uVar2 = FUN_002358b8();
+    FUN_00132ef4(0,uVar2,0);
+    FUN_001335fc();
+    FUN_00133708();
+  }
+  FUN_00056f74();
+  return;
+}
+

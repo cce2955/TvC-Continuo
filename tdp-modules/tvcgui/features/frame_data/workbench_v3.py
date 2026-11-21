@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Lean Frame Data workbench.
 
 This module intentionally keeps the normal interaction path cache-only:
@@ -11,6 +9,8 @@ This module intentionally keeps the normal interaction path cache-only:
 All cached move fields remain reachable from the inspector. Expensive raw
 containers are only materialized after an explicit user action.
 """
+
+from __future__ import annotations
 
 import json
 import math
@@ -26,6 +26,7 @@ from tvcgui.core.paths import user_data_path
 from tvcgui.features.combat.move_filters import filter_purged_moves_for_char
 
 from .editors import FDCellEditorsMixin
+from .binding import binding_from_row
 from . import utils as U
 from . import tree as fd_tree
 from . import projectile_integration as FPI
@@ -35,6 +36,8 @@ from .patterns import (
     find_attack_property_addr,
     fmt_attack_property,
     parse_attack_property,
+    find_limb_stretch_packet,
+    LIMB_STRETCH_SCAN_MAX,
 )
 from .write_helpers import (
     write_speed_mod_inline,
@@ -43,9 +46,10 @@ from .write_helpers import (
 from .widgets import ask_integer_with_help, get_field_help, apply_titlebar_icon
 from .timing_observations import apply_observations_to_scan_data
 from . import patch_runtime as FDPatchRuntime
+from .frame_map import build_map, export_map
 
 try:
-    from tvcgui.tools.scanners.bone_scanner import BoneScanner
+    from tvcgui.tools.scanners.bone_scanner import BoneScanner, scale_matrix_basis
 except Exception:
     BoneScanner = None
 
@@ -95,8 +99,9 @@ def _save_custom_columns(cols: list[str]) -> None:
 # and reads directly from the move dictionary.
 _TABLE_VIEW_GROUPS = {
     "core": (
-        "move", "hits", "damage", "meter", "startup", "active", "recovery",
-        "hitstun", "blockstun", "invuln", "armor", "hitstop",
+        "move", "startup", "active", "recovery", "damage", "stretch_len", "hits", "active2",
+        "hitstun", "blockstun", "hitstop", "adv_block_observed", "adv_block_derived",
+        "adv_hit_derived", "meter", "invuln", "armor",
     ),
     "defense": (
         "move", "hits", "hitstun", "blockstun", "hitstop",
@@ -113,9 +118,8 @@ _TABLE_VIEW_GROUPS = {
         "ground_kb", "ground_kb_y", "kb_x", "air_kb", "combo_kb_mod",
     ),
     "hitbox": (
-        "move", "hits", "startup", "active", "hb_main", "hit_spark",
-        "stretch_part", "stretch_len", "stretch_width", "stretch_height",
-        "stretch_time",
+        "move", "stretch_part", "stretch_len", "stretch_width", "stretch_height",
+        "stretch_time", "hb_main", "hit_spark", "hits", "startup", "active",
     ),
     "projectile": tuple(dict.fromkeys((
         "move", "damage", "kb_x", "air_kb", "proj_emit_count",
@@ -133,17 +137,19 @@ _TABLE_VIEW_GROUPS = {
 }
 
 _VIEW_LABELS = {
-    "core": "Core",
+    "core": "Frame data",
     "defense": "Defense",
     "cancel": "Cancels",
     "launch": "Launch / KB",
-    "hitbox": "Hitbox / Reach",
+    "hitbox": "Bones and reach",
     "projectile": "Projectiles",
     "super": "Supers",
     "research": "Research",
     "custom": "Custom",
 }
 _LABEL_TO_VIEW = {v: k for k, v in _VIEW_LABELS.items()}
+_STRETCH_FIELDS = {"stretch_len": "scale1", "stretch_width": "scale2",
+                   "stretch_height": "scale3", "stretch_part": "part", "stretch_time": "timing"}
 
 _STANDARD_EDITABLE = {
     "damage", "meter", "startup", "active", "active2",
@@ -307,8 +313,10 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         self.root = tk.Toplevel(master)
         cname = str(self.target_slot.get("char_name") or "-")
         self.root.title(f"Frame Data Editor: {self.slot_label} ({cname})")
-        self.root.geometry("1540x860")
-        self.root.minsize(1120, 640)
+        width = min(1540, self.root.winfo_screenwidth() - 40)
+        height = min(860, self.root.winfo_screenheight() - 90)
+        self.root.geometry(f"{width}x{height}")
+        self.root.minsize(min(width, 900), min(height, 550))
         try:
             apply_titlebar_icon(self.root, master)
         except Exception:
@@ -346,7 +354,7 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
 
         self._status_var = tk.StringVar(master=self.root, value="Cache-only editor ready")
         self._search_var = tk.StringVar(master=self.root, value="")
-        self._view_var = tk.StringVar(master=self.root, value="Core")
+        self._view_var = tk.StringVar(master=self.root, value=_VIEW_LABELS["core"])
         self._scope_var = tk.StringVar(master=self.root, value="All")
         self._page_var = tk.StringVar(master=self.root, value="")
         self._selection_title_var = tk.StringVar(master=self.root, value="Select a move")
@@ -394,20 +402,23 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         ttk.Button(bar, text="◀", style="Toolbar.TButton", width=3, command=self._prev_page).grid(row=0, column=5)
         ttk.Label(bar, textvariable=self._page_var, style="CommandMuted.TLabel").grid(row=0, column=6, padx=7)
         ttk.Button(bar, text="▶", style="Toolbar.TButton", width=3, command=self._next_page).grid(row=0, column=7, padx=(0, 10))
-        ttk.Button(bar, text="Copy addr", style="Toolbar.TButton", command=self._copy_selected_address).grid(row=0, column=8, padx=(0, 6))
-        ttk.Button(bar, text="Refresh display", style="Toolbar.TButton", command=self._refresh_selected_display).grid(row=0, column=9, padx=(0, 6))
-        ttk.Button(bar, text="Bones", style="Toolbar.TButton", command=self._show_bones).grid(row=0, column=10, padx=(0, 6))
+        tools = ttk.Menubutton(bar, text="Tools")
+        tools.grid(row=0, column=8, padx=(0, 6))
+        menu = tk.Menu(tools, tearoff=False)
+        menu.add_command(label="Copy move address", command=self._copy_selected_address)
+        menu.add_command(label="Refresh display", command=self._refresh_selected_display)
+        menu.add_command(label="Live bone scanner", command=self._show_bones)
+        tools.configure(menu=menu)
         ttk.Button(bar, text="Save patch", style="ToolbarPrimary.TButton", command=self._save_patch).grid(row=0, column=11)
 
         viewbar = ttk.Frame(bar, style="CommandBar.TFrame")
         viewbar.grid(row=1, column=0, columnspan=12, sticky="ew", pady=(7, 0))
         ttk.Label(viewbar, text="View", style="CommandLabel.TLabel").pack(side="left", padx=(0, 6))
-        self._view_buttons = {}
-        for key in ("core", "defense", "cancel", "launch", "hitbox", "projectile", "super", "research", "custom"):
-            label = _VIEW_LABELS[key]
-            btn = ttk.Button(viewbar, text=label, style="Toolbar.TButton", command=lambda k=key: self._activate_view(k))
-            btn.pack(side="left", padx=(0, 4))
-            self._view_buttons[key] = btn
+        view = ttk.Combobox(viewbar, textvariable=self._view_var, values=list(_VIEW_LABELS.values()),
+                            state="readonly", width=18)
+        view.pack(side="left", padx=(0, 8))
+        view.bind("<<ComboboxSelected>>", lambda _e: self._change_view())
+        ttk.Button(viewbar, text="Edit normal size", command=self._edit_selected_reach).pack(side="left")
 
         panes = ttk.Panedwindow(outer, orient="horizontal")
         panes.grid(row=2, column=0, sticky="nsew")
@@ -417,6 +428,11 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         panes.add(left, weight=3)
         panes.add(right, weight=2)
         self._panes = panes
+        def split_on_open(event):
+            if event.width > 1:
+                panes.sashpos(0, round(event.width * 0.57))
+                panes.unbind("<Configure>", split_binding)
+        split_binding = panes.bind("<Configure>", split_on_open)
 
         left.rowconfigure(0, weight=1)
         left.columnconfigure(0, weight=1)
@@ -435,39 +451,64 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             self.tree.heading(col, text=label)
             self.tree.column(col, width=_COLUMN_WIDTH.get(col, 105), minwidth=55, anchor="w" if col in {"move", "context", "source"} else "center", stretch=False)
         self._set_table_view("core")
-        try:
-            self._view_buttons["core"].configure(style="ToolbarPrimary.TButton")
-        except Exception:
-            pass
 
-        right.rowconfigure(2, weight=1)
+        right.rowconfigure(1, weight=1)
         right.columnconfigure(0, weight=1)
         hero = ttk.Frame(right, style="InspectorHero.TFrame", padding=(11, 9))
         hero.grid(row=0, column=0, sticky="ew", pady=(0, 6))
         ttk.Label(hero, textvariable=self._selection_title_var, style="InspectorHeroTitle.TLabel", wraplength=520).pack(anchor="w")
         ttk.Label(hero, textvariable=self._selection_sub_var, style="InspectorHeroSub.TLabel", wraplength=520).pack(anchor="w", pady=(2, 0))
 
-        fieldbar = ttk.Frame(right, style="CommandBar.TFrame", padding=(7, 5))
-        fieldbar.grid(row=1, column=0, sticky="ew", pady=(0, 5))
-        fieldbar.columnconfigure(1, weight=1)
-        ttk.Label(fieldbar, text="Find field", style="CommandLabel.TLabel").grid(row=0, column=0, padx=(0, 5))
-        ttk.Entry(fieldbar, textvariable=self._field_search_var).grid(row=0, column=1, sticky="ew")
-        ttk.Checkbutton(fieldbar, text="Show empty", variable=self._show_empty_var, command=self._refresh_fields).grid(row=0, column=2, padx=(8, 0))
-
         nb = ttk.Notebook(right)
-        nb.grid(row=2, column=0, sticky="nsew")
+        nb.grid(row=1, column=0, sticky="nsew")
         self._notebook = nb
+
+        map_tab = ttk.Frame(nb, padding=5)
+        map_tab.rowconfigure(1, weight=1)
+        map_tab.columnconfigure(0, weight=1)
+        nb.add(map_tab, text="Frame map")
+        ttk.Label(map_tab, text="Related cached phases and variants. Values are candidates; animation length is not confirmed action recovery.",
+                  wraplength=520, justify="left").grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 5))
+        map_columns = ("move", "action", "phase", "strength", "active", "active2", "animation", "recovery", "hitstun", "blockstun", "observed", "derived", "source")
+        self.frame_map_tree = ttk.Treeview(map_tab, columns=map_columns, show="headings")
+        my = ttk.Scrollbar(map_tab, orient="vertical", command=self.frame_map_tree.yview)
+        mx = ttk.Scrollbar(map_tab, orient="horizontal", command=self.frame_map_tree.xview)
+        self.frame_map_tree.configure(yscrollcommand=my.set, xscrollcommand=mx.set)
+        self.frame_map_tree.grid(row=1, column=0, sticky="nsew")
+        my.grid(row=1, column=1, sticky="ns")
+        mx.grid(row=2, column=0, sticky="ew")
+        for key, label, width in (("move", "Move", 150), ("action", "Action", 75), ("phase", "Phase", 115),
+                                  ("strength", "Strength", 95), ("active", "Active candidate", 110),
+                                  ("active2", "Later active candidate", 130), ("animation", "Clip frames", 90),
+                                  ("recovery", "Recovery candidate", 120), ("hitstun", "Hitstun candidate", 110),
+                                  ("blockstun", "Blockstun candidate", 120), ("observed", "Block adv observed", 120),
+                                  ("derived", "Block adv derived", 120), ("source", "Source", 150)):
+            self.frame_map_tree.heading(key, text=label)
+            self.frame_map_tree.column(key, width=width, minwidth=60, stretch=False)
+        ttk.Button(map_tab, text="Export map CSV", command=self._export_frame_map).grid(row=3, column=0, sticky="w", pady=(5, 0))
+        self._frame_map_rows = []
 
         # Fields tab
         fields_tab = ttk.Frame(nb)
-        fields_tab.rowconfigure(0, weight=1)
+        fields_tab.rowconfigure(1, weight=1)
         fields_tab.columnconfigure(0, weight=1)
-        nb.add(fields_tab, text="Fields")
+        nb.insert(0, fields_tab, text="Move properties")
+        nb.select(fields_tab)
+        fieldbar = ttk.Frame(fields_tab, padding=(5, 4))
+        fieldbar.grid(row=0, column=0, columnspan=2, sticky="ew")
+        fieldbar.columnconfigure(1, weight=1)
+        ttk.Label(fieldbar, text="Find property").grid(row=0, column=0, padx=(0, 5))
+        ttk.Entry(fieldbar, textvariable=self._field_search_var).grid(row=0, column=1, sticky="ew")
+        ttk.Checkbutton(fieldbar, text="Show empty", variable=self._show_empty_var,
+                        command=self._refresh_fields).grid(row=0, column=2, padx=(8, 0))
         self.fields_tree = ttk.Treeview(fields_tab, columns=("key", "value", "mode", "address"), show="tree headings", selectmode="browse")
         fy = ttk.Scrollbar(fields_tab, orient="vertical", command=self.fields_tree.yview)
         self.fields_tree.configure(yscrollcommand=fy.set)
-        self.fields_tree.grid(row=0, column=0, sticky="nsew")
-        fy.grid(row=0, column=1, sticky="ns")
+        fx = ttk.Scrollbar(fields_tab, orient="horizontal", command=self.fields_tree.xview)
+        self.fields_tree.configure(displaycolumns=("value", "mode", "address", "key"), xscrollcommand=fx.set)
+        fx.grid(row=2, column=0, sticky="ew")
+        self.fields_tree.grid(row=1, column=0, sticky="nsew")
+        fy.grid(row=1, column=1, sticky="ns")
         self.fields_tree.heading("#0", text="Field")
         self.fields_tree.heading("key", text="Key")
         self.fields_tree.heading("value", text="Value")
@@ -479,17 +520,23 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         self.fields_tree.column("mode", width=58, minwidth=45, stretch=False, anchor="center")
         self.fields_tree.column("address", width=105, minwidth=95, stretch=False, anchor="center")
         fbtn = ttk.Frame(fields_tab, padding=(0, 5, 0, 0))
-        fbtn.grid(row=1, column=0, columnspan=2, sticky="ew")
+        fbtn.grid(row=3, column=0, columnspan=2, sticky="ew")
         ttk.Button(fbtn, text="Edit value", style="ToolbarPrimary.TButton", command=self._edit_selected_field).pack(side="left")
-        ttk.Button(fbtn, text="Edit backing", style="Toolbar.TButton", command=self._edit_selected_field_backing).pack(side="left", padx=(6, 0))
-        ttk.Button(fbtn, text="Relabel", style="Toolbar.TButton", command=self._relabel_selected_field).pack(side="left", padx=(6, 0))
         ttk.Button(fbtn, text="Pin to table", style="Toolbar.TButton", command=self._pin_selected_field).pack(side="left", padx=(6, 0))
-        ttk.Button(fbtn, text="Unpin", style="Toolbar.TButton", command=self._unpin_selected_field).pack(side="left", padx=(6, 0))
-        ttk.Button(fbtn, text="Copy value", style="Toolbar.TButton", command=self._copy_selected_field_value).pack(side="left", padx=(6, 0))
-        ttk.Button(fbtn, text="Open raw", style="Toolbar.TButton", command=self._open_selected_field_raw).pack(side="left", padx=(6, 0))
+        more = ttk.Menubutton(fbtn, text="More actions")
+        more.pack(side="left", padx=6)
+        options = tk.Menu(more, tearoff=False)
+        for label, command in (("Copy value", self._copy_selected_field_value),
+                               ("Unpin from table", self._unpin_selected_field),
+                               ("Relabel", self._relabel_selected_field),
+                               ("Open raw data", self._open_selected_field_raw),
+                               ("Edit backing memory", self._edit_selected_field_backing)):
+            options.add_command(label=label, command=command)
+        more.configure(menu=options)
 
         # Unknown/native tab
         native_tab = ttk.Frame(nb)
+        self._native_tab = native_tab
         native_tab.rowconfigure(0, weight=1)
         native_tab.columnconfigure(0, weight=1)
         nb.add(native_tab, text="Unknown / Native")
@@ -668,11 +715,6 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         self._view_var.set(_VIEW_LABELS[view_key])
         self._set_table_view(view_key)
         self._render_page()
-        for key, btn in getattr(self, "_view_buttons", {}).items():
-            try:
-                btn.configure(style="ToolbarPrimary.TButton" if key == view_key else "Toolbar.TButton")
-            except Exception:
-                pass
 
     def _set_table_view(self, view_key: str):
         if view_key == "custom":
@@ -851,7 +893,10 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             except Exception: return ""
         if col == "hit_spark": return U.fmt_hit_spark_ui(mv)
         if col == "stretch_part": return U.fmt_stretch_part_ui(mv)
-        if col == "stretch_len": return U.fmt_stretch_len_ui(mv)
+        if col == "stretch_len":
+            if mv.get("kind") == "normal" and not mv.get("stretch_packet_addr"):
+                return "Edit…"
+            return U.fmt_stretch_len_ui(mv)
         if col == "stretch_width": return U.fmt_stretch_width_ui(mv)
         if col == "stretch_height": return U.fmt_stretch_height_ui(mv)
         if col == "stretch_time": return U.fmt_stretch_time_ui(mv)
@@ -918,20 +963,13 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             self._status_var.set(f"Showing {start + 1:,}-{end:,} of {len(self._filtered_moves):,}. Selection is cache-only.")
         else:
             self._status_var.set("No moves match the current filter.")
+        if not keep_item and self._item_to_move:
+            keep_item = next(iter(self._item_to_move))
+            keep_move = self._item_to_move[keep_item]
         if keep_item and keep_move is not None:
-            self._selected_move = keep_move
-            self._selected_item = keep_item
-            try:
-                self.tree.selection_set(keep_item)
-                self.tree.focus(keep_item)
-            except Exception:
-                pass
-            self._selection_title_var.set(self._move_label(keep_move))
-            addr = _fmt_addr(keep_move.get("abs")) or "no native anchor"
-            kind = str(keep_move.get("kind") or "normal")
-            self._selection_sub_var.set(f"{kind}  |  {addr}  |  cached fields: {len(keep_move):,}")
-            self._refresh_visible_inspector_tab()
-            self._refresh_protection_timeline(keep_move)
+            self.tree.selection_set(keep_item)
+            self.tree.focus(keep_item)
+            self._on_select()
         else:
             self._selected_move = None
             self._selected_item = None
@@ -964,7 +1002,13 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         self._selection_title_var.set(self._move_label(mv))
         addr = _fmt_addr(mv.get("abs")) or "no native anchor"
         kind = str(mv.get("kind") or "normal")
-        self._selection_sub_var.set(f"{kind}  |  {addr}  |  cached fields: {len(mv):,}")
+        if self._current_view_key == 'hitbox':
+            writable = any(mv.get(key) for key in ('stretch_len_addr', 'stretch_width_addr', 'stretch_height_addr'))
+            hint = ("Double-click a reach value to edit this move."
+                    if writable else "Choose Edit normal size to look up this move’s reach packet.")
+        else:
+            hint = f"{len(mv):,} cached fields"
+        self._selection_sub_var.set(f"{kind}  |  {addr}  |  {hint}")
         # Only the visible inspector tab is populated.
         self._refresh_visible_inspector_tab()
         self._refresh_protection_timeline(mv)
@@ -1037,13 +1081,14 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             y += 19
 
     def _clear_inspector(self):
-        for tree in (getattr(self, "fields_tree", None), getattr(self, "native_tree", None), getattr(self, "native_words_tree", None)):
+        for tree in (getattr(self, "fields_tree", None), getattr(self, "native_tree", None), getattr(self, "native_words_tree", None), getattr(self, "frame_map_tree", None)):
             if tree is not None:
                 try: tree.delete(*tree.get_children(""))
                 except Exception: pass
         self._field_row_to_key.clear()
         self._unknown_row_to_index.clear()
         self._native_word_row_to_offset.clear()
+        self._frame_map_rows = []
         try:
             self._refresh_protection_timeline(None)
         except Exception:
@@ -1064,8 +1109,8 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         try:
             tab = self._notebook.tab(self._notebook.select(), "text")
         except Exception:
-            tab = "Fields"
-        if tab == "Fields":
+            tab = "Move properties"
+        if tab == "Move properties":
             self._refresh_fields()
         elif tab == "Unknown / Native":
             self._refresh_native_ops()
@@ -1073,6 +1118,42 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             self._refresh_native_words()
         elif tab == "Raw":
             self._refresh_raw_keys()
+        elif tab == "Frame map":
+            self._refresh_frame_map()
+
+    def _refresh_frame_map(self):
+        self._frame_map_rows = build_map(
+            self.target_slot.get('char_name'), self.target_slot.get('char_id') or self.target_slot.get('csv_char_id') or self.target_slot.get('id'),
+            self._all_moves, self._selected_move)
+        self.frame_map_tree.delete(*self.frame_map_tree.get_children())
+        def value(item):
+            return 'Unknown' if item is None or item == '' else str(item)
+        def window(row, first, last):
+            start, end = row[first], row[last]
+            return f'{value(start)}–{value(end)}' if start is not None or end is not None else 'Unknown'
+        for row in self._frame_map_rows:
+            self.frame_map_tree.insert('', 'end', values=(
+                row['move'], row['action_id'], row['phase'], row['strength'],
+                window(row, 'active_start_candidate', 'active_end_candidate'),
+                window(row, 'second_active_start_candidate', 'second_active_end_candidate'),
+                value(row['animation_frames']), value(row['recovery_candidate']),
+                value(row['hitstun_candidate']), value(row['blockstun_candidate']),
+                value(row['block_advantage_observed']), value(row['block_advantage_derived']),
+                f"{row['source']} / {row['recovery_source']}"))
+
+    def _export_frame_map(self):
+        if not self._frame_map_rows:
+            self._status_var.set('Select a move with cached rows before exporting the frame map.')
+            return
+        path = filedialog.asksaveasfilename(parent=self.root, title='Export frame map',
+                                            defaultextension='.csv', filetypes=[('CSV', '*.csv')])
+        if not path:
+            return
+        try:
+            export_map(path, self._frame_map_rows)
+            self._status_var.set(f'Exported {len(self._frame_map_rows)} candidate rows to {path}')
+        except OSError as exc:
+            messagebox.showerror('Frame map export', str(exc), parent=self.root)
 
     def _known_schema_keys(self):
         seen = []
@@ -1088,6 +1169,8 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         return seen
 
     def _field_mode(self, mv: dict, key: str) -> str:
+        if key in ("stretch_part", "stretch_len", "stretch_width", "stretch_height", "stretch_time"):
+            return "EDIT" if mv.get(f"{key}_addr") else "READ"
         if key in _STANDARD_EDITABLE:
             return "EDIT"
         try:
@@ -1359,7 +1442,7 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             self._edit_selected_field_backing()
             return
         if key == "native_field_ops":
-            self._notebook.select(1)
+            self._notebook.select(self._native_tab)
             self._refresh_native_ops()
             self._status_var.set("Select an operand and edit it from Unknown / Native.")
             return
@@ -1729,7 +1812,84 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         if mv is self._selected_move:
             self._refresh_visible_inspector_tab()
 
+    def _edit_selected_reach(self):
+        if self._selected_move is None:
+            self._status_var.set("Select a normal to edit its reach.")
+            return
+        self._edit_static_reach(self._selected_item, self._selected_move, "stretch_len")
+
+    def _read_static_reach(self, mv):
+        from tvcgui.core.constants import SLOTS, OFF_CHAR_ID
+        from tvcgui.platform.dolphin import rd32, rbytes
+        from tvcgui.tools.scanners.fighter_resolver import SlotResolver
+        from tvcgui.tools.scanners.normal_scanner import (
+            CHR_TBL_PTR_OFF, CHR_TBL_READ_PAD_BEFORE, read_and_validate_chr_tbl, parse_chr_tbl_entries,
+        )
+        binding = binding_from_row(self.target_slot)
+        slot = next((p for label, p, _ in SLOTS if label == self.slot_label), None)
+        base, fresh = SlotResolver().resolve_base(slot) if slot else (None, False)
+        table = binding["chr_tbl_abs"]
+        if (not fresh or not base or base != binding["fighter_base_abs"] or not table
+                or rd32(base + OFF_CHAR_ID) != binding["char_id"]
+                or rd32(base + CHR_TBL_PTR_OFF) != table):
+            raise ValueError("The slot or move table changed. Reopen Frame Data for the current fighter.")
+        buf = read_and_validate_chr_tbl(table)
+        if not buf:
+            raise ValueError("The current fighter's action table is unavailable.")
+        entries = dict(parse_chr_tbl_entries(buf, table - CHR_TBL_READ_PAD_BEFORE, table))
+        start = mv.get("abs")
+        if not start or entries.get(mv.get("id")) != start:
+            raise ValueError("This row has no matching static action entry.")
+        end = min((addr for addr in entries.values() if addr > start), default=start)
+        if end <= start:
+            raise ValueError("The end of this static move could not be verified.")
+        packet = find_limb_stretch_packet(start, rbytes, scan_len=min(end - start, LIMB_STRETCH_SCAN_MAX))
+        if not packet:
+            raise ValueError("No reach packet was found within this move's verified bounds.")
+        return packet
+
+    def _edit_static_reach(self, item, mv, col):
+        from tvcgui.platform.dolphin import wbytes
+        field = _STRETCH_FIELDS[col]
+        title = self._field_label(col)
+        try:
+            packet = self._read_static_reach(mv)
+            mv["stretch_packet_addr"] = packet["packet_addr"]
+            for key, source in _STRETCH_FIELDS.items():
+                mv[key] = packet[source]
+                mv[key + "_addr"] = packet[source + "_addr"]
+            self._refresh_row(item, mv)
+            self._refresh_visible_inspector_tab()
+            current = packet[field]
+            prompt = f"{self._move_label(mv)}\n{title}"
+            if col in ("stretch_part", "stretch_time"):
+                value = simpledialog.askinteger(title, prompt, initialvalue=current,
+                                                minvalue=0, maxvalue=0xFFFFFFFF, parent=self.root)
+                fmt = ">I"
+            else:
+                value = simpledialog.askfloat(title, prompt + " (1.0 = normal scale)", initialvalue=current, parent=self.root)
+                fmt = ">f"
+            if value is None:
+                return
+            if not math.isfinite(value):
+                raise ValueError("Enter a finite value.")
+            payload = struct.pack(fmt, value)
+            fresh = self._read_static_reach(mv)
+            address = packet[field + "_addr"]
+            if fresh[field + "_addr"] != address or fresh[field] != current:
+                raise ValueError("This move's reach changed while editing. Select it again.")
+            if not wbytes(address, payload):
+                raise ValueError("Dolphin did not accept the edit.")
+            mv[col] = struct.unpack(fmt, payload)[0]
+            self._after_cell_write(item, mv, col)
+        except (ValueError, OverflowError, OSError, struct.error) as exc:
+            self._status_var.set(str(exc))
+            messagebox.showinfo(title, str(exc), parent=self.root)
+
     def _route_standard_edit(self, col_name: str, item: str, mv: dict, current_val: str) -> None:
+        if col_name in _STRETCH_FIELDS:
+            self._edit_static_reach(item, mv, col_name)
+            return
         # Projectile and super rows own many additional typed fields.
         try:
             if FSI.is_super_row(mv) and FSI.super_editable(col_name):
@@ -1754,11 +1914,6 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             "blockstun": self._edit_blockstun,
             "hitstop": self._edit_hitstop,
             "hit_spark": self._edit_hit_spark,
-            "stretch_part": self._edit_stretch_part,
-            "stretch_len": self._edit_stretch_len,
-            "stretch_width": self._edit_stretch_width,
-            "stretch_height": self._edit_stretch_height,
-            "stretch_time": self._edit_stretch_time,
             "post_link": self._edit_post_link,
             "kb_type": self._edit_kb_type,
             "launch_profile": self._edit_launch_profile,
@@ -2069,12 +2224,20 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         if BoneScanner is None:
             messagebox.showerror("Bones", "Bone scanner is unavailable in this build.", parent=self.root)
             return
-        try:
-            base = int(self.target_slot.get("fighter_base_abs") or self.target_slot.get("fighter_base") or 0)
-        except Exception:
-            base = 0
-        if not base:
-            messagebox.showerror("Bones", "This cached slot has no fighter_base. Open the window from a live fighter slot.", parent=self.root)
+        from tvcgui.core.constants import SLOTS, OFF_CHAR_ID
+        from tvcgui.platform.dolphin import rd32, rbytes, wbytes
+        from tvcgui.tools.scanners.fighter_resolver import SlotResolver
+        binding = binding_from_row(self.target_slot)
+        ptr = next((address for label, address, _team in SLOTS if label == self.slot_label), None)
+        resolver = SlotResolver()
+        def current_actor():
+            actor, fresh = resolver.resolve_base(ptr) if ptr else (None, False)
+            if fresh and actor and binding['char_id'] and rd32(actor + OFF_CHAR_ID) == binding['char_id']:
+                return actor
+            return None
+        base = current_actor()
+        if not base or binding['fighter_base_abs'] not in (None, base):
+            messagebox.showinfo("Live bones", "Open Frame Data for the current fighter during a match to scan its bones.", parent=self.root)
             return
         win = tk.Toplevel(self.root)
         try: apply_titlebar_icon(win, self.root)
@@ -2085,7 +2248,7 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
         start_var = tk.StringVar(value="0x3000")
         len_var = tk.StringVar(value="0x5000")
         budget_var = tk.StringVar(value="96")
-        status_var = tk.StringVar(value="Explicit live scan. Close this window when finished.")
+        status_var = tk.StringVar()
         ttk.Label(top, text="Start +").pack(side="left")
         ttk.Entry(top, textvariable=start_var, width=10).pack(side="left", padx=(4, 12))
         ttk.Label(top, text="Length").pack(side="left")
@@ -2106,7 +2269,9 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             try:
                 state["scanner"] = BoneScanner(base, start_off=start, scan_len=length, max_results=256)
                 state["running"] = True
-                status_var.set(f"Scanning 0x{base+start:08X}..0x{base+start+length:08X}")
+                state["signature"] = None
+                tree.delete(*tree.get_children())
+                status_var.set(f"Candidate blocks in 0x{base+start:08X}–0x{base+start+length:08X}. Select a row to edit or scale.")
             except Exception as exc:
                 messagebox.showerror("Bones", str(exc), parent=win)
         def toggle():
@@ -2114,44 +2279,74 @@ class LeanFrameDataWindow(FDCellEditorsMixin):
             pause_btn.configure(text="Pause" if state["running"] else "Resume")
         ttk.Button(top, text="Apply range", command=rebuild).pack(side="left", padx=(0,6))
         pause_btn = ttk.Button(top, text="Pause", command=toggle); pause_btn.pack(side="left")
-        def edit_selected(_evt=None):
+        def edit_selected(_evt=None, *, scale=False):
             sel = tree.selection()
-            if not sel: return
-            try: addr = int(tree.set(sel[0], "addr"), 16)
-            except Exception: return
+            if not sel:
+                status_var.set("Select a candidate block first.")
+                return
+            addr = int(tree.set(sel[0], "addr"), 16)
             try:
-                from tvcgui.platform.dolphin import rbytes, wbytes
-                raw = rbytes(addr, 0x20) or b""
-                if len(raw) < 0x20: raise RuntimeError("read failed")
-            except Exception as exc:
-                messagebox.showerror("Bones", str(exc), parent=win); return
-            vals = [struct.unpack(">f", raw[i:i+4])[0] for i in range(0, 0x20, 4)]
-            text = simpledialog.askstring("Edit bone block", "Eight f32 values, comma-separated:\n" + ", ".join(f"{v:g}" for v in vals), parent=win, initialvalue=", ".join(f"{v:g}" for v in vals))
-            if text is None: return
-            try:
-                new_vals = [float(x.strip()) for x in text.split(",")]
-                if len(new_vals) != 8: raise ValueError("Enter exactly 8 floats")
-                payload = b"".join(struct.pack(">f", v) for v in new_vals)
-                wbytes(addr, payload)
-                status_var.set(f"Wrote 8 floats @ 0x{addr:08X}")
+                if current_actor() != base:
+                    raise ValueError("The fighter changed or disconnected. Reopen Frame Data.")
+                size = 48 if scale else 32
+                raw = rbytes(addr, size)
+                if not raw or len(raw) != size:
+                    raise ValueError("Could not read the selected block.")
+                if scale:
+                    scale_matrix_basis(raw, 1.0)
+                    factor = simpledialog.askfloat("Scale candidate bone", f"Scale factor for 0x{addr:08X} (1 = current size)",
+                                                   initialvalue=1.0, parent=win)
+                    if factor is None:
+                        return
+                    # Use the current pose after the dialog closes.
+                    raw = rbytes(addr, size) or b""
+                    payload = scale_matrix_basis(raw, factor)
+                else:
+                    values = struct.unpack(">8f", raw)
+                    text = simpledialog.askstring("Edit candidate block", f"Eight float values at 0x{addr:08X}",
+                        parent=win, initialvalue=", ".join(f"{v:.9g}" for v in values))
+                    if text is None:
+                        return
+                    values = [float(x.strip()) for x in text.split(",")]
+                    if len(values) != 8 or not all(map(math.isfinite, values)):
+                        raise ValueError("Enter eight finite numbers.")
+                    payload = struct.pack(">8f", *values)
+                if current_actor() != base or rbytes(addr, size) != raw:
+                    raise ValueError("The fighter or pose changed. Pause Dolphin and try again.")
+                if not wbytes(addr, payload):
+                    raise ValueError("Dolphin did not accept the write.")
+                status_var.set(f"Updated candidate block at 0x{addr:08X}.")
             except Exception as exc:
                 messagebox.showerror("Bones", str(exc), parent=win)
+        ttk.Button(top, text="Edit values", command=edit_selected).pack(side="left", padx=6)
+        ttk.Button(top, text="Scale selected", command=lambda: edit_selected(scale=True)).pack(side="left")
         tree.bind("<Double-1>", edit_selected)
         def tick():
             if not win.winfo_exists(): return
             scanner = state.get("scanner")
             if state.get("running") and scanner is not None:
+                if current_actor() != base:
+                    tree.delete(*tree.get_children())
+                    status_var.set("The fighter changed or disconnected. Reopen Frame Data for the current fighter.")
+                    return
                 try: scanner.step(budget_blocks=max(16, min(512, parse(budget_var.get(), 96))))
                 except Exception: pass
                 rows = list(getattr(scanner, "results", []) or [])[:96]
                 sig = tuple((r.addr, round(r.score,2), r.change_count) for r in rows)
                 if sig != state.get("signature"):
                     state["signature"] = sig
+                    selection = tree.selection()
                     tree.delete(*tree.get_children(""))
-                    for i, r in enumerate(rows):
+                    for r in rows:
                         sample = ", ".join(f"{v:.3g}" for v in (r.sample or ()))
-                        tree.insert("", "end", iid=f"b{i}", values=(f"0x{r.addr:08X}", r.float_count, r.zero_count, r.change_count, r.pattern_hits, f"{r.score:.2f}", sample))
-            win.after(100, tick)
+                        tree.insert("", "end", iid=str(r.addr), values=(f"0x{r.addr:08X}", r.float_count, r.zero_count, r.change_count, r.pattern_hits, f"{r.score:.2f}", sample))
+                    if selection and tree.exists(selection[0]):
+                        tree.selection_set(selection[0])
+            state["after"] = win.after(100, tick)
+        def cleanup(event):
+            if event.widget == win and state.get("after"):
+                win.after_cancel(state.pop("after"))
+        win.bind("<Destroy>", cleanup)
         rebuild(); tick()
 
     def _copy_selected_address(self):
